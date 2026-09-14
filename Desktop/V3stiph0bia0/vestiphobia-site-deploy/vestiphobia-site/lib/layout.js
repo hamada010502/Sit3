@@ -1,6 +1,6 @@
 import { site as staticSite, isSet, activeSocial, whatsappConfigured } from '../site.config.js';
 import { esc, when } from './html.js';
-import { iconClose, iconBag } from './icons.js';
+import { iconClose, iconBag, iconPlay, iconPause, iconRadio } from './icons.js';
 
 /**
  * Every function below takes an optional `site` parameter (defaulting to the
@@ -265,6 +265,53 @@ function cartDrawer(site = staticSite) {
 }
 
 /**
+ * Persistent, site-wide Live365 player — a collapsed tab fixed to the left
+ * edge that expands into a small panel. Rendered nowhere at all (not just
+ * CSS-hidden) unless site.radio.streamUrl or .embedUrl is actually set; see
+ * the comment on that config block in site.config.js.
+ *
+ * streamUrl drives a custom <audio> with our own play/pause and volume —
+ * full control over styling. embedUrl (Live365's own iframe widget) is the
+ * fallback when no direct stream URL is available; its internal player skin
+ * can't be restyled, so only the tab/panel shell around it is ours there,
+ * and the custom transport controls are omitted since the iframe brings its
+ * own. Never both at once — streamUrl wins if somehow both are set.
+ */
+function radioPlayer(site = staticSite) {
+  const { label, stationUrl, streamUrl, embedUrl } = site.radio;
+  if (!isSet(streamUrl) && !isSet(embedUrl)) return '';
+
+  const body = isSet(streamUrl)
+    ? `<audio data-radio-audio preload="none" src="${esc(streamUrl)}"></audio>
+    <div class="radio__controls">
+      <button class="radio__play" type="button" data-radio-play aria-label="Play ${esc(label)}">
+        <span data-icon-play>${iconPlay()}</span>
+        <span data-icon-pause>${iconPause()}</span>
+      </button>
+      <input class="radio__volume" type="range" min="0" max="1" step="0.05" value="0.7" data-radio-volume aria-label="Volume">
+    </div>`
+    : `<div class="radio__embed">
+      <iframe src="${esc(embedUrl)}" title="${esc(label)}" allow="autoplay" loading="lazy" frameborder="0"></iframe>
+    </div>`;
+
+  return `<div class="radio" data-radio>
+  <button class="radio__tab" type="button" data-radio-toggle aria-expanded="false" aria-controls="radio-panel">
+    ${iconRadio()}
+    <span class="radio__tab-label">On Air</span>
+  </button>
+  <div class="radio__panel" id="radio-panel" data-radio-panel hidden>
+    <div class="radio__head">
+      <span class="radio__dot" data-radio-dot aria-hidden="true"></span>
+      <span class="radio__name">${esc(label)}</span>
+      <button class="icon-btn" type="button" data-radio-close aria-label="Close radio player">${iconClose()}</button>
+    </div>
+    ${body}
+    <a class="radio__link" href="${esc(stationUrl)}" target="_blank" rel="noopener">Station page ↗</a>
+  </div>
+</div>`;
+}
+
+/**
  * Config the browser needs at runtime, serialised once per page.
  * No secrets belong here — everything in this object is public by definition.
  */
@@ -335,8 +382,10 @@ ${body}
 </main>
 ${chrome ? footer(site) : ''}
 ${chrome ? cartDrawer(site) : ''}
+${chrome ? radioPlayer(site) : ''}
 ${runtimeConfig(products, site)}
 ${chrome ? '<script src="/assets/js/store.js" type="module"></script>' : ''}
+${chrome && (isSet(site.radio.streamUrl) || isSet(site.radio.embedUrl)) ? '<script src="/assets/js/radio.js" type="module"></script>' : ''}
 ${site.analytics.firstParty ? '<script src="/assets/js/analytics.js" type="module"></script>' : ''}
 ${scripts.map((s) => `<script src="${esc(s)}" type="module"></script>`).join('\n')}
 </body>

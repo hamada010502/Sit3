@@ -67,6 +67,30 @@ export const site = {
     x: null,
   },
 
+  /**
+   * RADIO — the Live365 station player.
+   *
+   * OWNER INPUT REQUIRED. streamUrl and embedUrl are both null until real
+   * values are supplied, and the player renders nowhere on the site while
+   * that's true — same "hidden until confirmed" rule as everything else in
+   * this file. https://live365.com/station/Vestiphobia-a11798 is the public
+   * station page, not a playable source; get the actual value from the
+   * Live365 dashboard (Streaming / Listen -> Embed or "Get Player Code").
+   *
+   *   - streamUrl set  -> a custom-built player streams it directly in an
+   *     <audio> element (full control over styling to match the site).
+   *   - streamUrl empty, embedUrl set -> falls back to Live365's own iframe
+   *     widget at that URL (its internal skin can't be restyled — only the
+   *     container around it is styled to fit the layout).
+   *   - both empty -> no player renders anywhere.
+   */
+  radio: {
+    label: 'VESTIPHOBIA RADIO',
+    stationUrl: 'https://live365.com/station/Vestiphobia-a11798',
+    streamUrl: null,
+    embedUrl: null,
+  },
+
   newsletter: {
     provider: null,
     endpoint: null,

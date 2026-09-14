@@ -1864,6 +1864,190 @@ p > .link-underline:only-child {
   }
 }
 
+/* ------------------------------------------------------- radio player */
+/* Fixed to the left edge, vertically centred, on every page via lib/layout.js.
+   z-index 60 sits below .sticky-buy (70) and the drawer/menu/lightbox layers
+   (90-120), so none of those ever get covered by the tab or open panel. */
+
+.radio {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+}
+
+.radio__tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--rule);
+  border-left: none;
+  padding: 0.9rem 0.55rem;
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease);
+}
+
+.radio__tab:hover,
+.radio__tab:focus-visible {
+  border-color: var(--rule-strong);
+}
+
+.radio__tab .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.radio__tab-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.radio__panel {
+  width: min(260px, 78vw);
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-left: none;
+  padding: 1rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+.radio__panel[hidden] {
+  display: none;
+}
+
+.radio__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.radio__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--fg-muted);
+  flex: none;
+}
+
+.radio__dot--live {
+  background: var(--red);
+  box-shadow: 0 0 8px var(--red-glow);
+}
+
+.radio__name {
+  flex: 1;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.radio__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.radio__play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid var(--rule);
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease);
+}
+
+.radio__play:hover,
+.radio__play:focus-visible {
+  border-color: var(--rule-strong);
+}
+
+.radio__play .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.radio__play [data-icon-pause] {
+  display: none;
+}
+
+.radio__play.is-playing [data-icon-play] {
+  display: none;
+}
+
+.radio__play.is-playing [data-icon-pause] {
+  display: inline-flex;
+}
+
+.radio__volume {
+  flex: 1;
+  accent-color: var(--red);
+}
+
+.radio__embed {
+  width: 100%;
+}
+
+.radio__embed iframe {
+  width: 100%;
+  height: 120px;
+  border: 0;
+}
+
+.radio__link {
+  display: block;
+  margin-top: 0.85rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.radio__link:hover {
+  color: var(--fg);
+}
+
+/* Below 900px the vertically-centred left edge would sit over page content
+   readers actually need to touch, and the collapsed tab would crowd the
+   bottom-docked .sticky-buy bar — so on mobile the player docks under the
+   header/marquee instead, collapsed by default, never centred. */
+@media (max-width: 899px) {
+  .radio {
+    top: calc(var(--header-h) + var(--marquee-h) + 0.6rem);
+    transform: none;
+  }
+
+  .radio__tab {
+    flex-direction: row;
+    padding: 0.5rem 0.65rem;
+  }
+
+  .radio__tab-label {
+    writing-mode: horizontal-tb;
+    transform: none;
+  }
+
+  .radio__panel {
+    width: min(220px, 70vw);
+  }
+}
+
 /* --------------------------------------------------------- story pages */
 
 .story-page__grid {
