@@ -282,7 +282,7 @@ function radioPlayer(site = staticSite) {
   if (!isSet(streamUrl) && !isSet(embedUrl)) return '';
 
   const body = isSet(streamUrl)
-    ? `<audio data-radio-audio preload="none" src="${esc(streamUrl)}"></audio>
+    ? `<audio data-radio-audio preload="none" referrerpolicy="no-referrer" src="${esc(streamUrl)}"></audio>
     <div class="radio__controls">
       <button class="radio__play" type="button" data-radio-play aria-label="Play ${esc(label)}">
         <span data-icon-play>${iconPlay()}</span>
