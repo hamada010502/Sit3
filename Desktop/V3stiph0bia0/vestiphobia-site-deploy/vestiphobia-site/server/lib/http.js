@@ -70,7 +70,11 @@ export function securityHeaders({ secure } = {}) {
       // frame-src for the iframe-embed fallback (site.radio.streamUrl /
       // embedUrl in site.config.js) — both stay unreachable while that config
       // is unset, so these origins are inert until the owner supplies one.
-      "media-src 'self' https://streaming.live365.com",
+      // streaming.live365.com redirects to a per-listener CDN edge node on
+      // *.cdnstream.com, so that has to be allowed too, not just the entry
+      // domain — a media-src that only covers the redirect's starting point
+      // still gets the follow-up request blocked.
+      "media-src 'self' https://streaming.live365.com https://*.cdnstream.com",
       "frame-src https://live365.com",
       "form-action 'self'",
       "frame-ancestors 'none'",
