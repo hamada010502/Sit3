@@ -119,6 +119,12 @@ const site = staticSite;
 const ADMIN_WRITE_LIMIT = Number(process.env.ADMIN_WRITE_LIMIT || 300);
 const ADMIN_UPLOAD_LIMIT = Number(process.env.ADMIN_UPLOAD_LIMIT || 60);
 
+// Declared here (rather than next to the upload handlers below) because the
+// file_too_large flash message in MESSAGES needs it, and MESSAGES is
+// evaluated at module load — before a `const` declared further down the
+// file would exist yet.
+const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_BYTES || 8 * 1024 * 1024);
+
 /* --------------------------------------------------------------- messages */
 
 /**
@@ -139,7 +145,36 @@ const MESSAGES = {
   forbidden: ['err', 'That request was refused (cross-origin).'],
   notfound: ['err', 'Not found.'],
   rate_limited: ['err', 'Too many changes in a short time. Wait a few minutes and try again.'],
+  // Specific, common validation failures that previously all fell through to
+  // the generic 'invalid' above with no way to tell them apart from the
+  // admin screen. Still a fixed, known set of strings — never the route's
+  // own free-text error message — for the same reason 'invalid' itself is
+  // fixed text: a flash message is reachable by URL, so it can never echo
+  // anything an attacker could have chosen.
+  publish_needs_image: ['err', 'Cannot publish: add at least one image first.'],
+  image_upload_failed: ['err', 'Could not upload that image. Check the server logs for the exact reason.'],
+  image_required: ['err', 'Choose an image file before uploading.'],
+  file_too_large: ['err', `That file is over the ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)}MB upload limit.`],
+  name_required: ['err', 'Enter a product name.'],
+  price_invalid: ['err', 'Price must be a number above zero.'],
+  sizes_required: ['err', 'Enter at least one size.'],
 };
+
+const CODE_MESSAGE = {
+  NO_IMAGE: 'publish_needs_image',
+  NAME_REQUIRED: 'name_required',
+  PRICE_INVALID: 'price_invalid',
+  SIZES_REQUIRED: 'sizes_required',
+};
+
+/**
+ * Map a route function's { ok:false, code } result to one of the flash
+ * messages above, falling back to the generic 'invalid' for anything that
+ * was not given a specific code. This is the one place a route's `code`
+ * value is trusted to pick a message — the message text itself always comes
+ * from the fixed MESSAGES table, never from the route.
+ */
+const failCode = (r) => (r.code && CODE_MESSAGE[r.code]) || 'invalid';
 
 const flashFrom = (url) => {
   const code = url.searchParams.get('m');
@@ -896,7 +931,10 @@ async function handleAdminPost(req, res, path, ip, admin) {
   const prodStatus = path.match(/^\/admin\/products\/([a-z0-9-]{1,120})\/status$/);
   if (prodStatus) {
     const r = await setProductStatus(prodStatus[1], form.status, { adminId, ip });
-    return back(res, '/admin/products', r.ok ? 'saved' : 'invalid');
+    // Back to the product's own page, not the list — the status control is
+    // triggered from there, and a rejection is far more legible next to the
+    // product it was about than as an unlabelled banner on a different page.
+    return back(res, `/admin/products/${encodeURIComponent(prodStatus[1])}`, r.ok ? 'saved' : failCode(r));
   }
 
   const prodEdit = path.match(/^\/admin\/products\/([a-z0-9-]{1,120})$/);
@@ -926,7 +964,7 @@ async function handleAdminPost(req, res, path, ip, admin) {
     // Checkboxes are absent from the form body entirely when unchecked.
     fields.featured = form.featured === '1';
     const r = await updateProduct(prodEdit[1], fields, { adminId, ip });
-    return back(res, `/admin/products/${encodeURIComponent(prodEdit[1])}`, r.ok ? 'saved' : 'invalid');
+    return back(res, `/admin/products/${encodeURIComponent(prodEdit[1])}`, r.ok ? 'saved' : failCode(r));
   }
 
   const sizeGuideEdit = path.match(/^\/admin\/products\/([a-z0-9-]{1,120})\/size-guide$/);
@@ -1040,8 +1078,6 @@ async function handleAdminPost(req, res, path, ip, admin) {
   return back(res, '/admin', 'notfound');
 }
 
-const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_BYTES || 8 * 1024 * 1024);
-
 /**
  * One of a handful of multipart routes on the site (a file upload). Parsed
  * separately from every other admin POST (readForm() assumes url-encoded,
@@ -1056,13 +1092,13 @@ async function handleProductImageUpload(req, res, slug, adminId, ip) {
   try {
     body = await readRawBody(req, MAX_UPLOAD_BYTES);
   } catch (err) {
-    return back(res, `/admin/products/${encodeURIComponent(slug)}`, 'invalid');
+    return back(res, `/admin/products/${encodeURIComponent(slug)}`, err.status === 413 ? 'file_too_large' : 'invalid');
   }
 
   const { fields, files } = parseMultipart(body, boundary);
   const file = files.find((f) => f.name === 'file');
   if (!file || !file.data.length) {
-    return back(res, `/admin/products/${encodeURIComponent(slug)}`, 'invalid');
+    return back(res, `/admin/products/${encodeURIComponent(slug)}`, 'image_required');
   }
 
   const r = await uploadProductImage(
@@ -1070,7 +1106,11 @@ async function handleProductImageUpload(req, res, slug, adminId, ip) {
     { buffer: file.data, alt: fields.alt, role: fields.role },
     { adminId, ip }
   );
-  return back(res, `/admin/products/${encodeURIComponent(slug)}`, r.ok ? 'saved' : 'invalid');
+  // uploadProductImage() already logs the real reason (bad storage
+  // credential, wrong bucket, a file sharp can't decode, …) — this flash
+  // just tells the admin it's worth checking the server logs, without
+  // echoing that free-text reason into the URL itself.
+  return back(res, `/admin/products/${encodeURIComponent(slug)}`, r.ok ? 'saved' : 'image_upload_failed');
 }
 
 /**
@@ -1092,12 +1132,12 @@ async function handleNewProduct(req, res, adminId, ip) {
   try {
     body = await readRawBody(req, MAX_UPLOAD_BYTES);
   } catch (err) {
-    return back(res, '/admin/products/new', 'invalid');
+    return back(res, '/admin/products/new', err.status === 413 ? 'file_too_large' : 'invalid');
   }
 
   const { fields, files } = parseMultipart(body, boundary);
   const r = await createProduct(fields, { adminId, ip });
-  if (!r.ok) return back(res, '/admin/products/new', 'invalid');
+  if (!r.ok) return back(res, '/admin/products/new', failCode(r));
 
   const image = files.find((f) => f.name === 'image');
   if (image && image.data.length) {
@@ -1120,15 +1160,17 @@ async function handleSiteImageUpload(req, res, key, adminId, ip) {
   try {
     body = await readRawBody(req, MAX_UPLOAD_BYTES);
   } catch (err) {
-    return back(res, '/admin/content', 'invalid');
+    return back(res, '/admin/content', err.status === 413 ? 'file_too_large' : 'invalid');
   }
 
   const { files } = parseMultipart(body, boundary);
   const file = files.find((f) => f.name === 'file');
-  if (!file || !file.data.length) return back(res, '/admin/content', 'invalid');
+  if (!file || !file.data.length) return back(res, '/admin/content', 'image_required');
 
   const r = await uploadSiteImage(key, file.data, { adminId, ip });
-  return back(res, '/admin/content', r.ok ? 'saved' : 'invalid');
+  // uploadSiteImage() already logs the real reason on failure — see the
+  // matching comment on handleProductImageUpload().
+  return back(res, '/admin/content', r.ok ? 'saved' : 'image_upload_failed');
 }
 
 /* ------------------------------------------------------------- storefront */

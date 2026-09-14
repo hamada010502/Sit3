@@ -146,12 +146,14 @@ async function uniqueSlug(db, base) {
  */
 export async function createProduct(fields, { adminId, ip } = {}) {
   const name = cleanText(fields.name, { max: 200 });
-  if (!name) return { ok: false, error: 'Name is required.' };
+  if (!name) return { ok: false, code: 'NAME_REQUIRED', error: 'Name is required.' };
 
   const shortName = cleanText(fields.short_name, { max: 80 }) || name.slice(0, 80);
 
   const cents = toCents(fields.price);
-  if (!Number.isFinite(cents) || cents <= 0) return { ok: false, error: 'Price must be above zero.' };
+  if (!Number.isFinite(cents) || cents <= 0) {
+    return { ok: false, code: 'PRICE_INVALID', error: 'Price must be above zero.' };
+  }
 
   const statusCheck = validEnum(fields.status || 'DRAFT', PRODUCT_STATUSES, 'status');
   if (!statusCheck.ok) return { ok: false, error: statusCheck.error };
@@ -169,7 +171,7 @@ export async function createProduct(fields, { adminId, ip } = {}) {
         .filter(Boolean)
     ),
   ];
-  if (!sizes.length) return { ok: false, error: 'At least one size is required.' };
+  if (!sizes.length) return { ok: false, code: 'SIZES_REQUIRED', error: 'At least one size is required.' };
 
   const base = slugify(name);
   if (!base) return { ok: false, error: 'Could not derive a URL slug from that name.' };
@@ -284,7 +286,20 @@ export async function setProductStatus(slug, status, { adminId, ip } = {}) {
     const hasImage = await db.get('SELECT id FROM product_images WHERE product_id = ? LIMIT 1', [
       product.id,
     ]);
-    if (!hasImage) return { ok: false, error: 'Add at least one image before publishing this product.' };
+    if (!hasImage) {
+      // The admin previously only ever saw a generic "?m=invalid" for this —
+      // the real reason existed right here as a string but had nowhere to
+      // go. `code` lets server/index.js pick a specific flash message
+      // instead of the catch-all one (see MESSAGES there); logging it here
+      // means the reason is visible in the server logs even before that
+      // flash message renders.
+      console.warn(`[products] refused to publish ${slug}: no image uploaded yet`);
+      return {
+        ok: false,
+        code: 'NO_IMAGE',
+        error: 'Add at least one image before publishing this product.',
+      };
+    }
   }
 
   // Archiving sets a timestamp; the row is never deleted, because order
@@ -336,7 +351,9 @@ export async function updateProduct(slug, fields, { adminId, ip } = {}) {
 
   if (fields.price !== undefined) {
     const cents = toCents(fields.price);
-    if (!Number.isFinite(cents) || cents <= 0) return { ok: false, error: 'Price must be above zero.' };
+    if (!Number.isFinite(cents) || cents <= 0) {
+      return { ok: false, code: 'PRICE_INVALID', error: 'Price must be above zero.' };
+    }
     sets.push('price_cents = ?');
     params.push(cents);
   }
