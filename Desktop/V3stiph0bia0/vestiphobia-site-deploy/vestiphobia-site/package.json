@@ -1,0 +1,46 @@
+{
+  "name": "vestiphobia-site",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "VESTIPHOBIA storefront and admin \u2014 static build, Node API, SQLite locally and Postgres in production.",
+  "scripts": {
+    "images": "node scripts/optimize-images.js",
+    "images:force": "node scripts/optimize-images.js --force",
+    "build": "npm run images && node build.js",
+    "build:fast": "node build.js",
+    "dev": "npm run images && node build.js --serve",
+    "start": "node server/index.js",
+    "qa": "node qa/qa.mjs",
+    "server": "node server/index.js",
+    "serve:static": "node build.js --serve",
+    "db:migrate": "node server/db/migrate.js migrate",
+    "db:seed": "node server/db/migrate.js seed",
+    "db:setup": "node server/db/migrate.js all",
+    "db:reset": "node scripts/db-reset.js",
+    "admin:create": "node scripts/create-admin.js",
+    "test": "node --test qa/pricing.test.mjs qa/server.test.mjs qa/uploads.test.mjs",
+    "test:server": "node --test qa/server.test.mjs",
+    "test:uploads": "node --test qa/uploads.test.mjs",
+    "test:failures": "node qa/failure-test.mjs",
+    "test:race": "node qa/inventory-race.mjs",
+    "test:backup": "node qa/backup-restore.mjs",
+    "load": "node qa/load-test.mjs",
+    "load:1000": "node qa/load-test.mjs --users=1000 --stock=300",
+    "load:quick": "node qa/load-test.mjs --quick",
+    "qa:all": "npm test && npm run qa && npm run test:prelaunch && npm run test:failures && npm run test:race && npm run test:backup && npm run load:quick",
+    "audit": "npm audit --omit=dev",
+    "qa:firefox": "QA_BROWSER=firefox node qa/qa.mjs",
+    "qa:webkit": "QA_BROWSER=webkit node qa/qa.mjs",
+    "test:prelaunch": "node qa/prelaunch.mjs"
+  },
+  "dependencies": {
+    "sharp": "^0.35.4"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

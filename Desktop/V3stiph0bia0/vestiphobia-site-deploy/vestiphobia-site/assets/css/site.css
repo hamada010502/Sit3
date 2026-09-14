@@ -1,0 +1,2905 @@
+/* ==========================================================================
+   VESTIPHOBIA
+
+   Black ground, white ink, red only where the photography already puts it.
+   Sharp corners, hairline rules, generous negative space. The interface is
+   deliberately quiet so the campaign imagery carries the whole room.
+
+   COLOUR CONTRACT
+     --red      #FF1A1A  surfaces, borders, focus. NEVER body text: too low
+                         contrast on black to read as text.
+     --red-ink  #FF4D4D  the same red lifted until it is legible as text on
+                         black (6.4:1). Used for errors and accents only.
+     --fg-muted #A0A0A0  6.9:1 on black — the dimmest text allowed anywhere.
+
+   Both reds were brightened from an earlier, muddier pair (#C41212 /
+   #FF6169) so the red reads as light-emitting against black rather than a
+   flat, dark accent. --red-glow is the same surface red as a translucent
+   shadow, used sparingly on the handful of elements meant to feel like they
+   are casting light — not on every red surface in the layout.
+   ========================================================================== */
+
+:root {
+  --bg: #000000;
+  --surface: #0b0b0b;
+  --surface-2: #141414;
+  --fg: #ffffff;
+  --fg-muted: #a0a0a0;
+
+  --red: #ff1a1a;
+  --red-ink: #ff4d4d;
+  --red-deep: #5c0f13;
+  --red-glow: rgba(255, 26, 26, 0.5);
+
+  --rule: rgba(255, 255, 255, 0.16);
+  --rule-strong: rgba(255, 255, 255, 0.42);
+
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-display: 'Anton', 'Inter', Impact, sans-serif;
+
+  --gut: clamp(1.25rem, 4vw, 3.5rem);
+  --measure: 62ch;
+  --header-h: 62px;
+  --marquee-h: 34px;
+
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur: 260ms;
+}
+
+/* --------------------------------------------------------------- reset */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+picture {
+  display: block;
+}
+
+h1,
+h2,
+h3,
+p,
+figure,
+ul,
+ol,
+dl,
+dd {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+legend {
+  padding: 0;
+}
+
+/* One ring that stays visible on both the black ground and white buttons. */
+:focus-visible {
+  outline: 2px solid var(--red-ink);
+  outline-offset: 3px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 200;
+  background: var(--fg);
+  color: var(--bg);
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  left: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* --------------------------------------------------------- typography */
+
+.wordmark {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.wordmark--sm {
+  font-size: 0.8rem;
+  letter-spacing: 0.24em;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 0.92;
+  letter-spacing: -0.01em;
+  font-size: clamp(2.75rem, 9vw, 7rem);
+}
+
+.display--md {
+  font-size: clamp(1.9rem, 5vw, 3.5rem);
+}
+
+/* A handful of editorial-voice headings and labels read as short, lowercase
+   lines rather than the shouty poster casing .display/.eyebrow use
+   everywhere else — scoped to just those instances (see the pages that use
+   these modifiers), not a sitewide identity change. Functional labels (nav,
+   form fields, order/status text, legal copy) keep the uppercase treatment. */
+.display--lower {
+  text-transform: none;
+}
+
+.eyebrow {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin: 0 0 0.75rem;
+}
+
+.eyebrow--lower {
+  text-transform: none;
+}
+
+.lede {
+  font-size: clamp(1rem, 1.6vw, 1.15rem);
+  max-width: 46ch;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.muted {
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+}
+
+.price {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin: 0.5rem 0 1.25rem;
+}
+
+.price--lg {
+  font-size: 1.125rem;
+}
+
+.card__was {
+  color: var(--fg-muted);
+  text-decoration: line-through;
+  margin-right: 0.4rem;
+  font-weight: 400;
+}
+
+/* A value the owner has not supplied yet. Quiet, never styled as an error. */
+.is-pending {
+  color: var(--fg-muted);
+  font-style: italic;
+}
+
+.prose {
+  max-width: var(--measure);
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.prose p + p {
+  margin-top: 1.1rem;
+}
+
+.prose--lg {
+  font-size: 1.0625rem;
+}
+
+.prose h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 2.5rem 0 0.85rem;
+  color: var(--fg);
+}
+
+.prose h2:first-child {
+  margin-top: 0;
+}
+
+.prose a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  color: var(--fg);
+}
+
+.link-underline {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+  transition: color var(--dur) var(--ease);
+}
+
+.link-underline:hover {
+  color: var(--red-ink);
+}
+
+.plain-list li + li {
+  margin-top: 0.4rem;
+}
+
+.plain-list a {
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.plain-list a:hover {
+  border-color: currentColor;
+  color: var(--red-ink);
+}
+
+.tick-list li {
+  padding-left: 1.1rem;
+  position: relative;
+}
+
+.tick-list li + li {
+  margin-top: 0.35rem;
+}
+
+.tick-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.65em;
+  width: 6px;
+  height: 1px;
+  background: var(--fg);
+}
+
+.tick-list--pending li {
+  color: var(--fg-muted);
+}
+
+.tick-list--pending li::before {
+  background: var(--fg-muted);
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  background: var(--surface-2);
+  border: 1px solid var(--rule);
+  padding: 0.1em 0.35em;
+}
+
+/* ------------------------------------------------------------- layout */
+
+.wrap {
+  width: 100%;
+  max-width: 1560px;
+  margin-inline: auto;
+  padding-inline: var(--gut);
+}
+
+.section {
+  padding-block: clamp(3.5rem, 8vw, 7rem);
+}
+
+.section--tight {
+  padding-block: clamp(2.5rem, 5vw, 4rem);
+}
+
+.section--top-tight {
+  padding-top: 0;
+}
+
+.page-head {
+  padding-bottom: clamp(1.75rem, 4vw, 3rem);
+}
+
+.page-head__note {
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 1rem;
+}
+
+/* A raised block on the black ground — the only "card" idiom in the system. */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+/* ------------------------------------------------------------ buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  border: 1px solid var(--fg);
+  border-radius: 0;
+  min-height: 46px;
+  text-align: center;
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+
+/* Primary: white on black — the strongest contrast the palette allows. */
+.btn--solid {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.btn--solid:hover:not(:disabled) {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--fg);
+  box-shadow: 0 0 22px var(--red-glow);
+}
+
+.btn--outline {
+  background: transparent;
+  color: var(--fg);
+}
+
+.btn--outline:hover:not(:disabled) {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--fg);
+  border-color: var(--rule-strong);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  border-color: var(--fg);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/*
+ * The WhatsApp action. Deliberately NOT WhatsApp green — the palette is black,
+ * white and the brand red only. It earns its prominence through size and
+ * weight instead of a borrowed brand colour.
+ */
+.btn--wa {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+  font-size: 0.8rem;
+  letter-spacing: 0.18em;
+}
+
+.btn--wa:hover:not(:disabled) {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--fg);
+  box-shadow: 0 0 22px var(--red-glow);
+}
+
+.btn--danger {
+  background: transparent;
+  color: var(--red-ink);
+  border-color: var(--red);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: var(--red);
+  color: var(--fg);
+}
+
+.btn--lg {
+  padding: 1.05rem 2.25rem;
+  min-height: 54px;
+}
+
+.btn--block {
+  display: flex;
+  width: 100%;
+}
+
+.btn--block + .btn--block {
+  margin-top: 0.6rem;
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  /* Disabled state is also communicated by the dashed edge, not colour alone. */
+  border-style: dashed;
+}
+
+/* The primary solid button (Add to cart) needs a disabled state that reads
+   as "one step left", not "broken" — a washed-out white blob at 40% opacity
+   looks like a rendering glitch. Full opacity, a real fill, a solid border. */
+.btn--solid:disabled,
+.btn--solid[aria-disabled='true'] {
+  opacity: 1;
+  background: var(--surface-2);
+  color: var(--fg-muted);
+  border-color: var(--rule-strong);
+  border-style: solid;
+  box-shadow: none;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-left: -12px;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--fg);
+}
+
+.icon-btn__glyph {
+  display: block;
+  width: 20px;
+}
+
+.icon-btn__glyph span {
+  display: block;
+  height: 1.5px;
+  background: currentColor;
+}
+
+.icon-btn__glyph span + span {
+  margin-top: 5px;
+}
+
+/* Line icon system: one stroke weight, no fill, sized down to sit quietly
+   next to text rather than announcing itself. */
+.icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.icon-btn .icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* ----------------------------------------------------------- marquee */
+
+.marquee {
+  position: sticky;
+  top: 0;
+  z-index: 61;
+  height: var(--marquee-h);
+  overflow: hidden;
+  background: var(--red-deep);
+  border-bottom: 1px solid var(--rule);
+}
+
+.marquee__track {
+  display: flex;
+  width: max-content;
+  height: 100%;
+  animation: marquee-scroll 26s linear infinite;
+}
+
+.marquee__group {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.marquee__item {
+  display: inline-flex;
+  align-items: center;
+  height: var(--marquee-h);
+  padding-inline: 1.5rem;
+  color: var(--fg);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.marquee__item + .marquee__item {
+  border-left: 1px solid var(--rule-strong);
+}
+
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* Exactly -50%: the track holds two identical copies of the content
+       back to back, so the loop point is invisible. */
+    transform: translateX(-50%);
+  }
+}
+
+.marquee:hover .marquee__track,
+.marquee:focus-within .marquee__track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee__track {
+    animation-play-state: paused;
+  }
+}
+
+/* ------------------------------------------------------------- header */
+
+.header {
+  position: sticky;
+  top: var(--marquee-h);
+  z-index: 60;
+  background: var(--bg);
+  border-bottom: 1px solid var(--rule);
+}
+
+.header__bar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  min-height: var(--header-h);
+  padding-inline: var(--gut);
+}
+
+.header__side {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.header__side--right {
+  justify-content: flex-end;
+}
+
+.header__brand {
+  justify-self: center;
+  /* Same reason as .nav-link: the wordmark is a link home, and on a phone it
+     was a 26px-tall target. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.header__mark {
+  height: 22px;
+  width: auto;
+}
+
+.nav-link {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  /* The visible rule sits under the text; the padding above and below only
+     grows the tap target. Header controls were 33px tall on a phone, under the
+     44px guideline, and a missed tap on Cart is a lost sale. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid transparent;
+  color: var(--fg);
+  transition: border-color var(--dur) var(--ease);
+}
+
+/* ---------------------------------------------------------- touch targets
+   Standalone links — footer navigation, policy navigation, list items, and a
+   call to action on its own line — are given a 44px tap height on phones and
+   tablets. The text does not move: only the hit area grows. Links inside a
+   sentence are deliberately excluded, both because growing them would break
+   the paragraph's line spacing and because WCAG exempts them.            */
+@media (max-width: 900px) {
+  .plain-list a,
+  .policy__nav a,
+  .footer__col a,
+  .crumbs a,
+  .next-drop > .link-underline,
+  .wrap > .link-underline,
+  li > .link-underline:only-child,
+  .category-row__see-all {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* Cart-line "Remove" was supporting text width, not a real tap target. */
+  .line__remove {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-inline: 0.25rem;
+    margin-inline-end: -0.25rem;
+  }
+
+  /* A little more breathing room between size options so a thumb doesn't
+     clip the neighbouring size. */
+  .sizes__row {
+    gap: 0.65rem;
+  }
+}
+
+/* A paragraph whose only content is a link is a call to action, not a
+   sentence, so it gets a full-size touch target. Links WITHIN a sentence are
+   left alone: growing them would break the paragraph's rhythm, and WCAG
+   exempts inline links for exactly that reason. */
+p > .link-underline:only-child {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.nav-link:hover {
+  border-color: currentColor;
+}
+
+.cart-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  gap: 0.4rem;
+}
+
+.cart-link .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.cart-count {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.68rem;
+}
+
+.header__menu {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .header__menu {
+    display: inline-flex;
+  }
+
+  .header__shop,
+  .header__desk {
+    display: none;
+  }
+
+  .header__side {
+    gap: 1rem;
+  }
+}
+
+/* At 320-480px the wordmark, Search and Cart together overflow the bar, so
+   the type scale steps down rather than letting the page scroll sideways. */
+@media (max-width: 480px) {
+  :root {
+    --gut: 1rem;
+  }
+
+  .header__bar {
+    gap: 0.5rem;
+  }
+
+  .header__side {
+    gap: 0.85rem;
+  }
+
+  .wordmark {
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+  }
+
+  .nav-link {
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+  }
+}
+
+/* Mobile menu */
+
+.mobile-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--gut) var(--gut);
+  animation: fade-in var(--dur) var(--ease);
+  overflow-y: auto;
+}
+
+.mobile-menu__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--header-h);
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 2rem;
+}
+
+.mobile-menu__head .icon-btn {
+  margin-left: 0;
+  margin-right: -12px;
+}
+
+.mobile-menu__nav a,
+.mobile-menu__group summary {
+  display: block;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-size: 2rem;
+  line-height: 1.25;
+  padding: 0.35rem 0;
+  cursor: pointer;
+}
+
+.mobile-menu__group summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobile-menu__group summary::after {
+  content: ' +';
+  color: var(--fg-muted);
+}
+
+.mobile-menu__group[open] summary::after {
+  content: ' –';
+}
+
+.mobile-menu__group a {
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  padding-left: 1rem;
+  color: var(--fg-muted);
+  /* The policy sub-links were only 30px tall (line-height + block padding
+     alone don't reach 44px at this font size) — give them a real tap area
+     without changing how the text looks. */
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+/* ---------------------------------------------------------------- hero */
+
+.hero {
+  position: relative;
+  /* vh first, then svh: a browser without small-viewport units takes the
+     fallback rather than dropping the declaration and collapsing the hero to
+     the height of its text. Safari only gained svh in 15.4. */
+  min-height: min(94vh, 900px);
+  min-height: min(94svh, 900px);
+  display: grid;
+  background: #0a0304;
+  overflow: hidden;
+}
+
+.hero__media,
+.hero__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hero__img {
+  object-fit: cover;
+  /* Source photography is portrait 4:5. The subject sits low-centre, so the
+     crop is biased downward to keep the figure whole on wide viewports. */
+  object-position: 50% 62%;
+}
+
+.hero__veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.1) 32%,
+    rgba(0, 0, 0, 0.12) 55%,
+    rgba(0, 0, 0, 0.88) 100%
+  );
+}
+
+.hero__copy {
+  position: relative;
+  z-index: 2;
+  align-self: end;
+  padding: var(--gut);
+  padding-bottom: clamp(2.5rem, 7vw, 5rem);
+  color: var(--fg);
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 1.25rem;
+}
+
+.hero__mark {
+  width: min(560px, 76vw);
+  height: auto;
+  filter: drop-shadow(0 2px 18px rgba(0, 0, 0, 0.7));
+}
+
+.hero__line {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+/* Wide viewports crop the portrait hero to a horizontal band, which puts the
+   figure dead centre. Centred overlay copy would land on the model's chest, so
+   above 900px the copy moves to the bottom-left corner and the mark shrinks. */
+@media (min-width: 900px) {
+  .hero__copy {
+    text-align: left;
+    justify-items: start;
+    justify-content: start;
+    max-width: 46rem;
+    padding-inline: clamp(2rem, 5vw, 5rem);
+  }
+
+  .hero__mark {
+    width: min(380px, 34vw);
+  }
+}
+
+/* -------------------------------------------------------- home: intro */
+
+.intro__grid {
+  display: grid;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: center;
+}
+
+.intro__media {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.intro__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.intro__media picture:last-child {
+  align-self: end;
+  margin-top: 2.5rem;
+}
+
+@media (min-width: 900px) {
+  .intro__grid {
+    grid-template-columns: 1.05fr 0.95fr;
+  }
+
+  .intro__text {
+    padding-left: clamp(1rem, 4vw, 4rem);
+  }
+}
+
+/* ---------------------------------------------------- home: editorial */
+
+.editorial {
+  display: grid;
+  gap: clamp(1rem, 3vw, 2.5rem);
+  padding-inline: var(--gut);
+  padding-bottom: clamp(2rem, 5vw, 4rem);
+}
+
+.editorial__item img {
+  width: 100%;
+  /* See the comment on .gal__img — same fix, same cause. */
+  height: auto;
+  object-fit: cover;
+}
+
+.editorial figcaption {
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 900px) {
+  .editorial {
+    grid-template-columns: repeat(12, 1fr);
+    align-items: start;
+  }
+
+  /* Deliberately asymmetric: a lead frame, a dropped second column, then an
+     offset closer. Spans are tuned so no portrait frame exceeds the viewport
+     height and the two columns finish level. */
+  .editorial__item--wide {
+    grid-column: 1 / span 6;
+  }
+
+  .editorial__item--narrow {
+    grid-column: 8 / span 5;
+    margin-top: clamp(3rem, 9vw, 8rem);
+  }
+
+  .editorial__item--offset {
+    grid-column: 4 / span 6;
+    margin-top: clamp(1rem, 4vw, 3rem);
+  }
+}
+
+/* ------------------------------------------------- home: story + email */
+
+/* Previously an inverted band. On black it is separated by a hairline and a
+   slightly raised ground instead of a colour flip. */
+.story-block {
+  background: var(--surface);
+  border-block: 1px solid var(--rule);
+}
+
+.story-block__grid {
+  display: grid;
+  gap: clamp(1.5rem, 4vw, 4rem);
+}
+
+@media (min-width: 900px) {
+  .story-block__grid {
+    grid-template-columns: 0.9fr 1.1fr;
+  }
+}
+
+.collective__inner {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 720px;
+}
+
+.signup__row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.signup__input {
+  flex: 1 1 220px;
+  min-width: 0;
+  border: 1px solid var(--rule-strong);
+  background: var(--surface-2);
+  color: var(--fg);
+  padding: 0.8rem 1rem;
+  border-radius: 0;
+}
+
+.signup__input::placeholder {
+  color: var(--fg-muted);
+}
+
+.signup__note {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  margin-top: 0.75rem;
+  max-width: 52ch;
+}
+
+.signup__status {
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  color: var(--red-ink);
+}
+
+.signup__status:empty {
+  display: none;
+}
+
+.follow .plain-list {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.follow .plain-list li + li {
+  margin-top: 0;
+}
+
+/* -------------------------------------------------------- shop + cards */
+
+/* One horizontally-scrolling row per category. Built for one category
+   today, unchanged when a second one is added — that's just another
+   .category-row in the array this renders from. */
+.category-row {
+  margin-bottom: clamp(2.5rem, 6vw, 4rem);
+}
+
+.category-row:last-child {
+  margin-bottom: 0;
+}
+
+.category-row__head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-bottom: 0.4rem;
+}
+
+/* Reuses .eyebrow's type scale, weight and tracking — only the casing
+   changes for this editorial-voice row label. */
+.category-row__head .eyebrow {
+  text-transform: none;
+  margin-bottom: 0;
+}
+
+.category-row__count {
+  color: var(--fg-muted);
+}
+
+.category-row__see-all {
+  margin-inline-start: auto;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.category-row__see-all:hover {
+  color: var(--red-ink);
+  border-color: currentColor;
+}
+
+.category-row__hint {
+  color: var(--fg-muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.85rem;
+}
+
+.category-row__track {
+  display: flex;
+  gap: clamp(1rem, 2vw, 1.5rem);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  padding-bottom: 0.35rem;
+  /* Edge-of-row swipes should scroll the row, not trigger the browser's
+     back/forward navigation gesture — same fix as the product gallery. */
+  overscroll-behavior-x: contain;
+}
+
+.category-row__track .card {
+  flex: 0 0 min(74vw, 300px);
+  scroll-snap-align: start;
+}
+
+@media (min-width: 700px) {
+  .category-row__track .card {
+    flex-basis: min(38vw, 300px);
+  }
+}
+
+@media (min-width: 1100px) {
+  .category-row__track .card {
+    flex-basis: min(23vw, 300px);
+  }
+}
+
+.card__media {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.card__img {
+  width: 100%;
+  /* See the comment on .gal__img — without an explicit height, the image's
+     width/height HTML attributes make it render at its full native pixel
+     height instead of the intended aspect ratio. */
+  height: auto;
+  object-fit: cover;
+  transition: opacity var(--dur) var(--ease);
+}
+
+.card__hover {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease);
+}
+
+.card__hover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card__link:hover .card__hover,
+.card__link:focus-visible .card__hover {
+  opacity: 1;
+}
+
+.card__badge {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  background: var(--red);
+  color: var(--fg);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.6rem;
+  z-index: 2;
+  box-shadow: 0 0 16px var(--red-glow);
+}
+
+.card__badge--muted {
+  background: var(--bg);
+  border: 1px solid var(--rule-strong);
+  top: auto;
+  bottom: 0.75rem;
+}
+
+.card__meta {
+  padding-top: 1rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.card__name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.card__price {
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+}
+
+.card__cta {
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  border-bottom: 1px solid transparent;
+  justify-self: start;
+  margin-top: 0.35rem;
+  transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.card__link:hover .card__cta {
+  color: var(--fg);
+  border-color: var(--fg);
+}
+
+.next-drop {
+  border-top: 1px solid var(--rule);
+  padding-top: clamp(1.5rem, 4vw, 2.5rem);
+  display: grid;
+  gap: 0.75rem;
+  justify-items: start;
+}
+
+/* ------------------------------------------------------ product (PDP) */
+
+.crumbs {
+  padding-top: 1.25rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.crumbs li + li::before {
+  content: '/';
+  margin-right: 0.5rem;
+  color: var(--rule-strong);
+}
+
+.crumbs a:hover {
+  color: var(--fg);
+}
+
+.pdp {
+  display: grid;
+  gap: clamp(2rem, 4vw, 4rem);
+  padding-block: clamp(1.5rem, 4vw, 3rem) clamp(3rem, 7vw, 6rem);
+}
+
+/* Grid and flex children default to min-width:auto, which lets the swipeable
+   gallery push the page wider than the viewport. Every scroll container in
+   this column has to be allowed to shrink. */
+.pdp > *,
+.gal,
+.gal__stage,
+.gal__track,
+.gal__thumbs {
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .pdp {
+    grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.65fr);
+    align-items: start;
+  }
+
+  .pdp__panel {
+    position: sticky;
+    top: calc(var(--marquee-h) + var(--header-h) + 1.5rem);
+  }
+}
+
+.pdp__title {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.15;
+}
+
+/* Gallery */
+
+.gal__stage {
+  position: relative;
+}
+
+.gal__track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  gap: 0;
+  /* Keeps an edge-of-gallery swipe from also triggering the browser's
+     back/forward navigation gesture. */
+  overscroll-behavior-x: contain;
+}
+
+.gal__track::-webkit-scrollbar {
+  display: none;
+}
+
+.gal__slide {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  /* Without this a fast flick can coast past more than one slide before the
+     browser settles — "always" makes every swipe land on exactly one image. */
+  scroll-snap-stop: always;
+}
+
+.gal__zoom {
+  display: block;
+  width: 100%;
+  cursor: zoom-in;
+}
+
+.gal__img {
+  width: 100%;
+  /* The <img> carries width/height HTML attributes (the source photo's real
+     pixel size) so the browser can reserve space before it loads. Without an
+     explicit height here, those attributes are used as a literal pixel
+     height instead of a ratio, which overrides the inline aspect-ratio style
+     and renders the image at its full native height — thousands of pixels
+     tall instead of ~4:5. height: auto hands sizing back to aspect-ratio. */
+  height: auto;
+  object-fit: cover;
+  background: var(--surface-2);
+}
+
+.gal__counter {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid var(--rule);
+  color: var(--fg);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  padding: 0.3rem 0.6rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.gal__dots {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.6rem;
+}
+
+/* Each dot's real click/tap target is the full 44x44 button — the Apple/
+   Google minimum — with only a small 6px mark drawn in its center, so the
+   row reads visually light without shrinking the touch target. */
+.gal__dot {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.gal__dot::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fg-muted);
+  opacity: 0.5;
+  transition: opacity var(--dur) var(--ease), width var(--dur) var(--ease),
+    border-radius var(--dur) var(--ease);
+}
+
+.gal__dot.is-active::after {
+  opacity: 1;
+  width: 16px;
+  border-radius: 3px;
+  background: var(--fg);
+}
+
+.gal__thumbs {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.gal__thumb {
+  flex: 0 0 72px;
+  border: 1px solid transparent;
+  opacity: 0.42;
+  transition: opacity var(--dur) var(--ease), border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+.gal__thumb img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+}
+
+.gal__thumb:hover {
+  opacity: 0.8;
+}
+
+/* The active thumbnail is the one state that has to be unmistakable at a
+   glance — full opacity plus a two-layer ring (dark gap, then white) reads
+   clearly against any photo, unlike a border colour alone would. */
+.gal__thumb.is-active {
+  opacity: 1;
+  border-color: var(--fg);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--fg);
+}
+
+/* On desktop the gallery becomes a stacked editorial column — no carousel
+   controls needed, the customer just scrolls. */
+@media (min-width: 900px) {
+  .gal__track {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    overflow: visible;
+  }
+
+  .gal__slide {
+    flex: none;
+  }
+
+  .gal__counter,
+  .gal__dots,
+  .gal__thumbs {
+    display: none;
+  }
+}
+
+/* Lightbox */
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(0, 0, 0, 0.97);
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 4vw, 3rem);
+  animation: fade-in var(--dur) var(--ease);
+}
+
+.lightbox__img {
+  max-width: 100%;
+  max-height: 88vh;
+  width: auto;
+  object-fit: contain;
+}
+
+.lightbox__close,
+.lightbox__nav {
+  position: absolute;
+  color: var(--fg);
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+}
+
+.lightbox__nav .icon {
+  width: 22px;
+  height: 22px;
+}
+
+.lightbox__close {
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
+.lightbox__nav--prev {
+  left: 0.25rem;
+  top: 50%;
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.lightbox__nav--next {
+  right: 0.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.lightbox__counter {
+  position: absolute;
+  bottom: 1rem;
+  color: var(--fg-muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Size + quantity */
+
+.sizes {
+  margin-bottom: 1.25rem;
+}
+
+.sizes__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.size-btn {
+  position: relative;
+  min-width: 58px;
+  min-height: 52px;
+  padding: 0 1rem;
+  border: 1px solid var(--rule-strong);
+  color: var(--fg);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+.size-btn:hover:not(:disabled) {
+  border-color: var(--fg);
+}
+
+/* Selected: filled, not merely tinted, plus a red ring so the active size
+   reads instantly even at a glance — the same "filled, not colour alone"
+   rule as the disabled state below. */
+.size-btn[aria-checked='true'] {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--red);
+}
+
+.size-btn:disabled {
+  color: var(--fg-muted);
+  border-color: var(--rule);
+  cursor: not-allowed;
+  overflow: hidden;
+}
+
+/* Sold out is struck through as well as dimmed — never colour alone. */
+.size-btn:disabled::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top left,
+    transparent 48%,
+    var(--rule-strong) 48%,
+    var(--rule-strong) 52%,
+    transparent 52%
+  );
+}
+
+.size-btn__low {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--red);
+  color: var(--fg);
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  padding: 0.1rem 0.25rem;
+  font-weight: 700;
+}
+
+.sizes__hint {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  margin-top: 0.65rem;
+}
+
+.sizes__hint.is-error {
+  color: var(--red-ink);
+}
+
+.qty {
+  margin-bottom: 1.25rem;
+}
+
+/* Same border weight, height and colour language as .size-btn, so the two
+   controls read as one family instead of two different widget kits. */
+.qty__control {
+  display: inline-flex;
+  align-items: stretch;
+  height: 52px;
+  border: 1px solid var(--rule-strong);
+}
+
+.qty__btn {
+  width: 48px;
+  display: grid;
+  place-items: center;
+  font-size: 1.1rem;
+  color: var(--fg);
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.qty__btn:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.qty__btn:disabled {
+  color: var(--fg-muted);
+  cursor: not-allowed;
+}
+
+.qty__input {
+  width: 52px;
+  text-align: center;
+  border: 0;
+  border-inline: 1px solid var(--rule);
+  background: transparent;
+  color: var(--fg);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+
+.qty__input::-webkit-outer-spin-button,
+.qty__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* The one purchase action on the page — sized and weighted so it reads as
+   the obvious next step, not just another button in the stack. */
+[data-add-btn]:not(:disabled) {
+  box-shadow: 0 0 0 1px var(--fg);
+  letter-spacing: 0.2em;
+  font-weight: 700;
+}
+
+.pdp__added {
+  font-size: 0.8rem;
+  color: var(--red-ink);
+  margin-top: 0.6rem;
+  min-height: 1.2em;
+}
+
+.pdp__ship {
+  margin-top: 1.25rem;
+  padding-block: 0.85rem;
+  border-block: 1px solid var(--rule);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pdp__ship .muted {
+  display: inline-block;
+  margin-top: 0.4rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-size: 0.8rem;
+}
+
+/* Accordions */
+
+.accordions {
+  margin-top: 1.25rem;
+}
+
+.acc {
+  border-bottom: 1px solid var(--rule);
+}
+
+.acc--standalone {
+  border-top: 1px solid var(--rule);
+  margin-top: 2rem;
+}
+
+.acc__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  list-style: none;
+  transition: color var(--dur) var(--ease);
+}
+
+.acc__summary:hover {
+  color: var(--fg);
+}
+
+.acc[open] > .acc__summary {
+  color: var(--fg);
+}
+
+.acc__summary::-webkit-details-marker {
+  display: none;
+}
+
+.acc__sign {
+  position: relative;
+  width: 11px;
+  height: 11px;
+  flex: none;
+}
+
+.acc__sign::before,
+.acc__sign::after {
+  content: '';
+  position: absolute;
+  background: currentColor;
+  transition: transform var(--dur) var(--ease);
+}
+
+.acc__sign::before {
+  inset: 5px 0 5px 0;
+  height: 1px;
+}
+
+.acc__sign::after {
+  inset: 0 5px 0 5px;
+  width: 1px;
+}
+
+.acc[open] .acc__sign::after {
+  transform: scaleY(0);
+}
+
+.acc__body {
+  padding-bottom: 1.1rem;
+  font-size: 0.875rem;
+}
+
+.spec-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1.25rem;
+  font-size: 0.9rem;
+}
+
+.spec-list dt {
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.7rem;
+  padding-top: 0.15rem;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.size-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.size-table th,
+.size-table td {
+  border: 1px solid var(--rule);
+  padding: 0.5rem 0.7rem;
+  text-align: left;
+}
+
+/* Sticky mobile buy bar */
+
+.sticky-buy {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem var(--gut);
+  padding-bottom: max(0.65rem, env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: 1px solid var(--rule-strong);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.55);
+  animation: slide-up var(--dur) var(--ease);
+}
+
+.sticky-buy__meta {
+  display: grid;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sticky-buy__price {
+  color: var(--fg-muted);
+}
+
+.sticky-buy [data-sticky-add] {
+  flex: none;
+  min-width: 156px;
+}
+
+@media (min-width: 900px) {
+  .sticky-buy {
+    display: none !important;
+  }
+}
+
+/* --------------------------------------------------------- story pages */
+
+.story-page__grid {
+  display: grid;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .story-page__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .story-page__grid--flip .story-page__fig {
+    order: 2;
+  }
+}
+
+.story-second {
+  background: var(--surface);
+  border-block: 1px solid var(--rule);
+}
+
+.story-page__fig img {
+  width: 100%;
+  /* See the comment on .gal__img — same fix, same cause. */
+  height: auto;
+  object-fit: cover;
+}
+
+/* ------------------------------------------------------------ contact */
+
+.contact__grid {
+  display: grid;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .contact__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.contact__box {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.contact__box .eyebrow {
+  margin-top: 2rem;
+}
+
+.contact__box .eyebrow:first-child {
+  margin-top: 0;
+}
+
+.contact__email {
+  font-size: 1.1rem;
+}
+
+/* ----------------------------------------------------------- policies */
+
+.policy {
+  display: grid;
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+  align-items: start;
+}
+
+.policy__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.policy__nav a {
+  color: var(--fg-muted);
+  border-bottom: 1px solid transparent;
+  padding-bottom: 2px;
+}
+
+.policy__nav a:hover,
+.policy__nav a[aria-current='page'] {
+  color: var(--fg);
+  border-color: var(--fg);
+}
+
+@media (min-width: 900px) {
+  .policy {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+
+  .policy__nav {
+    position: sticky;
+    top: calc(var(--marquee-h) + var(--header-h) + 1.5rem);
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .policy__nav a {
+    align-self: start;
+  }
+}
+
+/* ---------------------------------------------------------------- cart */
+
+.cart-lines li {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 1rem;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.cart-lines img {
+  width: 72px;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+}
+
+.line__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+.line__name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  /* Was a 72x20px tap target — the product photo beside it links to the same
+     place, but the name should be just as easy to hit on its own. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.line__total {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.line__size,
+.line__unit {
+  font-size: 0.78rem;
+  color: var(--fg-muted);
+}
+
+.line__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.6rem;
+}
+
+.line__qty {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--rule);
+}
+
+.line__qty button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--fg);
+}
+
+.line__qty span {
+  min-width: 30px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.line__remove {
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  border-bottom: 1px solid transparent;
+}
+
+.line__remove:hover {
+  color: var(--red-ink);
+  border-color: var(--red-ink);
+}
+
+.cart-lines--summary li {
+  grid-template-columns: 56px minmax(0, 1fr);
+}
+
+.cart-lines--summary img {
+  width: 56px;
+}
+
+.drawer__empty {
+  color: var(--fg-muted);
+  padding: 2rem 0;
+}
+
+.ship-progress {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.7rem 0.9rem;
+  background: var(--surface-2);
+  border: 1px solid var(--rule);
+  margin-bottom: 1rem;
+}
+
+.ship-progress.is-unlocked {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--fg);
+}
+
+.cart-page {
+  display: grid;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .cart-page {
+    grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.4fr);
+  }
+
+  .cart-page__summary {
+    position: sticky;
+    top: calc(var(--marquee-h) + var(--header-h) + 1.5rem);
+  }
+}
+
+.sum-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.sum-row--total {
+  border-top: 1px solid var(--rule);
+  margin-top: 0.5rem;
+  padding-top: 0.9rem;
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------- cart drawer */
+
+.drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  background: rgba(0, 0, 0, 0.72);
+  animation: fade-in var(--dur) var(--ease);
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  width: min(420px, 100vw);
+  background: var(--bg);
+  color: var(--fg);
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--rule-strong);
+  animation: slide-in var(--dur) var(--ease);
+}
+
+.drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem var(--gut);
+  border-bottom: 1px solid var(--rule);
+}
+
+.drawer__title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.drawer__count::before {
+  content: '(';
+}
+
+.drawer__count::after {
+  content: ')';
+}
+
+.drawer__head .icon-btn {
+  margin: -12px -12px -12px 0;
+}
+
+.drawer__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 var(--gut);
+  -webkit-overflow-scrolling: touch;
+}
+
+.drawer__foot {
+  border-top: 1px solid var(--rule);
+  padding: 1.1rem var(--gut);
+  padding-bottom: max(1.1rem, env(safe-area-inset-bottom));
+}
+
+.drawer__subtotal {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding-bottom: 0.4rem;
+}
+
+.drawer__fineprint {
+  font-size: 0.72rem;
+  color: var(--fg-muted);
+  margin-bottom: 1rem;
+}
+
+.drawer__actions {
+  display: grid;
+  gap: 0.6rem;
+}
+
+/* ------------------------------------------------- checkout + ordering */
+
+.checkout {
+  display: grid;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .checkout {
+    grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+  }
+
+  .checkout__summary {
+    position: sticky;
+    top: calc(var(--marquee-h) + var(--header-h) + 1.5rem);
+  }
+}
+
+.fieldset + .fieldset {
+  margin-top: 2.5rem;
+}
+
+.field {
+  margin-top: 0.9rem;
+  /* When a phone brings a focused field into view above the keyboard, this
+     keeps the sticky header from landing on top of it. */
+  scroll-margin-top: calc(var(--marquee-h) + var(--header-h) + 0.75rem);
+}
+
+.field-row {
+  display: grid;
+  gap: 0.9rem;
+}
+
+@media (min-width: 560px) {
+  .field-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .field-row .field {
+    margin-top: 0.9rem;
+  }
+}
+
+.field__label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+  color: var(--fg);
+}
+
+.field__input {
+  width: 100%;
+  border: 1px solid var(--rule-strong);
+  background: var(--surface-2);
+  color: var(--fg);
+  padding: 0.75rem 0.9rem;
+  border-radius: 0;
+}
+
+.field__input::placeholder {
+  color: var(--fg-muted);
+}
+
+.field__input--area {
+  resize: vertical;
+  min-height: 5rem;
+}
+
+.field__input:focus {
+  outline: 2px solid var(--red-ink);
+  outline-offset: 0;
+  border-color: var(--red-ink);
+}
+
+/* Invalid is marked by a red edge AND the message below it, never colour
+   alone — the message is what a screen reader and a colour-blind user get. */
+.field__input[aria-invalid='true'] {
+  border-color: var(--red-ink);
+  border-left-width: 3px;
+}
+
+.field__hint {
+  font-size: 0.72rem;
+  color: var(--fg-muted);
+  margin-top: 0.3rem;
+}
+
+.field__error {
+  font-size: 0.75rem;
+  color: var(--red-ink);
+  margin-top: 0.35rem;
+}
+
+.field__error:empty {
+  display: none;
+}
+
+.steps {
+  counter-reset: step;
+  display: grid;
+  gap: 0.6rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.steps li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  font-size: 0.9rem;
+}
+
+.steps__n {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--rule-strong);
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-top: 0.15rem;
+}
+
+.notice {
+  border: 1px solid var(--rule-strong);
+  background: var(--surface);
+  padding: clamp(1.1rem, 3vw, 1.75rem);
+  margin-top: 0.9rem;
+}
+
+.notice--pending {
+  border-left: 3px solid var(--red);
+}
+
+.notice__title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+}
+
+.notice p + p {
+  margin-top: 0.7rem;
+}
+
+.notice p {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.checkout__status {
+  font-size: 0.85rem;
+  margin-top: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.checkout__status.is-error {
+  color: var(--red-ink);
+}
+
+.checkout__reassure {
+  margin-top: 0.75rem;
+}
+
+.checkout__form > .btn {
+  margin-top: 2rem;
+}
+
+/* Order confirmation */
+
+.order-page__note {
+  margin-top: 2rem;
+}
+
+.order-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem 2.5rem;
+  margin: 2rem 0;
+  padding-block: 1.25rem;
+  border-block: 1px solid var(--rule);
+}
+
+.order-status__row {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.order-status__row .eyebrow {
+  margin: 0;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--rule-strong);
+  justify-self: start;
+}
+
+.tag--pending {
+  border-color: var(--red);
+  color: var(--red-ink);
+}
+
+.tag--active {
+  border-color: var(--fg);
+  color: var(--fg);
+}
+
+.tag--done {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+.tag--cancelled {
+  color: var(--fg-muted);
+  border-style: dashed;
+}
+
+.order-grid {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+@media (min-width: 800px) {
+  .order-grid {
+    grid-template-columns: 1.4fr 1fr;
+    align-items: start;
+  }
+}
+
+.order-items li {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.order-items__name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.order-items__meta {
+  font-size: 0.8rem;
+  color: var(--fg-muted);
+}
+
+.order-items__total {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-address {
+  font-style: normal;
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.wa-preview {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  background: var(--surface-2);
+  border: 1px solid var(--rule);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  max-height: 22rem;
+  overflow: auto;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.copy-status {
+  font-size: 0.8rem;
+  color: var(--fg-muted);
+  margin-left: 0.75rem;
+}
+
+@media (max-width: 560px) {
+  .btn--block-mobile {
+    display: flex;
+    width: 100%;
+  }
+}
+
+/* ---------------------------------------------------------------- admin */
+
+.admin {
+  padding-top: clamp(2rem, 5vw, 3.5rem);
+}
+
+.admin-warning {
+  border: 1px solid var(--red);
+  border-left-width: 4px;
+  background: rgba(196, 18, 18, 0.08);
+  padding: clamp(1rem, 3vw, 1.5rem);
+  margin: 1.5rem 0 2.5rem;
+}
+
+.admin-warning__title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--red-ink);
+  margin-bottom: 0.75rem;
+}
+
+.admin-warning ul {
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.admin-warning li {
+  padding-left: 1.1rem;
+  position: relative;
+}
+
+.admin-warning li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.7em;
+  width: 6px;
+  height: 1px;
+  background: var(--red-ink);
+}
+
+.admin-toolbar {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.admin-select {
+  width: auto;
+  min-width: 12rem;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.admin-table th,
+.admin-table td {
+  border-bottom: 1px solid var(--rule);
+  padding: 0.75rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-table th {
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  border-bottom-color: var(--rule-strong);
+  white-space: nowrap;
+}
+
+.admin-table tbody tr:hover {
+  background: var(--surface);
+}
+
+.admin-actions {
+  margin-top: 1.5rem;
+}
+
+.admin-actions__block + .admin-actions__block {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--rule);
+}
+
+.admin-actions__h {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.admin-actions__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.admin-actions__row .btn {
+  font-size: 0.68rem;
+  padding: 0.6rem 1rem;
+  min-height: 40px;
+}
+
+.admin-status {
+  margin-top: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--red-ink);
+}
+
+.admin-status:empty {
+  display: none;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1.25rem;
+  font-size: 0.88rem;
+}
+
+.kv dt {
+  color: var(--fg-muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding-top: 0.15rem;
+}
+
+.history li {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.85rem;
+}
+
+.history__when {
+  font-size: 0.72rem;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.history__what {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.history__note {
+  color: var(--fg-muted);
+  font-size: 0.82rem;
+}
+
+/* ---------------------------------------------------------------- 404 */
+
+.error-page__inner {
+  min-height: 52vh;
+  display: grid;
+  align-content: center;
+  gap: 1.25rem;
+  justify-items: start;
+}
+
+.error-page__actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+/* -------------------------------------------------------------- footer */
+
+.footer {
+  background: var(--bg);
+  color: var(--fg);
+  border-top: 1px solid var(--rule);
+  padding-block: clamp(3rem, 6vw, 5rem) 1.5rem;
+  margin-top: auto;
+}
+
+.footer__grid {
+  display: grid;
+  gap: clamp(2rem, 4vw, 3rem);
+}
+
+@media (min-width: 700px) {
+  .footer__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .footer__grid {
+    grid-template-columns: 1.2fr 0.8fr 1fr 1.6fr;
+  }
+}
+
+.footer__line {
+  font-size: 0.8rem;
+  color: var(--fg-muted);
+  margin-top: 0.75rem;
+  max-width: 24ch;
+}
+
+.footer__signup-h {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.footer__base {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: clamp(2.5rem, 5vw, 4rem);
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+/* ---------------------------------------------------------- animation */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+body.is-locked {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* The hero mark now ships as a <picture>; the wrapper keeps the sizing that
+   used to sit on the bare <img>. */
+.hero__mark-wrap {
+  width: min(560px, 76vw);
+}
+
+.hero__mark-wrap .hero__mark {
+  width: 100%;
+}
+
+@media (min-width: 900px) {
+  .hero__mark-wrap {
+    width: min(380px, 34vw);
+  }
+}
+
+/* The display face has a 0.92 line-height, so a paragraph following an h1
+   needs its own breathing room. */
+.page-order .lede,
+.page-checkout .lede {
+  margin-top: 1.5rem;
+}
+
+/* Confirmed specs, inline under the price. The full list also lives in the
+   Product details accordion, but that is closed by default — and on a phone
+   fabric is the first thing a customer wants to know. */
+.pdp__specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  margin: -0.5rem 0 1.25rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+/* A middot, not a slash: the Fit value is itself "Regular / Relaxed", and a
+   slash separator made the row read as four ambiguous items. */
+.pdp__specs li + li::before {
+  content: '\00B7';
+  margin-right: 0.75rem;
+  color: var(--rule-strong);
+}
+
+/* -------------------------------------------- Stage 2: commerce components */
+
+/* Returning-customer notice at checkout. Quiet by default — it is an
+   explanation, not a promotion. */
+.returning {
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--red);
+  background: var(--surface);
+  padding: 1rem 1.1rem;
+  margin-top: 1.5rem;
+}
+
+.returning__title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+}
+
+.returning__body {
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+}
+
+/* Discount line in the summary. Red is the accent, and it is the one place a
+   number moves in the customer's favour. */
+.sum-row--discount {
+  color: var(--red-ink);
+}
+
+.order-fallback {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.9rem;
+  color: var(--fg-muted);
+}
+
+/* The product highlight bullets under the description. */
+.highlights {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 1.1rem;
+}
+
+.highlights li {
+  position: relative;
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
+}
+
+.highlights li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.65em;
+  width: 6px;
+  height: 1px;
+  background: var(--red);
+}
+
+.pdp__tagline {
+  font-size: 0.95rem;
+  color: var(--fg);
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
