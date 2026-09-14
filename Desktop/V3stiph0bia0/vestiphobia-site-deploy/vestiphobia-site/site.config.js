@@ -87,7 +87,10 @@ export const site = {
   radio: {
     label: 'VESTIPHOBIA RADIO',
     stationUrl: 'https://live365.com/station/Vestiphobia-a11798',
-    streamUrl: null,
+    // Supplied by the owner. Not verified from this environment — live365.com
+    // is blocked at the sandbox network level, so playback could not be
+    // tested here. Confirm it actually plays on the live site after deploy.
+    streamUrl: 'https://streaming.live365.com/a11798',
     embedUrl: null,
   },
 

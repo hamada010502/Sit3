@@ -66,6 +66,12 @@ export function securityHeaders({ secure } = {}) {
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data:",
       "connect-src 'self'",
+      // The Live365 radio player: media-src for the direct <audio> stream,
+      // frame-src for the iframe-embed fallback (site.radio.streamUrl /
+      // embedUrl in site.config.js) — both stay unreachable while that config
+      // is unset, so these origins are inert until the owner supplies one.
+      "media-src 'self' https://streaming.live365.com",
+      "frame-src https://live365.com",
       "form-action 'self'",
       "frame-ancestors 'none'",
       "base-uri 'self'",

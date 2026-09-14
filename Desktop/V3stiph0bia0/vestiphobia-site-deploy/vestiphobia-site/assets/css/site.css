@@ -2035,6 +2035,7 @@ p > .link-underline:only-child {
 
   .radio__tab {
     flex-direction: row;
+    min-height: 44px;
     padding: 0.5rem 0.65rem;
   }
 
