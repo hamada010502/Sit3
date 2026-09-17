@@ -320,6 +320,18 @@ CREATE TABLE IF NOT EXISTS audit_log (
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at);
 CREATE INDEX IF NOT EXISTS idx_audit_admin ON audit_log(admin_id);
 
+-- ------------------------------------------------------- product redirects
+-- When a product's slug is changed in the admin, the old slug is kept here
+-- pointing at the new one so an existing link (bookmark, ad, search result)
+-- 301-redirects instead of 404ing. Rewritten transitively when a slug that is
+-- itself a redirect target changes again, so a chain never has to be
+-- followed more than one hop at request time.
+CREATE TABLE IF NOT EXISTS product_redirects (
+  from_slug   TEXT PRIMARY KEY,
+  to_slug     TEXT NOT NULL,
+  created_at  TEXT NOT NULL
+);
+
 -- ------------------------------------------------------ analytics (Stage 4)
 -- Raw event rows, deliberately free of PII. Customers are referenced by an
 -- anonymous visitor id, never by phone, name or address.

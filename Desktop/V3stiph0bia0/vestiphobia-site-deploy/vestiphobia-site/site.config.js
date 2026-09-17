@@ -26,7 +26,7 @@ export const site = {
   },
 
   contact: {
-    email: null,
+    email: 'Vestiph0bia0@gmail.com',
     // Public contact channel. Unlike WhatsApp, Instagram IS shown to customers
     // — it is the documented fallback when the WhatsApp handoff fails.
     instagram: 'https://www.instagram.com/vestiiphobia',

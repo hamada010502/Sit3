@@ -265,17 +265,20 @@ function cartDrawer(site = staticSite) {
 }
 
 /**
- * Persistent, site-wide Live365 player — a collapsed tab fixed to the left
- * edge that expands into a small panel. Rendered nowhere at all (not just
- * CSS-hidden) unless site.radio.streamUrl or .embedUrl is actually set; see
- * the comment on that config block in site.config.js.
+ * Persistent, site-wide Live365 player — a collapsed radio-glyph tab fixed
+ * to the bottom-left corner that expands into a turntable-styled panel.
+ * Rendered nowhere at all (not just CSS-hidden) unless site.radio.streamUrl
+ * or .embedUrl is actually set; see the comment on that config block in
+ * site.config.js.
  *
- * streamUrl drives a custom <audio> with our own play/pause and volume —
- * full control over styling. embedUrl (Live365's own iframe widget) is the
- * fallback when no direct stream URL is available; its internal player skin
- * can't be restyled, so only the tab/panel shell around it is ours there,
- * and the custom transport controls are omitted since the iframe brings its
- * own. Never both at once — streamUrl wins if somehow both are set.
+ * streamUrl drives a custom <audio> with our own play/pause, volume and a
+ * spinning disc (clicking the disc also toggles play/pause) — full control
+ * over styling. embedUrl (Live365's own iframe widget) is the fallback when
+ * no direct stream URL is available; its internal player skin can't be
+ * restyled, so only the tab/panel shell around it is ours there, and the
+ * custom transport controls (including the vinyl) are omitted since the
+ * iframe brings its own. Never both at once — streamUrl wins if somehow
+ * both are set.
  */
 function radioPlayer(site = staticSite) {
   const { label, stationUrl, streamUrl, embedUrl } = site.radio;
@@ -283,27 +286,41 @@ function radioPlayer(site = staticSite) {
 
   const body = isSet(streamUrl)
     ? `<audio data-radio-audio preload="none" referrerpolicy="no-referrer" src="${esc(streamUrl)}"></audio>
+    <button class="radio__vinyl" type="button" data-radio-vinyl aria-label="Play ${esc(label)}">
+      <span class="radio__vinyl-spin" data-radio-vinyl-spin>
+        <span class="cd" aria-hidden="true">
+          <span class="cd__sheen"></span>
+          <span class="cd__text cd__text--top">Destroying everything</span>
+          <span class="cd__text cd__text--bottom">seems like the best option.</span>
+          <span class="cd__hub"></span>
+          <span class="cd__hole"></span>
+        </span>
+      </span>
+    </button>
     <div class="radio__controls">
       <button class="radio__play" type="button" data-radio-play aria-label="Play ${esc(label)}">
         <span data-icon-play>${iconPlay()}</span>
         <span data-icon-pause>${iconPause()}</span>
       </button>
-      <input class="radio__volume" type="range" min="0" max="1" step="0.05" value="0.7" data-radio-volume aria-label="Volume">
+      <span class="radio__volume-wrap">
+        <input class="radio__volume" type="range" min="0" max="1" step="0.05" value="0.5" data-radio-volume aria-label="Volume">
+      </span>
     </div>`
     : `<div class="radio__embed">
       <iframe src="${esc(embedUrl)}" title="${esc(label)}" allow="autoplay" loading="lazy" frameborder="0"></iframe>
     </div>`;
 
   return `<div class="radio" data-radio>
-  <button class="radio__tab" type="button" data-radio-toggle aria-expanded="false" aria-controls="radio-panel">
-    ${iconRadio()}
-    <span class="radio__tab-label">On Air</span>
+  <button class="radio__tab" type="button" data-radio-toggle aria-expanded="false" aria-controls="radio-panel" aria-label="Open ${esc(label)}">
+    <span class="radio__tab-icon">
+      ${iconRadio()}
+      <span class="radio__dot" data-radio-dot aria-hidden="true"></span>
+    </span>
   </button>
   <div class="radio__panel" id="radio-panel" data-radio-panel hidden>
     <div class="radio__head">
-      <span class="radio__dot" data-radio-dot aria-hidden="true"></span>
       <span class="radio__name">${esc(label)}</span>
-      <button class="icon-btn" type="button" data-radio-close aria-label="Close radio player">${iconClose()}</button>
+      <button class="icon-btn radio__close" type="button" data-radio-close aria-label="Close radio player">${iconClose()}</button>
     </div>
     ${body}
     <a class="radio__link" href="${esc(stationUrl)}" target="_blank" rel="noopener">Station page ↗</a>

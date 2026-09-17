@@ -1174,7 +1174,12 @@ const PUBLIC_ROUTES = [
     // both owner-confirmed, so a bare day-count is no longer a red flag. Only
     // estimates outside those two are.
     [/\b(1[0-9]|[2-9][0-9])\s*(business\s*)?days?\b/i, 'an unconfirmed delivery estimate'],
-    [/@(gmail|outlook|yahoo|example)\./i, 'invented email'],
+    // vestiph0bia0@gmail.com is the owner's actual confirmed support address
+    // (there is no business domain yet) — same carve-out precedent as the
+    // day-count and returns-window exceptions above. Any OTHER
+    // gmail/outlook/yahoo/example address is still a strong invented-content
+    // smell and stays banned.
+    [/(?<!vestiph0bia0)@(gmail|outlook|yahoo|example)\./i, 'invented email'],
     [/instagram\.com\/|tiktok\.com\//i, 'invented social link'],
     [/\bpersona\b/i, 'reference-brand name'],
     [/\bstripe\b|\bpaypal\b/i, 'payment provider'],

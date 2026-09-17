@@ -39,6 +39,7 @@ import {
   json,
   html,
   redirect,
+  redirectPermanent,
   fail,
   securityHeaders,
   rateLimit,
@@ -70,6 +71,10 @@ import {
   deleteProductImage,
   setPrimaryProductImage,
   moveProductImage,
+  listAllProductImages,
+  attachExistingImage,
+  addProductSize,
+  resolveProductRedirect,
 } from './routes/products.js';
 import { parseBoundary, parseMultipart, readRawBody } from './lib/multipart.js';
 import { localUploadPath, storageBackend } from './lib/uploads.js';
@@ -158,6 +163,11 @@ const MESSAGES = {
   name_required: ['err', 'Enter a product name.'],
   price_invalid: ['err', 'Price must be a number above zero.'],
   sizes_required: ['err', 'Enter at least one size.'],
+  slug_taken: ['err', 'That URL slug is already in use — choose a different one.'],
+  slug_invalid: ['err', 'Could not derive a URL slug from that value.'],
+  size_required: ['err', 'Enter a size to add.'],
+  size_exists: ['err', 'That size already exists on this product.'],
+  image_not_found: ['err', 'That image could not be found.'],
 };
 
 const CODE_MESSAGE = {
@@ -165,6 +175,10 @@ const CODE_MESSAGE = {
   NAME_REQUIRED: 'name_required',
   PRICE_INVALID: 'price_invalid',
   SIZES_REQUIRED: 'sizes_required',
+  SLUG_TAKEN: 'slug_taken',
+  SLUG_INVALID: 'slug_invalid',
+  SIZE_REQUIRED: 'size_required',
+  SIZE_EXISTS: 'size_exists',
 };
 
 /**
@@ -723,12 +737,17 @@ async function handleAdmin(req, res, url, ip, session) {
         body: views.notFoundPage(),
       });
     }
+    const [images, library] = await Promise.all([getProductImages(p.slug), listAllProductImages()]);
     return render(res, {
       title: p.name,
       current: '/admin/products',
       admin,
       flash,
-      body: views.productDetail({ p, images: await getProductImages(p.slug) }),
+      body: views.productDetail({
+        p,
+        images,
+        library: library.filter((im) => im.productSlug !== p.slug),
+      }),
     });
   }
 
@@ -942,6 +961,7 @@ async function handleAdminPost(req, res, path, ip, admin) {
     const fields = {};
     for (const key of [
       'name',
+      'slug',
       'short_name',
       'tagline',
       'short_description',
@@ -958,13 +978,39 @@ async function handleAdminPost(req, res, path, ip, admin) {
       'description',
       'highlights',
       'details_confirmed',
+      'tags',
     ]) {
       if (form[key] !== undefined) fields[key] = form[key];
     }
+    // A blank slug field means "leave it alone" — it's pre-filled from the
+    // current value, but an admin who clears it by hand should not
+    // accidentally slugify an empty string into a rejected save.
+    if (fields.slug !== undefined && !fields.slug.trim()) delete fields.slug;
     // Checkboxes are absent from the form body entirely when unchecked.
     fields.featured = form.featured === '1';
+    fields.gsm_approximate = form.gsm_approximate === '1';
     const r = await updateProduct(prodEdit[1], fields, { adminId, ip });
-    return back(res, `/admin/products/${encodeURIComponent(prodEdit[1])}`, r.ok ? 'saved' : failCode(r));
+    const target = r.ok ? r.slug : prodEdit[1];
+    return back(res, `/admin/products/${encodeURIComponent(target)}`, r.ok ? 'saved' : failCode(r));
+  }
+
+  const imageAttach = path.match(/^\/admin\/products\/([a-z0-9-]{1,120})\/images\/attach$/);
+  if (imageAttach) {
+    const imageId = cleanText(form.image_id, { max: 60 });
+    const r = imageId
+      ? await attachExistingImage(imageAttach[1], imageId, { adminId, ip })
+      : { ok: false, code: 'IMAGE_NOT_FOUND', error: 'Choose an image to reuse.' };
+    return back(
+      res,
+      `/admin/products/${encodeURIComponent(imageAttach[1])}`,
+      r.ok ? 'saved' : imageId ? 'invalid' : 'image_not_found'
+    );
+  }
+
+  const sizeAdd = path.match(/^\/admin\/products\/([a-z0-9-]{1,120})\/sizes$/);
+  if (sizeAdd) {
+    const r = await addProductSize(sizeAdd[1], form.size, { adminId, ip });
+    return back(res, `/admin/products/${encodeURIComponent(sizeAdd[1])}`, r.ok ? 'saved' : failCode(r));
   }
 
   const sizeGuideEdit = path.match(/^\/admin\/products\/([a-z0-9-]{1,120})\/size-guide$/);
@@ -1096,21 +1142,31 @@ async function handleProductImageUpload(req, res, slug, adminId, ip) {
   }
 
   const { fields, files } = parseMultipart(body, boundary);
-  const file = files.find((f) => f.name === 'file');
-  if (!file || !file.data.length) {
+  // The input accepts `multiple` (see admin/pages.js's imagesSection()), so
+  // more than one part can share the name "file" — upload every one of them
+  // in a single submit rather than making the admin repeat the form per photo.
+  const uploaded = files.filter((f) => f.name === 'file' && f.data.length);
+  if (!uploaded.length) {
     return back(res, `/admin/products/${encodeURIComponent(slug)}`, 'image_required');
   }
 
-  const r = await uploadProductImage(
-    slug,
-    { buffer: file.data, alt: fields.alt, role: fields.role },
-    { adminId, ip }
-  );
-  // uploadProductImage() already logs the real reason (bad storage
-  // credential, wrong bucket, a file sharp can't decode, …) — this flash
-  // just tells the admin it's worth checking the server logs, without
-  // echoing that free-text reason into the URL itself.
-  return back(res, `/admin/products/${encodeURIComponent(slug)}`, r.ok ? 'saved' : 'image_upload_failed');
+  let failed = 0;
+  for (const file of uploaded) {
+    // The alt text is exactly what the admin typed, for every file in the
+    // drop. It used to have the upload's filename appended on a multi-file
+    // drop ("Studio photo IMG_4021.jpg"), which leaked a meaningless filename
+    // into the storefront's alt attributes. Photos that need distinct
+    // descriptions are uploaded one at a time with their own alt text.
+    const r = await uploadProductImage(slug, { buffer: file.data, alt: fields.alt, role: fields.role }, { adminId, ip });
+    // uploadProductImage() already logs the real reason (bad storage
+    // credential, wrong bucket, a file sharp can't decode, …) for each
+    // failure — this flash just tells the admin it's worth checking the
+    // server logs, without echoing that free-text reason into the URL itself.
+    if (!r.ok) failed++;
+  }
+
+  const code = failed === 0 ? 'saved' : failed === uploaded.length ? 'image_upload_failed' : 'saved';
+  return back(res, `/admin/products/${encodeURIComponent(slug)}`, code);
 }
 
 /**
@@ -1207,6 +1263,11 @@ async function renderStorefront(pathname) {
     if (!slug || slug.includes('/')) return null;
     const ctx = await liveProductContext(slug);
     if (!ctx.product) {
+      // A renamed product's old URL 301s to the new one instead of 404ing —
+      // see product_redirects in schema.sql and updateProduct()'s slug
+      // handling in routes/products.js.
+      const target = await resolveProductRedirect(slug);
+      if (target) return { status: 301, redirectTo: `/products/${target}/` };
       return { status: 404, body: notFound({ site: ctx.site, products: ctx.products }) };
     }
     return {
@@ -1308,7 +1369,10 @@ const server = http.createServer(async (req, res) => {
       }
 
       const rendered = await renderStorefront(url.pathname);
-      if (rendered) return html(res, rendered.status, rendered.body);
+      if (rendered) {
+        if (rendered.redirectTo) return redirectPermanent(res, rendered.redirectTo);
+        return html(res, rendered.status, rendered.body);
+      }
 
       // Not a storefront route: try dist/ (legacy static export, if present),
       // then a server-rendered 404 built from live data.

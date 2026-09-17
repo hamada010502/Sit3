@@ -518,16 +518,25 @@ export function newProductPage() {
 
 /* ------------------------------------------------------- product detail */
 
-function imagesSection(slug, images) {
+function imagesSection(slug, images, library = []) {
   return `
 <h2>Images</h2>
 <p class="sub">The first (primary) image is what shows on the shop grid and as the first gallery photo.
-  Uploads are resized automatically into a responsive set.</p>
+  Uploads are resized automatically into a responsive set (webp + jpeg at 400/800px and larger).
+  Add multiple photos at once, or reuse one already uploaded for another product from the media
+  library below instead of uploading it twice.</p>
 
-<form method="post" action="/admin/products/${esc(slug)}/images" enctype="multipart/form-data" class="panel">
+<form method="post" action="/admin/products/${esc(slug)}/images" enctype="multipart/form-data" class="panel" data-upload-form>
   <div class="grid2">
-    <label class="field"><span>Image file</span><input type="file" name="file" accept="image/jpeg,image/png,image/webp" required></label>
-    <label class="field"><span>Alt text (describe what's in the photo)</span><input type="text" name="alt" maxlength="300" required></label>
+    <label class="field"><span>Image file(s)</span>
+      <div class="dropzone" data-dropzone>
+        <span class="dropzone__hint" data-dropzone-hint>Drag and drop one or more images here, or click to browse</span>
+        <span class="dropzone__file" data-dropzone-file hidden></span>
+        <input type="file" name="file" accept="image/jpeg,image/png,image/webp" multiple data-dropzone-input required>
+      </div>
+    </label>
+    <label class="field"><span>Alt text (describe what's in the photo — used as a prefix if you pick more than one file)</span>
+      <input type="text" name="alt" maxlength="300" required></label>
     <label class="field"><span>Role (optional)</span>
       <select name="role">
         <option value="">—</option>
@@ -539,8 +548,11 @@ function imagesSection(slug, images) {
       </select>
     </label>
   </div>
-  <button class="btn btn--primary" type="submit">Upload image</button>
+  <div class="image-preview" data-upload-preview hidden></div>
+  <button class="btn btn--primary" type="submit">Upload image(s)</button>
 </form>
+
+${mediaLibrarySection(slug, library)}
 
 ${
   images.length
@@ -589,14 +601,101 @@ ${
   </div>`
     : empty('No images yet — upload one above.')
 }
+
+<script>
+(() => {
+  const zone = document.querySelector('[data-upload-form] [data-dropzone]');
+  if (!zone) return;
+  const input = zone.querySelector('[data-dropzone-input]');
+  const hint = zone.querySelector('[data-dropzone-hint]');
+  const fileLabel = zone.querySelector('[data-dropzone-file]');
+  const preview = document.querySelector('[data-upload-preview]');
+
+  const showFiles = () => {
+    const files = [...input.files];
+    if (files.length) {
+      fileLabel.textContent = files.length === 1 ? files[0].name : files.length + ' files selected';
+      fileLabel.hidden = false;
+      hint.hidden = true;
+    } else {
+      fileLabel.hidden = true;
+      hint.hidden = false;
+    }
+    if (preview) {
+      preview.innerHTML = '';
+      preview.hidden = files.length === 0;
+      for (const file of files) {
+        if (!file.type.startsWith('image/')) continue;
+        const img = document.createElement('img');
+        img.alt = '';
+        img.style.cssText = 'width:84px;height:105px;object-fit:cover;border-radius:4px;border:1px solid var(--line)';
+        const reader = new FileReader();
+        reader.onload = (e) => { img.src = e.target.result; };
+        reader.readAsDataURL(file);
+        preview.appendChild(img);
+      }
+    }
+  };
+
+  input.addEventListener('change', showFiles);
+
+  ['dragenter', 'dragover'].forEach((evt) =>
+    zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.add('is-drag'); })
+  );
+  ['dragleave', 'drop'].forEach((evt) =>
+    zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.remove('is-drag'); })
+  );
+  zone.addEventListener('drop', (e) => {
+    const files = e.dataTransfer?.files;
+    if (files?.length) {
+      input.files = files;
+      showFiles();
+    }
+  });
+})();
+</script>
 `;
 }
 
-export function productDetail({ p, images }) {
+/**
+ * Site-wide media library: every uploaded image on every OTHER product, with
+ * a one-click "use this image" form that attaches it here — no re-upload, no
+ * duplicate file in storage (see attachExistingImage() in routes/products.js).
+ * A plain POST form per image, so it works with JavaScript off just like
+ * everything else in this admin.
+ */
+function mediaLibrarySection(slug, library) {
+  return `<details class="panel">
+  <summary style="cursor:pointer;font-size:14px;font-weight:600">Media library — reuse a photo already uploaded (${library.length})</summary>
+  ${
+    library.length
+      ? `<div class="image-grid" style="margin-top:14px">
+    ${library
+      .map(
+        (im) => `<figure class="image-card">
+      <img src="${esc(im.src)}" alt="${esc(im.alt)}" loading="lazy">
+      <figcaption>
+        <span class="note">${esc(im.productName)}</span>
+        <form method="post" action="/admin/products/${esc(slug)}/images/attach" style="margin-top:6px">
+          <input type="hidden" name="image_id" value="${esc(im.id)}">
+          <button class="btn btn--sm" type="submit">Use this image</button>
+        </form>
+      </figcaption>
+    </figure>`
+      )
+      .join('\n    ')}
+  </div>`
+      : `<p class="note" style="margin-top:10px">No images have been uploaded for any other product yet.</p>`
+  }
+</details>`;
+}
+
+export function productDetail({ p, images, library = [] }) {
   const description = (JSON.parse(p.description || '[]') || []).join('\n');
   const highlights = (JSON.parse(p.highlights || '[]') || []).join('\n');
   const detailsConfirmed = (JSON.parse(p.details_confirmed || '[]') || []).join('\n');
   const careInstructions = (JSON.parse(p.care_instructions || '[]') || []).join('\n');
+  const tags = (JSON.parse(p.tags || '[]') || []).join('\n');
   const sizeGuide = JSON.parse(p.size_guide || 'null');
 
   return `
@@ -622,12 +721,14 @@ export function productDetail({ p, images }) {
     .join('')}
 </div>
 
-${imagesSection(p.slug, images)}
+${imagesSection(p.slug, images, library)}
 
 <h2>Details</h2>
 <form method="post" action="/admin/products/${esc(p.slug)}">
   <div class="grid2">
     <label class="field"><span>Name</span><input type="text" name="name" value="${esc(p.name)}" required></label>
+    <label class="field"><span>URL slug (/products/&hellip;/) — changing this keeps the old link working via a redirect</span>
+      <input type="text" name="slug" value="${esc(p.slug)}" pattern="[a-z0-9\\-]+" maxlength="120"></label>
     <label class="field"><span>Short name</span><input type="text" name="short_name" value="${esc(p.short_name || '')}" required></label>
     <label class="field"><span>Price</span><input type="text" name="price" value="${esc(String(p.price))}" required></label>
     <label class="field"><span>Compare-at price (optional — shows as a strike-through)</span>
@@ -636,6 +737,7 @@ ${imagesSection(p.slug, images)}
     <label class="field"><span>Category</span><input type="text" name="category" value="${esc(p.category || '')}"></label>
     <label class="field"><span>Fabric</span><input type="text" name="fabric" value="${esc(p.fabric || '')}"></label>
     <label class="field"><span>GSM</span><input type="text" name="gsm" value="${esc(String(p.gsm ?? ''))}"></label>
+    <label class="field checkbox"><input type="checkbox" name="gsm_approximate" value="1"${bool(p.gsm_approximate) ? ' checked' : ''}> <span>GSM is approximate</span></label>
     <label class="field"><span>Fit</span><input type="text" name="fit" value="${esc(p.fit || '')}"></label>
     <label class="field"><span>Print method</span><input type="text" name="print_method" value="${esc(p.print_method || '')}"></label>
     <label class="field"><span>Badge (small overlay label, e.g. "FIRST DROP")</span><input type="text" name="badge" value="${esc(p.badge || '')}"></label>
@@ -658,17 +760,141 @@ ${imagesSection(p.slug, images)}
   <label class="field"><span>Care instructions (one per line — must match the real garment label)</span>
     <textarea rows="4" name="care_instructions">${esc(careInstructions)}</textarea></label>
 
+  <label class="field"><span>Tags (one per line — internal grouping/search, not shown as text on the page)</span>
+    <textarea rows="3" name="tags">${esc(tags)}</textarea></label>
+
   <button class="btn btn--primary" type="submit">Save changes</button>
 </form>
 
+${sizesSection(p)}
+
 <h2>Size guide</h2>
-<form method="post" action="/admin/products/${esc(p.slug)}/size-guide">
+${sizeGuideEditor(p.slug, sizeGuide)}
+`;
+}
+
+/**
+ * Sizes list, with an "add a size" form. Quantities and the closed/open flag
+ * are edited from Inventory (the one place quantities are ever shown), not
+ * duplicated here — this only covers which size labels exist at all.
+ */
+function sizesSection(p) {
+  return `
+<h2>Sizes</h2>
+<div class="panel">
+  <p class="note">${
+    p.sizes.length
+      ? p.sizes.map((s) => esc(s.size)).join(', ')
+      : 'No sizes yet.'
+  } — set quantities and open/close a size from <a class="link-underline" href="/admin/inventory">Inventory</a>.</p>
+  <form method="post" action="/admin/products/${esc(p.slug)}/sizes" style="display:flex;gap:8px;align-items:flex-end;margin-top:10px">
+    <label class="field" style="margin:0"><span>Add a size</span>
+      <input type="text" name="size" maxlength="12" placeholder="e.g. XS or 3XL" required></label>
+    <button class="btn btn--sm" type="submit">Add</button>
+  </form>
+</div>`;
+}
+
+/**
+ * The measurements table, edited as an actual table (add/remove row and
+ * column, one cell per measurement) rather than raw CSV. It still posts CSV
+ * to the existing /size-guide route (parseSizeGuideCsv() in
+ * routes/products.js already produces exactly the { size, ...columns } shape
+ * pages/product.js's storefront table reads) — the JS below only builds that
+ * CSV from the table just before submit, so the backend contract is
+ * unchanged and the form still works with JavaScript disabled (as a plain
+ * CSV textarea, revealed when the table can't render).
+ */
+function sizeGuideEditor(slug, sizeGuide) {
+  const rows = Array.isArray(sizeGuide?.measurements) ? sizeGuide.measurements : [];
+  const cols = rows.length ? Object.keys(rows[0]).filter((c) => c !== 'size') : ['Bust (cm)', 'Length (cm)'];
+  const dataRows = rows.length ? rows : [{ size: 'S' }, { size: 'M' }, { size: 'L' }];
+
+  return `
+<form method="post" action="/admin/products/${esc(slug)}/size-guide" data-size-guide-form>
   <label class="field"><span>Note shown above the table</span>
     <input type="text" name="note" value="${esc(sizeGuide?.note || '')}"></label>
-  <label class="field"><span>Measurements table (CSV — first row is headers, first column must be "size")</span>
-    <textarea rows="6" name="measurements_csv" placeholder="size,Bust (cm),Length (cm)&#10;S,100,68&#10;M,104,70">${esc(sizeGuideToCsv(sizeGuide))}</textarea></label>
+
+  <div class="table-wrap" data-sg-table-wrap style="margin-bottom:12px">
+    <table data-sg-table>
+      <thead><tr data-sg-head><th>Size</th>${cols.map((c) => `<th>${esc(c)}</th>`).join('')}<th></th></tr></thead>
+      <tbody data-sg-body>
+        ${dataRows
+          .map(
+            (r) => `<tr>
+          <td><input type="text" data-sg-size value="${esc(r.size || '')}" style="width:70px"></td>
+          ${cols.map((c) => `<td><input type="text" data-sg-cell value="${esc(r[c] ?? '')}"></td>`).join('')}
+          <td><button class="btn btn--sm btn--danger" type="button" data-sg-remove-row>&times;</button></td>
+        </tr>`
+          )
+          .join('\n        ')}
+      </tbody>
+    </table>
+  </div>
+  <div class="actions" style="margin-bottom:14px">
+    <button class="btn btn--sm" type="button" data-sg-add-row>+ Row (size)</button>
+    <button class="btn btn--sm" type="button" data-sg-add-col>+ Column (measurement)</button>
+  </div>
+
+  <label class="field"><span>Measurements table (CSV — kept in sync with the table above; edit directly if you prefer)</span>
+    <textarea rows="5" name="measurements_csv" data-sg-csv placeholder="size,Bust (cm),Length (cm)&#10;S,100,68&#10;M,104,70">${esc(sizeGuideToCsv(sizeGuide))}</textarea></label>
   <button class="btn btn--primary" type="submit">Save size guide</button>
 </form>
+
+<script>
+(() => {
+  const form = document.querySelector('[data-size-guide-form]');
+  if (!form) return;
+  const table = form.querySelector('[data-sg-table]');
+  const head = form.querySelector('[data-sg-head]');
+  const body = form.querySelector('[data-sg-body]');
+  const csv = form.querySelector('[data-sg-csv]');
+
+  const colCount = () => head.children.length - 2; // minus Size and the trailing action column
+
+  function addRow(size = '') {
+    const tr = document.createElement('tr');
+    let html = '<td><input type="text" data-sg-size value="' + size.replace(/"/g, '&quot;') + '" style="width:70px"></td>';
+    for (let i = 0; i < colCount(); i++) html += '<td><input type="text" data-sg-cell></td>';
+    html += '<td><button class="btn btn--sm btn--danger" type="button" data-sg-remove-row>&times;</button></td>';
+    tr.innerHTML = html;
+    body.appendChild(tr);
+  }
+
+  function addCol() {
+    const name = prompt('Column name, e.g. "Bust (cm)"');
+    if (!name) return;
+    const th = document.createElement('th');
+    th.textContent = name;
+    head.insertBefore(th, head.lastElementChild);
+    for (const tr of body.children) {
+      const td = document.createElement('td');
+      td.innerHTML = '<input type="text" data-sg-cell>';
+      tr.insertBefore(td, tr.lastElementChild);
+    }
+  }
+
+  function syncCsv() {
+    const headers = ['size'];
+    for (let i = 1; i <= colCount(); i++) headers.push(head.children[i].textContent.trim());
+    const lines = [headers.join(',')];
+    for (const tr of body.children) {
+      const size = tr.querySelector('[data-sg-size]').value.trim();
+      if (!size) continue;
+      const cells = [...tr.querySelectorAll('[data-sg-cell]')].map((i) => i.value.trim());
+      lines.push([size, ...cells].join(','));
+    }
+    csv.value = lines.length > 1 ? lines.join('\\n') : '';
+  }
+
+  table.addEventListener('click', (e) => {
+    if (e.target.matches('[data-sg-remove-row]')) e.target.closest('tr').remove();
+  });
+  form.querySelector('[data-sg-add-row]').addEventListener('click', () => addRow());
+  form.querySelector('[data-sg-add-col]').addEventListener('click', addCol);
+  form.addEventListener('submit', syncCsv);
+})();
+</script>
 `;
 }
 

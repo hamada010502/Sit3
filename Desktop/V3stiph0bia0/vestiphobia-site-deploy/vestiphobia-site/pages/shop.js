@@ -1,6 +1,6 @@
 import { site as staticSite } from '../site.config.js';
 import { page } from '../lib/layout.js';
-import { esc, money } from '../lib/html.js';
+import { esc, priceHtml } from '../lib/html.js';
 import { picture, primaryImage, imageEntry } from '../lib/images.js';
 import { products as staticProducts, toStoreShape, groupByCategory } from '../data/products.js';
 
@@ -40,12 +40,8 @@ export function card(p, index) {
       ${soldOut ? '<span class="card__badge card__badge--muted">Sold out</span>' : ''}
     </div>
     <div class="card__meta">
-      <h2 class="card__name">${esc(p.name)}</h2>
-      <p class="card__price">${
-        p.compareAtPrice
-          ? `<span class="card__was">${money(p.compareAtPrice, p.currency)}</span> ${money(p.price, p.currency)}`
-          : money(p.price, p.currency)
-      }</p>
+      <h3 class="card__name">${esc(p.name)}</h3>
+      <p class="card__price">${priceHtml(p.price, p.compareAtPrice, p.currency)}</p>
       <span class="card__cta">View product</span>
     </div>
   </a>
@@ -94,7 +90,7 @@ export default function shop({ site = staticSite, products = staticProducts, con
   <div class="wrap next-drop">
     <h2 class="eyebrow eyebrow--lower" id="more-h">next</h2>
     <p class="lede">More pieces are in development. Join the list to see them first.</p>
-    <a class="link-underline" href="/#collective-h">enter the fear.</a>
+    <a class="link-underline link-cta" href="/#collective-h">enter the fear.</a>
   </div>
 </section>
 `;

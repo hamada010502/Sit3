@@ -53,6 +53,19 @@ export const imageEntry = (im) =>
   im.width && im.variants ? { width: im.width, height: im.height, variants: im.variants } : null;
 
 /**
+ * The smallest rendered variant of an image, for the places that draw it at
+ * thumbnail size. The gallery's 72px-wide thumbnails used the raw `src`,
+ * which is the LARGEST file in the set — three of them cost ~460KB on a phone
+ * that had already downloaded the 23KB slide it was showing.
+ */
+export function thumbSrc(im) {
+  const entry = imageEntry(im) || manifestEntry(im.src);
+  const set = entry?.variants?.jpeg || entry?.variants?.png || entry?.variants?.webp;
+  if (!set?.length) return im.src;
+  return set.reduce((a, b) => (b.w < a.w ? b : a)).path;
+}
+
+/**
  * Build a <picture> element.
  *
  * @param {string}  src      original path, e.g. /assets/images/02_medium_shot.jpeg
@@ -121,11 +134,18 @@ export function picture({
  * Preload hint for the hero image so the LCP candidate starts downloading
  * before the CSS that positions it has parsed.
  */
-export function preloadHero(src, sizes = '100vw') {
-  const entry = manifestEntry(src);
+export function preloadHero(src, sizes = '100vw', entryOverride = null) {
+  const entry = entryOverride || manifestEntry(src);
   if (!entry) return `<link rel="preload" as="image" href="${esc(src)}">`;
-  const set = entry.variants.avif?.length ? entry.variants.avif : entry.variants.jpeg || entry.variants.png;
-  const type = entry.variants.avif?.length ? 'image/avif' : 'image/jpeg';
+  // Preload the format picture() will actually choose. Admin uploads carry
+  // webp + jpeg and no avif, so preferring jpeg whenever avif was missing
+  // preloaded a file the browser then ignored in favour of the webp — two
+  // downloads of the same photo for the one image that has to be fast.
+  const [type, set] = entry.variants.avif?.length
+    ? ['image/avif', entry.variants.avif]
+    : entry.variants.webp?.length
+      ? ['image/webp', entry.variants.webp]
+      : ['image/jpeg', entry.variants.jpeg || entry.variants.png];
   return (
     `<link rel="preload" as="image" type="${type}"` +
     ` imagesrcset="${srcsetFor(set)}" imagesizes="${esc(sizes)}" fetchpriority="high">`

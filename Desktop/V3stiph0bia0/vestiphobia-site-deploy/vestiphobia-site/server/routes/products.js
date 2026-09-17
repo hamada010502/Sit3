@@ -321,10 +321,51 @@ export async function setProductStatus(slug, status, { adminId, ip } = {}) {
   return { ok: true, status: check.value };
 }
 
+/**
+ * Change a product's slug, recording a redirect from the old one so an
+ * existing link 301s instead of 404ing. Any redirect that already points at
+ * the OLD slug is rewritten to point at the new one in the same step, so a
+ * chain of renames never needs more than one hop followed at request time.
+ */
+async function renameSlug(db, product, newSlug, ts) {
+  const clash = await db.get('SELECT id FROM products WHERE slug = ? AND id != ?', [newSlug, product.id]);
+  if (clash) return { ok: false, code: 'SLUG_TAKEN', error: 'That URL slug is already used by another product.' };
+  const redirectClash = await db.get('SELECT from_slug FROM product_redirects WHERE from_slug = ?', [newSlug]);
+  if (redirectClash) {
+    return { ok: false, code: 'SLUG_TAKEN', error: 'That URL slug was previously used and still redirects here.' };
+  }
+
+  const oldSlug = product.slug;
+  await db.run('UPDATE products SET slug = ? WHERE id = ?', [newSlug, product.id]);
+  await db.run(
+    `INSERT INTO product_redirects (from_slug, to_slug, created_at) VALUES (?, ?, ?)
+       ON CONFLICT (from_slug) DO UPDATE SET to_slug = excluded.to_slug`,
+    [oldSlug, newSlug, ts]
+  ).catch(async () => {
+    // SQLite before 3.24 / a dialect without ON CONFLICT support: fall back
+    // to delete-then-insert, which is just as correct for a single-row key.
+    await db.run('DELETE FROM product_redirects WHERE from_slug = ?', [oldSlug]);
+    await db.run('INSERT INTO product_redirects (from_slug, to_slug, created_at) VALUES (?, ?, ?)', [
+      oldSlug,
+      newSlug,
+      ts,
+    ]);
+  });
+  await db.run('UPDATE product_redirects SET to_slug = ? WHERE to_slug = ?', [newSlug, oldSlug]);
+  return { ok: true };
+}
+
+/** Resolve a slug that 404'd against the redirect table — one hop, never a loop. */
+export async function resolveProductRedirect(slug) {
+  const db = await getDb();
+  const row = await db.get('SELECT to_slug FROM product_redirects WHERE from_slug = ?', [slug]);
+  return row ? row.to_slug : null;
+}
+
 /** Editable product fields. Prices are cents in, cents out. */
 export async function updateProduct(slug, fields, { adminId, ip } = {}) {
   const db = await getDb();
-  const product = await db.get('SELECT id FROM products WHERE slug = ?', [slug]);
+  const product = await db.get('SELECT id, slug FROM products WHERE slug = ?', [slug]);
   if (!product) return { ok: false, error: 'Product not found.' };
 
   const sets = [];
@@ -342,10 +383,26 @@ export async function updateProduct(slug, fields, { adminId, ip } = {}) {
     currency: (v) => cleanText(v, { max: 3 }).toUpperCase(),
   };
 
+  if (fields.name !== undefined && !cleanText(fields.name, { max: 200 })) {
+    return { ok: false, code: 'NAME_REQUIRED', error: 'Name is required.' };
+  }
+
   for (const [key, clean] of Object.entries(allow)) {
     if (fields[key] !== undefined) {
       sets.push(`${key} = ?`);
       params.push(clean(fields[key]));
+    }
+  }
+
+  // Slug is handled separately (redirect bookkeeping), not through the
+  // generic `allow` map above.
+  let slugResult = null;
+  if (fields.slug !== undefined) {
+    const newSlug = slugify(fields.slug);
+    if (!newSlug) return { ok: false, code: 'SLUG_INVALID', error: 'Could not derive a URL slug from that value.' };
+    if (newSlug !== product.slug) {
+      slugResult = await renameSlug(db, product, newSlug, now());
+      if (!slugResult.ok) return slugResult;
     }
   }
 
@@ -405,23 +462,142 @@ export async function updateProduct(slug, fields, { adminId, ip } = {}) {
     params.push(fields.size_guide === null ? null : toJson(fields.size_guide));
   }
 
-  if (!sets.length) return { ok: false, error: 'Nothing to update.' };
+  if (!sets.length && !slugResult) return { ok: false, error: 'Nothing to update.' };
 
-  sets.push('updated_at = ?');
-  params.push(now(), slug);
-  await db.run(`UPDATE products SET ${sets.join(', ')} WHERE slug = ?`, params);
+  if (sets.length) {
+    sets.push('updated_at = ?');
+    params.push(now(), product.id);
+    // product.id, not the slug the caller passed in: renameSlug() above may
+    // already have changed the row's slug in the database.
+    await db.run(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`, params);
+  }
 
   await audit('product.update', {
     adminId,
     entityType: 'product',
-    entityId: slug,
+    entityId: product.slug,
     detail: { fields: Object.keys(fields) },
     ip,
   });
-  return { ok: true };
+  return { ok: true, slug: slugResult ? (await db.get('SELECT slug FROM products WHERE id = ?', [product.id])).slug : product.slug };
+}
+
+/* ------------------------------------------------------------------- sizes */
+
+/** Add a new size to a product, seeded at zero stock (see createProduct()'s comment on why). */
+export async function addProductSize(slug, sizeLabel, { adminId, ip } = {}) {
+  const size = cleanText(sizeLabel, { max: 12 }).toUpperCase();
+  if (!size) return { ok: false, code: 'SIZE_REQUIRED', error: 'Enter a size.' };
+
+  const db = await getDb();
+  const product = await db.get('SELECT id FROM products WHERE slug = ?', [slug]);
+  if (!product) return { ok: false, error: 'Product not found.' };
+
+  const existing = await db.get('SELECT id FROM inventory WHERE product_id = ? AND size = ?', [
+    product.id,
+    size,
+  ]);
+  if (existing) return { ok: false, code: 'SIZE_EXISTS', error: `${size} already exists on this product.` };
+
+  const orderRow = await db.get('SELECT MAX(sort_order) AS m FROM inventory WHERE product_id = ?', [
+    product.id,
+  ]);
+  await db.run(
+    `INSERT INTO inventory (id, product_id, size, quantity, manual_out_of_stock, sort_order, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [newId(), product.id, size, 0, 0, Number(orderRow?.m ?? -1) + 1, now()]
+  );
+
+  await audit('product.size_add', { adminId, entityType: 'product', entityId: slug, detail: { size }, ip });
+  return { ok: true, size };
 }
 
 /* ------------------------------------------------------------------ images */
+
+/**
+ * Site-wide media library: every uploaded image across every product, newest
+ * first, for the admin's "reuse an existing photo" picker. Static-catalogue
+ * images (width IS NULL — never uploaded through the admin) are excluded:
+ * they have no responsive variant set and reusing one under a second product
+ * slug would be reusing a file path that lives under the FIRST product's own
+ * storage folder, which is confusing rather than useful.
+ */
+export async function listAllProductImages() {
+  const db = await getDb();
+  // No created_at column on product_images to sort newest-first by (ids are
+  // random UUIDs, not time-ordered) — grouped by product, then upload order
+  // within it, which is stable and still lets the admin scan it quickly.
+  const rows = await db.all(
+    `SELECT im.id, im.src, im.alt, im.role, im.is_primary, im.width, im.height, im.variants,
+            p.slug AS product_slug, p.name AS product_name
+       FROM product_images im
+       JOIN products p ON p.id = im.product_id
+      WHERE im.width IS NOT NULL
+      ORDER BY p.name, im.sort_order`
+  );
+  return rows.map((im) => ({
+    id: im.id,
+    src: im.src,
+    alt: im.alt,
+    role: im.role,
+    isPrimary: bool(im.is_primary),
+    width: im.width,
+    height: im.height,
+    variants: parseJson(im.variants, null),
+    productSlug: im.product_slug,
+    productName: im.product_name,
+  }));
+}
+
+/**
+ * Attach an already-uploaded image (from any product, via the media library)
+ * to this product as a new gallery entry — no re-upload, no new storage
+ * object, just a new product_images row pointing at the same files. The
+ * first image a product gets is still always primary automatically.
+ */
+export async function attachExistingImage(slug, sourceImageId, { adminId, ip } = {}) {
+  const db = await getDb();
+  const product = await db.get('SELECT id FROM products WHERE slug = ?', [slug]);
+  if (!product) return { ok: false, error: 'Product not found.' };
+
+  const source = await db.get('SELECT * FROM product_images WHERE id = ?', [sourceImageId]);
+  if (!source) return { ok: false, error: 'That image no longer exists.' };
+
+  const countRow = await db.get('SELECT COUNT(*) AS n FROM product_images WHERE product_id = ?', [
+    product.id,
+  ]);
+  const isFirst = Number(countRow?.n ?? 0) === 0;
+  const orderRow = await db.get('SELECT MAX(sort_order) AS m FROM product_images WHERE product_id = ?', [
+    product.id,
+  ]);
+  const id = newId();
+
+  await db.run(
+    `INSERT INTO product_images (id, product_id, src, alt, role, sort_order, is_primary, width, height, variants)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      product.id,
+      source.src,
+      source.alt,
+      source.role,
+      Number(orderRow?.m ?? -1) + 1,
+      isFirst ? 1 : 0,
+      source.width,
+      source.height,
+      source.variants,
+    ]
+  );
+
+  await audit('product.image_attach', {
+    adminId,
+    entityType: 'product',
+    entityId: slug,
+    detail: { imageId: id, sourceImageId },
+    ip,
+  });
+  return { ok: true, id };
+}
 
 /** Every image on one product, admin shape (includes DB row id for the CRUD forms). */
 export async function getProductImages(slug) {
@@ -534,8 +710,16 @@ export async function deleteProductImage(slug, imageId, { adminId, ip } = {}) {
   // Only admin uploads have files to remove — the static seed images live in
   // assets/images/ and are never touched here (width is only ever set by an
   // upload; the build-time seed leaves it NULL).
+  //
+  // A media-library reuse (attachExistingImage) shares the same stored files
+  // between two rows, so the files are only removed once the LAST row that
+  // points at them is gone — otherwise deleting the source photo silently
+  // 404'd the copy on the other product's storefront page.
   if (image.width != null) {
-    await deleteProductImageFiles({ slug, id: image.id, variants: image.variants }).catch(() => {});
+    const stillUsed = await db.get('SELECT id FROM product_images WHERE src = ? LIMIT 1', [image.src]);
+    if (!stillUsed) {
+      await deleteProductImageFiles({ slug, id: image.id, variants: image.variants }).catch(() => {});
+    }
   }
 
   await audit('product.image_delete', {

@@ -12,6 +12,10 @@ const CFG = window.VESTI || {};
 const KEY = 'vestiphobia.cart.v1';
 const CATALOGUE = new Map((CFG.products || []).map((p) => [p.slug, p]));
 
+// Secondary index for load()'s rename recovery below. A product's id is stable
+// across a slug change; its slug is not.
+const BY_ID = new Map((CFG.products || []).filter((p) => p.id != null).map((p) => [p.id, p]));
+
 /**
  * HTML-escape for the one place this module builds markup as a string
  * (lineHtml, injected with innerHTML). Same implementation as lib/html.js's
@@ -47,9 +51,26 @@ function load() {
     if (!Array.isArray(raw)) return [];
     // Drop anything that no longer exists in the catalogue, and re-read price
     // and imagery from the catalogue so a price change is never stale.
-    return raw
-      .filter((l) => l && CATALOGUE.has(l.slug) && typeof l.size === 'string')
-      .map((l) => ({ slug: l.slug, size: l.size, qty: clampQty(l.qty) }));
+    //
+    // A line whose slug is gone is looked up by its product id before being
+    // given up on: renaming a product in the admin used to silently empty the
+    // cart of every visitor who already had it, because the stored slug no
+    // longer matched anything. The id survives a rename, so the line is
+    // rewritten to the current slug instead of dropped. Lines saved before
+    // ids were stored, and ids that really have gone, still fall away.
+    const merged = [];
+    for (const l of raw) {
+      if (!l || typeof l.size !== 'string') continue;
+      const p = CATALOGUE.get(l.slug) || (l.id != null ? BY_ID.get(l.id) : null);
+      if (!p) continue;
+      // Remapping can land two stored lines on the same product+size (an old
+      // slug and the new one both in the cart); they become one line rather
+      // than a duplicate pair.
+      const existing = merged.find((m) => m.slug === p.slug && m.size === l.size);
+      if (existing) existing.qty = clampQty(existing.qty + clampQty(l.qty));
+      else merged.push({ slug: p.slug, id: p.id, size: l.size, qty: clampQty(l.qty) });
+    }
+    return merged;
   } catch (err) {
     // Corrupt or unreadable storage should not break the store — but it should
     // never fail silently either, or a real bug looks like an empty cart.
@@ -114,7 +135,8 @@ export function add(slug, size, qty = 1) {
   if (!CATALOGUE.has(slug) || !size) return false;
   const existing = lines.find((l) => l.slug === slug && l.size === size);
   if (existing) existing.qty = clampQty(existing.qty + qty);
-  else lines.push({ slug, size, qty: clampQty(qty) });
+  // The id rides along so load() can still find this product after a rename.
+  else lines.push({ slug, id: CATALOGUE.get(slug).id, size, qty: clampQty(qty) });
   emit();
   return true;
 }

@@ -79,6 +79,45 @@ export const usingSupabase = () => supabaseConfig() !== null;
 export const usingS3 = () => s3Config() !== null;
 export const storageBackend = () => (usingSupabase() ? 'supabase' : usingS3() ? 's3' : 'local');
 
+/**
+ * The origin(s) product photos are actually served from, for the CSP's
+ * `img-src` directive.
+ *
+ * THE BUG THIS FIXES: uploaded images were written to Supabase/S3 as absolute
+ * https:// URLs (see putObject() above) and stored verbatim in
+ * product_images.src, but the CSP shipped with `img-src 'self' data:` only —
+ * no remote origin at all. Every browser silently blocked those <img>/
+ * <source> loads as a CSP violation (visible in devtools as "Refused to load
+ * the image ... because it violates the following Content Security Policy
+ * directive"), so an uploaded photo existed in storage and in the database
+ * but never painted on the storefront, the admin gallery, or anywhere else —
+ * this is the actual root cause of "images don't display". Local-disk
+ * uploads (`/uploads/...`, same-origin) were never affected, which is why the
+ * bug only showed up once a real Supabase/S3 backend was configured.
+ */
+export function imageStorageOrigins() {
+  const origins = new Set();
+  const supa = supabaseConfig();
+  if (supa) {
+    try {
+      origins.add(new URL(supa.url).origin);
+    } catch {
+      /* malformed SUPABASE_URL — nothing to add */
+    }
+  }
+  const s3 = s3Config();
+  if (s3) {
+    for (const raw of [s3.publicUrl, s3.endpoint]) {
+      try {
+        origins.add(new URL(raw).origin);
+      } catch {
+        /* malformed S3 URL — nothing to add */
+      }
+    }
+  }
+  return [...origins];
+}
+
 /* ------------------------------------------------------------ AWS SigV4 ---
  * The minimum needed to PUT and DELETE one object. No listing, no multipart
  * upload, no query-string signing — a single-shot signed request is all an
@@ -304,12 +343,25 @@ export async function processSiteImage(buffer, key) {
  * map back to a key — logged, never thrown. */
 export async function deleteProductImageFiles({ slug, id, variants }) {
   const parsed = typeof variants === 'string' ? JSON.parse(variants || '{}') : variants || {};
-  const widths = new Set();
-  for (const list of Object.values(parsed)) for (const v of list || []) widths.add(v.w);
-  const exts = ['webp', 'jpg'];
-  await Promise.all(
-    [...widths].flatMap((w) => exts.map((ext) => deleteObject(`products/${slug}/${id}-${w}.${ext}`)))
-  );
+  // Keys are taken from the stored variant URLs, not rebuilt from the
+  // product's CURRENT slug: files live under the slug the product had when
+  // the photo was uploaded, and a slug rename (renameSlug in
+  // routes/products.js) does not move them — rebuilding the key from the new
+  // slug pointed at files that never existed and left the real ones behind.
+  const keys = new Set();
+  for (const list of Object.values(parsed)) {
+    for (const v of list || []) {
+      const at = String(v.path || '').indexOf('products/');
+      if (at !== -1) keys.add(v.path.slice(at));
+    }
+  }
+  if (!keys.size) {
+    // No variant paths recorded (older rows): fall back to the naming scheme.
+    const widths = new Set();
+    for (const list of Object.values(parsed)) for (const v of list || []) widths.add(v.w);
+    for (const w of widths) for (const ext of ['webp', 'jpg']) keys.add(`products/${slug}/${id}-${w}.${ext}`);
+  }
+  await Promise.all([...keys].map((key) => deleteObject(key)));
 }
 
 export const localUploadPath = (key) => join(UPLOADS_DIR, key);

@@ -264,16 +264,19 @@ legend {
   font-size: 1.0625rem;
 }
 
-.prose h2 {
+.prose h2:not(.display) {
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  /* 1.6 is body leading; on a 16px tracked uppercase label it read as a
+     paragraph rather than a heading. */
+  line-height: 1.35;
   margin: 2.5rem 0 0.85rem;
   color: var(--fg);
 }
 
-.prose h2:first-child {
+.prose h2:not(.display):first-child {
   margin-top: 0;
 }
 
@@ -678,9 +681,7 @@ code {
   .policy__nav a,
   .footer__col a,
   .crumbs a,
-  .next-drop > .link-underline,
-  .wrap > .link-underline,
-  li > .link-underline:only-child,
+  .link-cta,
   .category-row__see-all {
     display: inline-flex;
     align-items: center;
@@ -703,11 +704,18 @@ code {
   }
 }
 
-/* A paragraph whose only content is a link is a call to action, not a
-   sentence, so it gets a full-size touch target. Links WITHIN a sentence are
-   left alone: growing them would break the paragraph's rhythm, and WCAG
-   exempts inline links for exactly that reason. */
-p > .link-underline:only-child {
+/* A link that is a call to action on its own line gets a full-size touch
+   target; a link WITHIN a sentence is left alone, because growing it breaks
+   the paragraph's rhythm and WCAG exempts inline links for exactly that
+   reason.
+
+   This used to be selected as `p > .link-underline:only-child`, but
+   :only-child ignores text nodes — so "Having trouble? <a>Contact us on
+   Instagram</a> — quote your order number." matched, and that sentence's
+   link became a 44px-tall inline-flex box inside 23px leading, breaking the
+   paragraph apart. The genuine call-to-action links now say so explicitly
+   with .link-cta. */
+.link-cta {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -1201,12 +1209,15 @@ p > .link-underline:only-child {
   opacity: 1;
 }
 
+/* Black ink on the red, not white: --fg on --red measures 3.88:1, which
+   fails AA for 9.6px bold text, while --bg on the same red is 5.41:1. The
+   fill, size, tracking and glow are unchanged — only the ink. */
 .card__badge {
   position: absolute;
   top: 0.75rem;
   left: 0.75rem;
   background: var(--red);
-  color: var(--fg);
+  color: var(--bg);
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.18em;
@@ -1218,6 +1229,9 @@ p > .link-underline:only-child {
 
 .card__badge--muted {
   background: var(--bg);
+  /* The base badge's ink is black for contrast against the red fill; this
+     variant's fill IS black, so it takes the white back. */
+  color: var(--fg);
   border: 1px solid var(--rule-strong);
   top: auto;
   bottom: 0.75rem;
@@ -1607,12 +1621,14 @@ p > .link-underline:only-child {
   );
 }
 
+/* Same contrast correction as .card__badge: white on --red is 3.88:1 and
+   this label is 8.8px. --bg on --red is 5.41:1. */
 .size-btn__low {
   position: absolute;
   top: -6px;
   right: -6px;
   background: var(--red);
-  color: var(--fg);
+  color: var(--bg);
   font-size: 0.55rem;
   letter-spacing: 0.08em;
   padding: 0.1rem 0.25rem;
@@ -1805,6 +1821,11 @@ p > .link-underline:only-child {
   padding-top: 0.15rem;
 }
 
+/* The size guide's note sits directly above the table it explains. */
+.size-guide__note + .table-scroll {
+  margin-top: 0.85rem;
+}
+
 .table-scroll {
   overflow-x: auto;
 }
@@ -1865,60 +1886,91 @@ p > .link-underline:only-child {
 }
 
 /* ------------------------------------------------------- radio player */
-/* Fixed to the left edge, vertically centred, on every page via lib/layout.js.
-   z-index 60 sits below .sticky-buy (70) and the drawer/menu/lightbox layers
-   (90-120), so none of those ever get covered by the tab or open panel. */
+/* A collapsed circular tab fixed to the bottom-left corner on every page via
+   lib/layout.js, expanding upward into a turntable-styled panel. z-index 60
+   sits below .sticky-buy (70) and the drawer/menu/lightbox layers (90-120),
+   so none of those ever get covered by the tab or open panel — and the
+   mobile media query below permanently reserves space above where
+   .sticky-buy docks so the two can never visually overlap, regardless of
+   which page or scroll position shows the sticky bar. */
 
 .radio {
   position: fixed;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  left: 1rem;
+  bottom: 1rem;
   z-index: 60;
-  display: flex;
-  align-items: center;
 }
 
 .radio__tab {
+  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
   background: var(--surface);
   color: var(--fg);
-  border: 1px solid var(--rule);
-  border-left: none;
-  padding: 0.9rem 0.55rem;
+  border: 1px solid var(--rule-strong);
   cursor: pointer;
-  transition: border-color var(--dur) var(--ease);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 
 .radio__tab:hover,
 .radio__tab:focus-visible {
-  border-color: var(--rule-strong);
+  border-color: var(--red);
+  box-shadow: 0 0 18px var(--red-glow);
+}
+
+.radio__tab-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .radio__tab .icon {
-  width: 18px;
-  height: 18px;
+  width: 26px;
+  height: 26px;
 }
 
-.radio__tab-label {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  font-size: 0.68rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
+/* Only shown while the stream is actually playing — bound to the <audio>
+   element's real play/pause events in assets/js/radio.js, never a static
+   "on air" claim. */
+.radio__dot {
+  position: absolute;
+  top: -1px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--surface);
+  background: var(--red);
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease);
+}
+
+.radio__dot--live {
+  opacity: 1;
+  box-shadow: 0 0 8px var(--red-glow);
 }
 
 .radio__panel {
-  width: min(260px, 78vw);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 0.75rem);
+  width: min(248px, 84vw);
   background: var(--surface);
-  border: 1px solid var(--rule-strong);
-  border-left: none;
-  padding: 1rem;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--red);
+  /* The radio is the one place on the site that rounds its corners. Every
+     other surface is hard-edged by design; this widget reads as a physical
+     object sitting on top of the page rather than part of it, so it gets a
+     plinth-like shell instead. Deliberate exception, agreed with the owner. */
+  border-radius: 20px;
+  padding: 1.1rem;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 24px var(--red-glow);
+  transform-origin: bottom left;
+  animation: radio-pop var(--dur) var(--ease);
 }
 
 .radio__panel[hidden] {
@@ -1928,29 +1980,170 @@ p > .link-underline:only-child {
 .radio__head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.85rem;
-}
-
-.radio__dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--fg-muted);
-  flex: none;
-}
-
-.radio__dot--live {
-  background: var(--red);
-  box-shadow: 0 0 8px var(--red-glow);
+  margin-bottom: 0.9rem;
 }
 
 .radio__name {
-  flex: 1;
   font-size: 0.72rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--fg-muted);
+}
+
+.radio__close {
+  margin: -10px -10px -10px 0;
+}
+
+/* The disc: a compact-disc surface rather than a grooved record — one
+   smooth reflective face built from a conic sheen, carrying the fixed line
+   across its middle. It spins only while playing, and clicking it directly
+   toggles play/pause the same as the dedicated button. */
+.radio__vinyl {
+  display: block;
+  width: 168px;
+  height: 168px;
+  margin: 0 auto 1rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.radio__vinyl:focus-visible {
+  outline: 2px solid var(--red-ink);
+  outline-offset: 3px;
+}
+
+.radio__vinyl-spin {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 50%;
+  transition: filter var(--dur) var(--ease);
+}
+
+.radio__vinyl:hover .radio__vinyl-spin,
+.radio__vinyl:focus-visible .radio__vinyl-spin {
+  filter: brightness(1.15);
+}
+
+.cd {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 50%, #101010 0%, #070707 58%, #0d0d0d 100%);
+  box-shadow: inset 0 0 0 1px var(--rule-strong);
+}
+
+/* The reflective face. A conic gradient is what actually reads as a CD —
+   a repeating sweep of light around the centre rather than concentric
+   rings. Kept low-contrast so the label stays the loudest thing on the
+   disc. Supported well inside the Safari 15.4 / Chrome 100 baseline. */
+.cd__sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 210deg,
+    rgba(255, 255, 255, 0.11) 0deg,
+    rgba(255, 26, 26, 0.09) 38deg,
+    rgba(255, 255, 255, 0.03) 74deg,
+    rgba(255, 255, 255, 0.13) 128deg,
+    rgba(255, 26, 26, 0.07) 172deg,
+    rgba(255, 255, 255, 0.02) 214deg,
+    rgba(255, 255, 255, 0.12) 268deg,
+    rgba(255, 26, 26, 0.08) 312deg,
+    rgba(255, 255, 255, 0.04) 350deg,
+    rgba(255, 255, 255, 0.11) 360deg
+  );
+  mask-image: radial-gradient(circle at 50% 50%, transparent 17%, #000 24%, #000 97%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 17%, #000 24%, #000 97%, transparent 100%);
+}
+
+/* The label line, matched to the reference texture: heavy weight, soft
+   blurred edges and a red bloom rather than crisp lettering — a degraded
+   print / VHS look. The blur is deliberate; this text is decoration, and
+   the accessible name lives on the button that wraps it. */
+/* The label lines, matched to the reference texture: heavy weight, soft
+   blurred edges and a red bloom rather than crisp lettering — a degraded
+   print / VHS look. Split above and below the spindle so the hole reads as
+   part of the disc instead of punching a gap through a word. The blur is
+   deliberate; this text is decoration, and the accessible name lives on the
+   button that wraps it. */
+.cd__text {
+  position: absolute;
+  left: 50%;
+  z-index: 1;
+  width: 80%;
+  transform: translateX(-50%);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 0.66rem;
+  line-height: 1.12;
+  letter-spacing: -0.005em;
+  text-align: center;
+  color: var(--red-ink);
+  filter: blur(0.4px);
+  text-shadow:
+    0 0 1px var(--red-deep),
+    0 0 3px rgba(255, 26, 26, 0.38),
+    0.5px 0.5px 0 var(--red-deep);
+}
+
+.cd__text--top {
+  top: 16%;
+}
+
+.cd__text--bottom {
+  bottom: 16%;
+}
+
+.cd__hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 17%;
+  height: 17%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  z-index: 2;
+}
+
+.cd__hole {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 9%;
+  height: 9%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--rule-strong);
+  z-index: 3;
+}
+
+/* Non-linear "organic" spin: an irregular set of keyframe stops (see
+   @keyframes vinyl-spin below) rather than a constant-speed loop, so the
+   rotation clearly wavers slow-fast-slow-fast instead of reading as a
+   steady turntable. The sitewide prefers-reduced-motion rule near the other
+   @keyframes collapses this to its end state like every other animation on
+   the site — no separate override needed here. */
+.radio.is-playing .radio__vinyl {
+  box-shadow: 0 0 20px var(--red-glow);
+}
+
+.radio.is-playing .radio__vinyl-spin {
+  animation: vinyl-spin 7s ease-in-out infinite;
 }
 
 .radio__controls {
@@ -1963,19 +2156,25 @@ p > .link-underline:only-child {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   flex: none;
   background: transparent;
   color: var(--fg);
   border: 1px solid var(--rule);
+  border-radius: 50%;
   cursor: pointer;
-  transition: border-color var(--dur) var(--ease);
+  transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease);
 }
 
 .radio__play:hover,
 .radio__play:focus-visible {
-  border-color: var(--rule-strong);
+  border-color: var(--red);
+}
+
+.radio__play.is-playing {
+  border-color: var(--red);
+  background: var(--red-deep);
 }
 
 .radio__play .icon {
@@ -1995,13 +2194,60 @@ p > .link-underline:only-child {
   display: inline-flex;
 }
 
-.radio__volume {
+.radio__volume-wrap {
   flex: 1;
-  accent-color: var(--red);
+  display: flex;
+  align-items: center;
+}
+
+/* Styled explicitly rather than left to accent-color: the default control
+   paints an unfilled white track, which on this dark plinth read as an
+   unstyled browser widget sitting in the middle of the panel. */
+.radio__volume {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--rule-strong);
+  cursor: pointer;
+}
+
+.radio__volume:focus-visible {
+  outline: 2px solid var(--red-ink);
+  outline-offset: 4px;
+}
+
+.radio__volume::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 8px var(--red-glow);
+}
+
+.radio__volume::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 8px var(--red-glow);
+}
+
+.radio__volume::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--rule-strong);
 }
 
 .radio__embed {
   width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .radio__embed iframe {
@@ -2012,7 +2258,7 @@ p > .link-underline:only-child {
 
 .radio__link {
   display: block;
-  margin-top: 0.85rem;
+  margin-top: 0.9rem;
   font-size: 0.68rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -2023,29 +2269,45 @@ p > .link-underline:only-child {
   color: var(--fg);
 }
 
-/* Below 900px the vertically-centred left edge would sit over page content
-   readers actually need to touch, and the collapsed tab would crowd the
-   bottom-docked .sticky-buy bar — so on mobile the player docks under the
-   header/marquee instead, collapsed by default, never centred. */
+/* Below 900px .sticky-buy (product pages only, but its slot is reserved on
+   every mobile page rather than detected at runtime) docks at the very
+   bottom edge — so the collapsed tab sits permanently above that band,
+   shrunk slightly, and stays collapsed by default.
+
+   It also swaps to the right edge here. On a narrow screen the bottom-left
+   corner is where the content actually is: the tab sat over the hero line on
+   the homepage, the gallery thumbnail strip on a product page, and body copy
+   on the policy pages. The right corner is clear of all three. The panel has
+   to be re-anchored with it — left:0 from the desktop rule would open it off
+   the right-hand edge of the screen. */
 @media (max-width: 899px) {
   .radio {
-    top: calc(var(--header-h) + var(--marquee-h) + 0.6rem);
-    transform: none;
+    left: auto;
+    right: 0.75rem;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 0.75rem);
   }
 
   .radio__tab {
-    flex-direction: row;
-    min-height: 44px;
-    padding: 0.5rem 0.65rem;
+    width: 46px;
+    height: 46px;
   }
 
-  .radio__tab-label {
-    writing-mode: horizontal-tb;
-    transform: none;
+  .radio__tab .icon {
+    width: 22px;
+    height: 22px;
   }
 
   .radio__panel {
-    width: min(220px, 70vw);
+    left: auto;
+    right: 0;
+    transform-origin: bottom right;
+    width: min(228px, 82vw);
+    padding: 0.9rem;
+  }
+
+  .radio__vinyl {
+    width: 148px;
+    height: 148px;
   }
 }
 
@@ -2705,7 +2967,7 @@ p > .link-underline:only-child {
 .admin-warning {
   border: 1px solid var(--red);
   border-left-width: 4px;
-  background: rgba(196, 18, 18, 0.08);
+  background: rgba(255, 26, 26, 0.08);
   padding: clamp(1rem, 3vw, 1.5rem);
   margin: 1.5rem 0 2.5rem;
 }
@@ -2956,6 +3218,43 @@ p > .link-underline:only-child {
   }
 }
 
+@keyframes radio-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+}
+
+/* Deliberately irregular stops/deltas (not evenly spaced, not evenly sized)
+   so the vinyl's rotation reads as organic slow-fast-slow-fast rather than a
+   constant-speed turntable loop. */
+@keyframes vinyl-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  9% {
+    transform: rotate(8deg);
+  }
+  22% {
+    transform: rotate(118deg);
+  }
+  33% {
+    transform: rotate(140deg);
+  }
+  50% {
+    transform: rotate(268deg);
+  }
+  61% {
+    transform: rotate(288deg);
+  }
+  80% {
+    transform: rotate(350deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 body.is-locked {
   overflow: hidden;
 }
@@ -3013,10 +3312,15 @@ body.is-locked {
 }
 
 /* A middot, not a slash: the Fit value is itself "Regular / Relaxed", and a
-   slash separator made the row read as four ambiguous items. */
-.pdp__specs li + li::before {
+   slash separator made the row read as four ambiguous items.
+
+   The separator belongs to the item BEFORE it, not the one after. Carried on
+   ::before, a wrap put the dot at the start of the next line — on a 375px
+   phone the row read "ZZFABRIC 100% COTTON" / "· APPROX. 240 GSM · REGULAR",
+   a line opening on a bullet with nothing in front of it. */
+.pdp__specs li:not(:last-child)::after {
   content: '\00B7';
-  margin-right: 0.75rem;
+  margin-left: 0.75rem;
   color: var(--rule-strong);
 }
 
@@ -3043,6 +3347,46 @@ body.is-locked {
 .returning__body {
   font-size: 0.85rem;
   color: var(--fg-muted);
+}
+
+/* The note sits between two fieldsets, so the second fieldset was losing the
+   gap `.fieldset + .fieldset` gives it and its legend landed straight under
+   the note's border. */
+.returning + .fieldset {
+  margin-top: 2.5rem;
+}
+
+/* Cart page summary: the shipping fineprint ran straight into the Checkout
+   button with no gap at all. */
+.cart-page__summary .muted {
+  margin: 0.25rem 0 1.1rem;
+}
+
+/* Order lookup (the /order/ page when the receipt is not in this browser):
+   the input, its button and the explanation were stacked with no spacing. */
+.order-lookup {
+  margin-top: 1.5rem;
+  max-width: 28rem;
+}
+
+.order-lookup .field {
+  margin-top: 0;
+}
+
+.order-lookup .btn {
+  margin-top: 1rem;
+}
+
+.fineprint {
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--fg-muted);
+  max-width: var(--measure);
+  margin-top: 1rem;
+}
+
+.fineprint + p {
+  margin-top: 1.5rem;
 }
 
 /* Discount line in the summary. Red is the accent, and it is the one place a
@@ -3087,4 +3431,503 @@ body.is-locked {
   color: var(--fg);
   margin-bottom: 1rem;
   font-weight: 500;
+}
+
+/* ==========================================================================
+   POLISH PASS — interaction states
+   Every interactive element gets a considered hover AND a visible
+   focus-visible state, on the same --dur/--ease as the rest of the system.
+   The sitewide prefers-reduced-motion rule collapses all of these.
+   ========================================================================== */
+
+/* Header: the wordmark is a link home and had no hover at all. */
+.header__brand .header__mark,
+.icon-btn {
+  transition: opacity var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.header__brand:hover .header__mark,
+.header__brand:focus-visible .header__mark {
+  opacity: 0.68;
+}
+
+.icon-btn:hover,
+.icon-btn:focus-visible {
+  color: var(--red-ink);
+}
+
+/* Breadcrumbs and the policy rail changed colour on hover with no easing. */
+.crumbs a,
+.policy__nav a,
+.line__remove,
+.radio__link,
+.card__badge--muted {
+  transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+/* Prose links were underlined but completely static — the only link family on
+   the site with no hover response. */
+.prose a {
+  transition: color var(--dur) var(--ease), text-decoration-color var(--dur) var(--ease);
+}
+
+.prose a:hover,
+.prose a:focus-visible {
+  color: var(--red-ink);
+}
+
+/* The card CTA only lit up on pointer hover; a keyboard user tabbing the
+   grid got the image swap but not the label. */
+.card__link:focus-visible .card__cta {
+  color: var(--fg);
+  border-color: var(--fg);
+}
+
+.category-row__see-all:focus-visible {
+  color: var(--red-ink);
+}
+
+/* Gallery: the dots had no hover at all and the thumbnails responded to the
+   pointer but not the keyboard. */
+.gal__dot:hover::after,
+.gal__dot:focus-visible::after {
+  opacity: 1;
+  background: var(--fg);
+}
+
+.gal__thumb:focus-visible {
+  opacity: 1;
+}
+
+/* Lightbox controls were pure white glyphs with no state change. */
+.lightbox__close,
+.lightbox__nav {
+  transition: color var(--dur) var(--ease);
+}
+
+.lightbox__close:hover,
+.lightbox__close:focus-visible,
+.lightbox__nav:hover,
+.lightbox__nav:focus-visible {
+  color: var(--red-ink);
+}
+
+/* Mobile menu: the largest tap targets on the site had no feedback at all. */
+.mobile-menu__nav a,
+.mobile-menu__group summary,
+.mobile-menu__group a {
+  transition: color var(--dur) var(--ease);
+}
+
+.mobile-menu__nav > a:hover,
+.mobile-menu__nav > a:focus-visible,
+.mobile-menu__group summary:hover,
+.mobile-menu__group summary:focus-visible {
+  color: var(--red-ink);
+}
+
+.mobile-menu__group a:hover,
+.mobile-menu__group a:focus-visible {
+  color: var(--fg);
+}
+
+/* Cart-line steppers: the only button family on the site with no hover. */
+.line__qty button {
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.line__qty button:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.line__qty button:disabled {
+  color: var(--fg-muted);
+  cursor: not-allowed;
+}
+
+/* Form fields: the newsletter input had no focus treatment of its own, so it
+   fell back to the generic ring while the checkout fields got a red edge.
+   One field idiom now, everywhere. */
+.signup__input,
+.field__input,
+.qty__input {
+  transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease),
+    outline-color var(--dur) var(--ease);
+}
+
+.signup__input:hover:not(:focus),
+.field__input:hover:not(:focus) {
+  border-color: var(--fg);
+}
+
+.signup__input:focus {
+  outline: 2px solid var(--red-ink);
+  outline-offset: 0;
+  border-color: var(--red-ink);
+}
+
+.qty__input:focus-visible {
+  outline-offset: -2px;
+}
+
+/* The accordion arrow already eased; its label did not carry the same
+   response to the keyboard. */
+.acc__summary:focus-visible {
+  color: var(--fg);
+}
+
+/* ==========================================================================
+   POLISH PASS — pressed states and transition consistency
+   ========================================================================== */
+
+/* .btn animated background, colour, border and opacity but NOT box-shadow,
+   so the red glow on the primary button appeared instantly while the fill
+   underneath it took 260ms. */
+.btn {
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease), opacity var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+/* No button on the site had a pressed state — a tap on a phone gave no
+   confirmation between touchstart and the page reacting. Pressed reads as
+   "pushed into the red", using the deep red already in the palette. */
+.btn--solid:active:not(:disabled),
+.btn--wa:active:not(:disabled) {
+  background: var(--red-deep);
+  border-color: var(--red);
+  color: var(--fg);
+  box-shadow: none;
+}
+
+.btn--outline:active:not(:disabled) {
+  background: var(--fg-muted);
+  border-color: var(--fg-muted);
+  color: var(--bg);
+}
+
+.btn--ghost:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--fg);
+}
+
+.btn--danger:active:not(:disabled) {
+  background: var(--red-deep);
+  color: var(--fg);
+}
+
+/* The size, quantity and cart steppers are the controls a customer taps most
+   and had hover only. */
+.size-btn:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--fg);
+}
+
+.qty__btn:active:not(:disabled),
+.line__qty button:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.icon-btn:active,
+.gal__dot:active::after,
+.lightbox__close:active,
+.lightbox__nav:active {
+  opacity: 0.6;
+}
+
+/* The radio tab eased its border and glow but the live dot and the panel's
+   play button did not share the timing. (Radio panel internals — visual
+   only, no behaviour or position change.) */
+.radio__play {
+  transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+
+.radio__close:hover,
+.radio__close:focus-visible {
+  color: var(--red-ink);
+}
+
+/* A form that has been submitted and is waiting on the network: the button
+   is disabled by the script, but nothing said "working". */
+.btn[aria-busy='true'],
+.checkout__form[aria-busy='true'] .btn {
+  cursor: progress;
+}
+
+/* ==========================================================================
+   POLISH PASS — typography hierarchy
+   ========================================================================== */
+
+/* .prose h2 was clobbering an EXPLICIT display heading nested inside prose.
+   The story page's "the first piece." is marked up exactly like the home
+   page's "why vestiphobia." (.display .display--md .display--lower) but sits
+   inside .prose, so it rendered at 16px/700 uppercase — a caption-tier label
+   — where the identical component on the home page renders at 56px lowercase
+   Anton. The generic rule now stands aside for a declared display heading. */
+.prose h2.display {
+  margin: 0 0 1.25rem;
+}
+
+.prose h2.display:not(:first-child) {
+  margin-top: 2.5rem;
+}
+
+/* The "(optional)" qualifier inside a field label used the generic .muted
+   size — 14px against the label's 11.2px, so the qualifier was 25% LARGER
+   than the thing it qualifies. It now sits below the label in the same
+   tier it belongs to. */
+.field__label .muted {
+  font-size: inherit;
+  font-weight: 400;
+  letter-spacing: inherit;
+  color: var(--fg-muted);
+}
+
+/* Four headings sit in one row of the footer grid. Three were .eyebrow
+   (10.88px / 600 / 0.22em / muted); the newsletter one was 12.8px / 700 /
+   0.18em / white — a different tier inside the same row. */
+.footer__signup-h {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--fg-muted);
+  margin-bottom: 0.75rem;
+}
+
+/* The product panel's "size" legend is a block and got its 12px of air; the
+   "quantity" label is a <span>, so its margin-bottom was silently dropped
+   and the stepper sat flush against its label. */
+.qty > .eyebrow {
+  display: block;
+}
+
+/* The lede sets its own 46ch measure but inherited body leading at a size
+   large enough for it to read loose. */
+.lede {
+  line-height: 1.55;
+}
+
+/* Long-form prose at the default 16px was at body leading on a 62ch measure;
+   62ch wants a touch more. --measure was already applied here, the leading
+   was not tuned to it. */
+.prose {
+  line-height: 1.65;
+}
+
+.prose--lg {
+  line-height: 1.7;
+}
+
+/* The two large poster headings on the home page carry no bottom margin of
+   their own — the grid handles it — but the page-head H1 on every inner page
+   is followed by a note at 16px, which read as attached to the heading
+   rather than as a tier below it. */
+.page-head__note {
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   POLISH PASS — vertical rhythm
+   ========================================================================== */
+
+/* The home page's campaign band closed on the --tight tier (64px at 1440)
+   while the section above and the story band below both run at the full
+   section tier (112px). Now that the product row above it is on the full
+   tier too, the band sits symmetrically: 112px of air above the first frame
+   and 112px below the last one. */
+.editorial {
+  padding-bottom: clamp(3.5rem, 8vw, 7rem);
+}
+
+/* The checkout column stacked its blocks at three different gaps in a row:
+   24px (fieldset -> returning-customer notice), 40px (notice -> fieldset),
+   32px (fieldset -> Confirm button). One 40px rhythm between every top-level
+   block in the form now, matching .fieldset + .fieldset. */
+.returning {
+  margin-top: 2.5rem;
+}
+
+.checkout__form > .btn {
+  margin-top: 2.5rem;
+}
+
+/* The 404 stack ran on a flat 20px grid gap, so the eyebrow sat 32px above
+   its own heading (gap + the eyebrow's own 12px) — looser than the gap
+   between the heading and the paragraph under it. The pairing now matches
+   the order page: 12px eyebrow -> heading, 24px heading -> lede, 32px lede
+   -> actions. */
+.error-page__inner {
+  gap: 1.5rem;
+}
+
+.error-page__inner .eyebrow {
+  margin-bottom: -0.75rem;
+}
+
+/* The empty cart page was a heading, a void, and one grey sentence floating
+   in the middle of it. The message now sits on the same hairline the cart
+   lines would have drawn, so the page reads as a cart with nothing in it
+   rather than an unfinished page. */
+.cart-page__lines > .drawer__empty {
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  padding: 2.5rem 0;
+}
+
+/* .acc--standalone opened at 2rem while the accordion stack inside the
+   product panel opens at 1.25rem; both are the same component boundary. */
+.acc--standalone {
+  margin-top: 2.5rem;
+}
+
+/* ==========================================================================
+   POLISH PASS — mobile refinement and small UI details
+   ========================================================================== */
+
+/* Poster headings set at 0.92 leading with a -0.01em tuck are built for one
+   or two words on a wide screen. At 375px "THIS PAGE DOESN'T EXIST." and the
+   policy titles break mid-phrase with the tracking still pulled tight, which
+   reads as damaged rather than deliberate. Below 560px the tuck relaxes and
+   long words break rather than push the gutter. */
+@media (max-width: 560px) {
+  .display {
+    letter-spacing: 0;
+    overflow-wrap: break-word;
+  }
+}
+
+/* The size row wraps to a second line on the narrowest phones; the row gap
+   was the same 0.65rem as the column gap, so the two lines sat closer
+   together than the buttons sat apart in the visual reading order. */
+@media (max-width: 900px) {
+  .sizes__row {
+    gap: 0.65rem;
+  }
+}
+
+/* The stepper and the size buttons are one control family (same border, same
+   52px height) but the stepper's own buttons were 48px wide against the size
+   buttons' 58px minimum — visibly narrower in the same column. */
+.qty__btn {
+  width: 52px;
+}
+
+/* Placeholders were --fg-muted, the same colour as real supporting copy, so
+   an empty field looked filled in at a glance. A step dimmer separates
+   "nothing typed yet" from "this is information". */
+.signup__input::placeholder,
+.field__input::placeholder {
+  color: rgba(255, 255, 255, 0.42);
+  opacity: 1;
+}
+
+/* An invalid field marked its left edge but kept the resting border colour
+   on the other three sides, so on a phone — where the label sits above and
+   the eye lands on the box — the error read as a rendering artifact. */
+.field__input[aria-invalid='true'] {
+  background: rgba(255, 26, 26, 0.06);
+}
+
+/* The "LOW" flag on a size button is the smallest type on the site at
+   0.55rem with 0.08em tracking; it needed the same glow the .card__badge
+   gets so it reads as lit rather than as a printing error. */
+.size-btn__low {
+  box-shadow: 0 0 10px var(--red-glow);
+  line-height: 1.4;
+}
+
+/* Order status tags carried no vertical centring for their own type size, so
+   a one-word tag and a two-word tag sat on different optical baselines. */
+.tag {
+  line-height: 1.2;
+}
+
+/* The drawer's empty state was a bare grey sentence in a 700px void. It
+   closes on the same hairline the cart lines would draw — but only in the
+   drawer, where there is nothing else to bound it. Inside the checkout
+   summary panel the panel's own border already does that job. */
+.drawer__body > .drawer__empty {
+  padding: 2.5rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+/* The free-shipping progress bar is the one element that changes colour to
+   report a state; it snapped between the two. */
+.ship-progress {
+  transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+
+/* Status lines (add-to-cart confirmation, checkout errors, newsletter
+   result) appeared instantly with no easing while everything around them
+   eased. */
+.pdp__added,
+.checkout__status,
+.signup__status,
+.sizes__hint {
+  transition: color var(--dur) var(--ease);
+}
+
+/* The sticky mobile buy bar sat on a flat black band against a black page;
+   the top rule was the only thing separating it from the content scrolling
+   under it. A slightly raised ground makes it read as a layer. */
+.sticky-buy {
+  background: var(--surface);
+}
+
+/* ==========================================================================
+   POLISH PASS — the underline marker tracks the text, not the tap target
+
+   Several link families mark hover / current-page with a border-bottom on a
+   box that was padded out to a 44px tap target. The border draws at the
+   bottom of that box, so the rule detached from the word it belongs to by
+   a different amount at every viewport — measured 18px under the current
+   policy link at 375px, 7px at 1440px; 17px under a header nav link at
+   1440px; 14px under a footer link at 375px, 1px at 1440px.
+
+   Switching the marker to text-decoration pins it to the text at one fixed
+   offset everywhere, and leaves the tap target exactly as large as it was.
+   ========================================================================== */
+
+.nav-link,
+.policy__nav a,
+.plain-list a,
+.category-row__see-all,
+.line__remove,
+.card__cta {
+  border-bottom: 0;
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+  transition: color var(--dur) var(--ease), text-decoration-color var(--dur) var(--ease);
+}
+
+.nav-link:hover,
+.nav-link:focus-visible,
+.policy__nav a:hover,
+.policy__nav a:focus-visible,
+.policy__nav a[aria-current='page'],
+.plain-list a:hover,
+.plain-list a:focus-visible,
+.category-row__see-all:hover,
+.category-row__see-all:focus-visible,
+.line__remove:hover,
+.line__remove:focus-visible,
+.card__link:hover .card__cta,
+.card__link:focus-visible .card__cta {
+  text-decoration-color: currentColor;
+}
+
+/* The cart control carries the class but is an icon + count, not a word —
+   an underline across an icon reads as a strikethrough. It responds in
+   colour instead. */
+.cart-link {
+  text-decoration-line: none;
+}
+
+.cart-link:hover,
+.cart-link:focus-visible {
+  color: var(--red-ink);
 }

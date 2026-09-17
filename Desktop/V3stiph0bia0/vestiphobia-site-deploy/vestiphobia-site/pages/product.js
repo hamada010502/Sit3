@@ -1,8 +1,8 @@
 import { site as staticSite, isSet } from '../site.config.js';
 import { page } from '../lib/layout.js';
 import { iconClose, iconArrow } from '../lib/icons.js';
-import { esc, money, paragraphs, when } from '../lib/html.js';
-import { picture, preloadHero, imageEntry } from '../lib/images.js';
+import { esc, money, paragraphs, priceHtml, when } from '../lib/html.js';
+import { picture, preloadHero, imageEntry, thumbSrc } from '../lib/images.js';
 import { products as staticProducts, toStoreShape, toProductViewModel } from '../data/products.js';
 
 function accordion(id, heading, inner, open = false) {
@@ -16,12 +16,21 @@ function accordion(id, heading, inner, open = false) {
 }
 
 function sizeGuideBody(p) {
-  if (!isSet(p.sizeGuide?.measurements)) {
-    return `<p>${esc(p.sizeGuide?.note || 'A measurement chart will be published here once confirmed.')}</p>`;
+  const note = p.sizeGuide?.note;
+  // A row whose every measurement cell is blank is not a measurement — the
+  // admin's table editor can post one (its starter rows carry a size label and
+  // nothing else), and rendering it produced a chart of empty boxes.
+  const rows = (p.sizeGuide?.measurements || []).filter((r) =>
+    Object.entries(r).some(([k, v]) => k !== 'size' && isSet(v) && String(v).trim() !== '')
+  );
+  if (!rows.length) {
+    return `<p>${esc(note || 'A measurement chart will be published here once confirmed.')}</p>`;
   }
-  const rows = p.sizeGuide.measurements;
   const cols = Object.keys(rows[0]).filter((k) => k !== 'size');
-  return `<div class="table-scroll"><table class="size-table">
+  // The admin labels this field "Note shown above the table" — it used to be
+  // rendered only as the fallback when there was no table at all, so the
+  // moment measurements existed the note silently disappeared.
+  return `${note ? `<p class="size-guide__note">${esc(note)}</p>` : ''}<div class="table-scroll"><table class="size-table">
   <thead><tr><th scope="col">Size</th>${cols.map((c) => `<th scope="col">${esc(c)}</th>`).join('')}</tr></thead>
   <tbody>${rows
     .map(
@@ -47,8 +56,17 @@ function confirmedSpecs(p) {
   ].filter(([, v]) => isSet(v));
 }
 
+/**
+ * The spec rows for the Product details accordion: the three that also run
+ * inline under the price, plus the print method — which the admin has always
+ * been able to set and the page has never shown anywhere.
+ */
+function detailSpecs(p) {
+  return [...confirmedSpecs(p), ...(isSet(p.printMethod) ? [['Print', p.printMethod]] : [])];
+}
+
 function detailsBody(p) {
-  const specs = confirmedSpecs(p);
+  const specs = detailSpecs(p);
 
   const stillPending = !p.careInstructions?.length || !isSet(p.sizeGuide?.measurements);
 
@@ -77,7 +95,27 @@ function shippingBody(site, content) {
   if (!isSet(site.shipping.processingTime) && !isSet(deliveryEstimate)) {
     lines.push('Processing and delivery estimates will be published once shipping is finalized.');
   }
-  return paragraphs(lines) + `<p><a class="link-underline" href="/policies/shipping/">Shipping policy</a></p>`;
+  return paragraphs(lines) + `<p><a class="link-underline link-cta" href="/policies/shipping/">Shipping policy</a></p>`;
+}
+
+/**
+ * Built from site.returns (and the admin-editable window), not written out by
+ * hand: this accordion used to carry its own "conditions are being finalized"
+ * sentence, which stayed on the product page long after the policy itself was
+ * confirmed and contradicted /policies/returns/. Deriving both from the same
+ * source is what stops them drifting apart again.
+ */
+function returnsBody(site, content) {
+  const r = site.returns;
+  const windowDays = content['returns.window_days'] || r.exchangeWindowDays;
+  const lines = [
+    `Exchanges within ${windowDays} days of receiving your order, for a size mismatch or a problem with the product.`,
+    r.cashRefunds
+      ? 'Refunds are available on request.'
+      : 'Exchanges only — we do not offer cash refunds at this time.',
+    'The item must be unused, unwashed, undamaged and in its original condition.',
+  ];
+  return paragraphs(lines) + `<p><a class="link-underline link-cta" href="/policies/returns/">Returns policy</a></p>`;
 }
 
 function supportBody(site, content) {
@@ -92,7 +130,7 @@ function gallery(p) {
     .map(
       (im, i) => `<button class="gal__thumb${i === 0 ? ' is-active' : ''}" type="button"
       data-gal-thumb="${i}" aria-label="Show image ${i + 1} of ${p.images.length}"${i === 0 ? ' aria-current="true"' : ''}>
-      <img src="${esc(im.src)}" alt="" aria-hidden="true" loading="lazy" decoding="async">
+      <img src="${esc(thumbSrc(im))}" alt="" aria-hidden="true" loading="lazy" decoding="async">
     </button>`
     )
     .join('\n    ');
@@ -136,7 +174,7 @@ function gallery(p) {
   </div>
 </div>
 
-<div class="lightbox" data-lightbox hidden>
+<div class="lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="Product image viewer" hidden>
   <button class="lightbox__close" type="button" data-lb-close aria-label="Close">${iconClose()}</button>
   <button class="lightbox__nav lightbox__nav--prev" type="button" data-lb-prev aria-label="Previous image">${iconArrow()}</button>
   <img class="lightbox__img" data-lb-img alt="">
@@ -158,7 +196,13 @@ function sizeButton(s) {
   return `<button class="size-btn" type="button" role="radio" aria-checked="false"
             data-size="${esc(s.label)}" data-state="${state}"${
               disabled ? ' disabled aria-disabled="true"' : ''
-            }${s.low ? ` aria-label="${esc(s.label)} — low stock"` : ''}>${esc(s.label)}${
+            }${
+              !s.available
+                ? ` aria-label="${esc(s.label)} — sold out"`
+                : s.low
+                  ? ` aria-label="${esc(s.label)} — low stock"`
+                  : ''
+            }>${esc(s.label)}${
               s.low ? '<span class="size-btn__low" aria-hidden="true">LOW</span>' : ''
             }</button>`;
 }
@@ -187,11 +231,7 @@ export default function product(rawProduct, { site = staticSite, content = {}, a
     <div class="pdp__head">
       ${p.badge ? `<p class="eyebrow eyebrow--lower">${esc(p.badge)}</p>` : ''}
       <h1 class="pdp__title">${esc(p.name)}</h1>
-      <p class="price price--lg">${
-        p.compareAtPrice
-          ? `<span class="card__was">${money(p.compareAtPrice, p.currency)}</span> ${money(p.price, p.currency)}`
-          : money(p.price, p.currency)
-      }</p>
+      <p class="price price--lg">${priceHtml(p.price, p.compareAtPrice, p.currency)}</p>
       ${when(
         confirmedSpecs(p).length > 0,
         () => `<ul class="pdp__specs">${confirmedSpecs(p)
@@ -265,7 +305,7 @@ export default function product(rawProduct, { site = staticSite, content = {}, a
       ${accordion(
         'acc-returns',
         'Returns & exchanges',
-        `<p>Return and exchange conditions are currently being finalized. Contact ${esc(site.brand)} before sending any item back.</p><p><a class="link-underline" href="/policies/returns/">Returns policy</a></p>`
+        returnsBody(site, content)
       )}
       ${accordion('acc-support', 'Support', supportBody(site, content))}
     </div>
@@ -295,8 +335,12 @@ export default function product(rawProduct, { site = staticSite, content = {}, a
       '@type': 'Offer',
       price: p.price,
       priceCurrency: p.currency,
+      // `soldOut` is the resolved flag toProductViewModel() produces for BOTH
+      // shapes; `availability` only ever exists on the static catalogue, so
+      // reading it alone told Google a DB-backed product with every size at
+      // zero was still in stock.
       availability:
-        p.availability === 'sold_out'
+        p.soldOut || p.availability === 'sold_out'
           ? 'https://schema.org/OutOfStock'
           : 'https://schema.org/InStock',
       ...(site.domain ? { url: `${site.domain.replace(/\/$/, '')}/products/${p.slug}/` } : {}),
@@ -312,7 +356,7 @@ export default function product(rawProduct, { site = staticSite, content = {}, a
     body,
     products: allProducts.map(toStoreShape),
     jsonLd: productJsonLd,
-    extraHead: preloadHero(heroImage, '(min-width: 900px) 55vw, 100vw'),
+    extraHead: preloadHero(heroImage, '(min-width: 900px) 55vw, 100vw', imageEntry(p.images[0])),
     scripts: ['/assets/js/product.js'],
     site,
     content,

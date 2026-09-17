@@ -31,7 +31,13 @@ const EDITORIAL = [
 ];
 
 export default function home({ site = staticSite, products = staticProducts, product = null, content = {} } = {}) {
-  const p = product || featuredProduct();
+  // The intro block follows the admin's "Featured on homepage" flag on the
+  // live catalogue. It used to read featuredProduct() from the static
+  // data/products.js file regardless of what was passed in, so a rename,
+  // re-photograph or a different featured product in the admin never reached
+  // the homepage. The static entry remains only as a last resort for an
+  // empty catalogue, so the page still renders.
+  const p = product || products.find((x) => x.featured) || products[0] || featuredProduct();
   const main = primaryImage(p.images);
   const detail = p.images.find((i) => i.role === 'detail') || p.images.find((i) => i !== main) || main;
   const heroImage = content['home.hero_image'] || HERO;
@@ -97,7 +103,7 @@ export default function home({ site = staticSite, products = staticProducts, pro
   </div>
 </section>
 
-<section class="section section--tight" aria-label="Browse the collection">
+<section class="section" aria-label="Browse the collection">
   ${groupByCategory(products).map(categoryRow).join('\n  ')}
 </section>
 
@@ -122,7 +128,7 @@ export default function home({ site = staticSite, products = staticProducts, pro
           'This is not fashion. This is personal armor.',
         ]
       )}
-      <p><a class="link-underline" href="/story/">Read our story</a></p>
+      <p><a class="link-underline link-cta" href="/story/">Read our story</a></p>
     </div>
   </div>
 </section>

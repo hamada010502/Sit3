@@ -5,6 +5,7 @@
 
 import { getDb, now } from '../db/index.js';
 import { hashIp } from './auth.js';
+import { imageStorageOrigins } from './uploads.js';
 
 /* ------------------------------------------------------------ request body */
 
@@ -64,7 +65,12 @@ export function securityHeaders({ secure } = {}) {
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data:",
+      // Product photos live on the configured Supabase/S3 storage origin(s),
+      // not this server, once that backend is active — see the comment on
+      // imageStorageOrigins() for why this line is what makes an uploaded
+      // photo actually render. Local-disk uploads are same-origin and need
+      // nothing extra here.
+      ["img-src 'self' data:", ...imageStorageOrigins()].join(' '),
       "connect-src 'self'",
       // The Live365 radio player: media-src for the direct <audio> stream,
       // frame-src for the iframe-embed fallback (site.radio.streamUrl /
@@ -136,6 +142,20 @@ export function redirect(res, location, extraHeaders = {}) {
     'Cache-Control': 'no-store',
     ...securityHeaders({ secure: res.locals?.secure === true }),
     ...extraHeaders,
+  });
+  res.end();
+}
+
+/**
+ * A permanent redirect — used only for a renamed product's old URL. Cached by
+ * browsers and search engines, unlike redirect()'s 302, which is exactly what
+ * "the old link should keep working, forever, pointing at the new one" needs.
+ */
+export function redirectPermanent(res, location) {
+  res.writeHead(301, {
+    Location: location,
+    'Cache-Control': 'no-store',
+    ...securityHeaders({ secure: res.locals?.secure === true }),
   });
   res.end();
 }

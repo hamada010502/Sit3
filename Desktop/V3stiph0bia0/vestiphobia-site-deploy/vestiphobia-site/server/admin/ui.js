@@ -130,6 +130,7 @@ input[type=number]{width:90px}
 .field.checkbox input{width:auto}
 .field.checkbox span{margin:0; text-transform:none; letter-spacing:0; font-size:14px; color:var(--fg)}
 .image-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:14px; margin-bottom:20px}
+.image-preview{display:flex; flex-wrap:wrap; gap:8px; margin:12px 0}
 .image-card{background:var(--panel); border:1px solid var(--line); border-radius:6px; overflow:hidden; padding:0; margin:0}
 .image-card--primary{border-color:var(--green-ink)}
 .image-card img{display:block; width:100%; aspect-ratio:4/5; object-fit:cover; background:#000}

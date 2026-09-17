@@ -19,6 +19,7 @@
     "db:setup": "node server/db/migrate.js all",
     "db:reset": "node scripts/db-reset.js",
     "admin:create": "node scripts/create-admin.js",
+    "fix-live-product": "node scripts/fix-live-product.js",
     "test": "node --test qa/pricing.test.mjs qa/server.test.mjs qa/uploads.test.mjs",
     "test:server": "node --test qa/server.test.mjs",
     "test:uploads": "node --test qa/uploads.test.mjs",

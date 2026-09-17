@@ -121,6 +121,20 @@ const MIGRATIONS = [
       }
     },
   },
+  {
+    /**
+     * Product-slug redirects (see schema.sql for why) — added so an already
+     * migrated database gets the table without a full reset.
+     */
+    version: '005_product_redirects',
+    up: async (db) => {
+      await db.exec(`CREATE TABLE IF NOT EXISTS product_redirects (
+        from_slug   TEXT PRIMARY KEY,
+        to_slug     TEXT NOT NULL,
+        created_at  TEXT NOT NULL
+      )`);
+    },
+  },
 ];
 
 /** The analytics_sessions block of schema.sql, so the DDL lives in one place. */

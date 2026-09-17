@@ -161,7 +161,7 @@ export function checkoutPage({ site = staticSite, products = staticProducts, con
         <div class="sum-row sum-row--total"><span>Total</span><span data-cart-total>$0 USD</span></div>
         <p class="ship-progress" data-ship-progress role="status"></p>
         <p class="muted">Delivery: ${esc(deliveryEstimate)} — ${esc(site.shipping.countryLabel)} only.<br>
-        Shipping fee is paid upon delivery and varies by region.</p>
+        ${esc(content['shipping.fee_note'] || 'Shipping fee is paid upon delivery and varies by region.')}</p>
       </div>
     </aside>
 

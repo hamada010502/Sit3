@@ -103,10 +103,10 @@ export function countdownPage({ brand, opensAt, heading, body, openedText, insta
     display:block; font-size:.6rem; letter-spacing:.2em; text-transform:uppercase;
     color:#A0A0A0; margin-top:.5rem;
   }
-  .rule{width:2.5rem; height:2px; background:#C41212; margin:0 auto 2.5rem}
+  .rule{width:2.5rem; height:2px; background:#FF1A1A; margin:0 auto 2.5rem}
   .when{color:#A0A0A0; font-size:.8rem; letter-spacing:.06em}
   a{
-    color:#fff; text-decoration:none; border-bottom:1px solid #C41212;
+    color:#fff; text-decoration:none; border-bottom:1px solid #FF1A1A;
     padding-bottom:2px; display:inline-flex; align-items:center; min-height:44px;
   }
   @media (prefers-reduced-motion:no-preference){

@@ -25,6 +25,10 @@ export const iconPlay = () =>
 
 export const iconPause = () => svg('<path d="M8 5v14M16 5v14"/>');
 
-// A simple soundwave — reads clearly as "audio" at the small size a
-// collapsed player tab renders at, unlike a literal radio-set glyph would.
-export const iconRadio = () => svg('<path d="M4 10v4M9 6v12M14 3v18M19 9v6"/>');
+// A bold retro radio-set silhouette: rounded body, a filled speaker dial on
+// the left, grill bars on the right, an antenna off the top-right corner.
+// Thicker stroke + a filled dial rather than this file's usual thin outline
+// — a literal radio reads at collapsed-tab size only if it is bold, so this
+// is a second deliberate exception to "no fill", alongside iconPlay.
+export const iconRadio = () =>
+  `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.5" y="8.5" width="19" height="12" rx="2"/><circle cx="7.6" cy="14.5" r="2.5" fill="currentColor"/><path d="M13.2 11.6h6M13.2 14.5h6M13.2 17.2h3.6"/><path d="M17.3 8.5L20.7 4"/></svg>`;

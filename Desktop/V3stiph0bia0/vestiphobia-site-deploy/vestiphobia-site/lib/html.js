@@ -15,6 +15,20 @@ export const money = (amount, currency = 'USD') => {
   return `${body} ${currency}`;
 };
 
+/**
+ * A price, with the pre-sale price beside it when the product is on sale.
+ *
+ * The shop card and the product page each built this string themselves, with
+ * the same classes and the same ternary — and both read out as "$120 USD $88
+ * USD", two bare numbers with nothing saying which one is being charged. The
+ * labels are screen-reader only; the visible price is unchanged.
+ */
+export const priceHtml = (price, compareAt, currency = 'USD') =>
+  compareAt
+    ? `<span class="card__was"><span class="sr-only">Was </span>${money(compareAt, currency)}</span> ` +
+      `<span class="sr-only">Now </span>${money(price, currency)}`
+    : money(price, currency);
+
 export const paragraphs = (list = []) => list.map((p) => `<p>${esc(p)}</p>`).join('\n');
 
 /** Renders only when `cond` is truthy — keeps templates free of ternary noise. */

@@ -129,6 +129,23 @@ if (root) {
     if (e.key === 'Escape') closeLb();
     else if (e.key === 'ArrowLeft') showLb(lbIndex - 1);
     else if (e.key === 'ArrowRight') showLb(lbIndex + 1);
+    else if (e.key === 'Tab') {
+      // The lightbox covers the whole page, so Tab must not walk out of it
+      // into the product page underneath — a keyboard user would be moving
+      // focus through content they cannot see or reach back from.
+      const focusables = [...lb.querySelectorAll('button')].filter((b) => !b.disabled);
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !lb.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || !lb.contains(active))) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
   });
 
   /* ------------------------------------------------- size and quantity */
