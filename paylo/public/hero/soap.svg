@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 560" width="520" height="560">
+<rect width="520" height="560" fill="#FFEBD2"/>
+<g fill="#273248" stroke="#273248" stroke-linejoin="round" stroke-linecap="round"><rect x="120" y="190" width="280" height="170" rx="60" stroke="none"/><ellipse cx="200" cy="245" rx="40" ry="18" fill="#AF4F41" stroke="none"/><rect x="180" y="300" width="160" height="26" rx="13" fill="#AF4F41" stroke="none" opacity=".8"/></g>
+<text x="260" y="512" text-anchor="middle" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="30" font-weight="600" fill="#273248">Olive oil soap</text>
+</svg>

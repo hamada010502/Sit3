@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 560" width="520" height="560">
+<rect width="520" height="560" fill="#273248"/>
+<g fill="#FFA364" stroke="#FFA364" stroke-linejoin="round" stroke-linecap="round"><rect x="110" y="200" width="150" height="160" rx="24" stroke="none"/><rect x="290" y="200" width="150" height="160" rx="24" stroke="none"/><circle cx="270" cy="270" r="34" fill="none" stroke-width="18"/><circle cx="452" cy="270" r="34" fill="none" stroke-width="18"/><rect x="130" y="300" width="110" height="20" rx="10" fill="#FC7643" stroke="none"/><rect x="310" y="300" width="110" height="20" rx="10" fill="#FC7643" stroke="none"/></g>
+<text x="260" y="512" text-anchor="middle" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="30" font-weight="600" fill="#FFEBD2">Ceramic coffee cups</text>
+</svg>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 560" width="520" height="560">
+<rect width="520" height="560" fill="#273248"/>
+<g fill="#FFA364" stroke="#FFA364" stroke-linejoin="round" stroke-linecap="round"><ellipse cx="260" cy="290" rx="190" ry="110" stroke="none"/><ellipse cx="260" cy="290" rx="140" ry="72" fill="#FC7643" stroke="none"/><ellipse cx="260" cy="290" rx="80" ry="36" stroke="none"/></g>
+<text x="260" y="512" text-anchor="middle" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="30" font-weight="600" fill="#FFEBD2">Copper tray</text>
+</svg>

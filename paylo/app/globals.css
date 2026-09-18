@@ -30,3 +30,41 @@ body { @apply bg-karry/40 text-bluewood antialiased; }
   .stat-label { @apply text-xs font-semibold uppercase tracking-wide text-bluewood/50; }
   .stat-value { @apply mt-1 text-2xl font-bold text-bluewood; }
 }
+
+/* ---------- Landing hero: product-card waterfall (transform-only animation) ---------- */
+:root { --wf-card-w: 260px; --wf-card-h: 280px; --wf-gap: 24px; }
+@media (max-width: 1023px) { :root { --wf-card-w: 200px; --wf-card-h: 216px; --wf-gap: 18px; } }
+
+.wf-wrap { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.wf-grid {
+  position: absolute; top: -14%; inset-inline-start: 6%; height: 128%; width: 130%;
+  display: flex; gap: var(--wf-gap); align-items: flex-start;
+  transform: rotate(-10deg) scale(1.1); transform-origin: center;
+}
+[dir="rtl"] .wf-grid { transform: rotate(10deg) scale(1.1); }
+.wf-col {
+  display: flex; flex-direction: column; gap: var(--wf-gap); flex: none;
+  animation-name: wf-down; animation-timing-function: linear; animation-iteration-count: infinite;
+  will-change: transform; backface-visibility: hidden;
+}
+@media (max-width: 1023px) { .wf-col:nth-child(4) { display: none; } }
+.wf-card {
+  position: relative; width: var(--wf-card-w); height: var(--wf-card-h); border-radius: 24px; overflow: hidden; flex: none;
+  pointer-events: auto; transition: transform .3s ease, box-shadow .3s ease; transform: translateZ(0);
+}
+.wf-card img { position: absolute; inset: 9%; width: 82%; height: 82%; object-fit: cover; border-radius: 16px; user-select: none; }
+.wf-card:hover { transform: scale(1.04) translateZ(0); box-shadow: 0 24px 48px rgba(39, 50, 72, .45); }
+@keyframes wf-down { from { transform: translateY(-50%); } to { transform: translateY(0); } }
+
+/* Mobile strip */
+.wf-strip-wrap { overflow: hidden; height: 220px; margin-inline: -16px; }
+.wf-strip { display: flex; gap: 14px; width: max-content; padding-block: 8px; animation: wf-side 34s linear infinite; will-change: transform; }
+[dir="rtl"] .wf-strip { animation-name: wf-side-rtl; }
+.wf-strip .wf-card { width: 176px; height: 196px; border-radius: 20px; }
+@keyframes wf-side { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes wf-side-rtl { from { transform: translateX(0); } to { transform: translateX(50%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .wf-col, .wf-strip { animation: none; }
+  .wf-card { transition: none; }
+}

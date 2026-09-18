@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 560" width="520" height="560">
+<rect width="520" height="560" fill="#FFEBD2"/>
+<g fill="#273248" stroke="#273248" stroke-linejoin="round" stroke-linecap="round"><path d="M130 220 L390 220 L420 420 L100 420 Z" stroke="none"/><path d="M190 220 Q260 100 330 220" fill="none" stroke-width="20"/><circle cx="170" cy="300" r="9" fill="#AF4F41" stroke="none"/><circle cx="170" cy="350" r="9" fill="#AF4F41" stroke="none"/><circle cx="215" cy="300" r="9" fill="#AF4F41" stroke="none"/><circle cx="215" cy="350" r="9" fill="#AF4F41" stroke="none"/><circle cx="260" cy="300" r="9" fill="#AF4F41" stroke="none"/><circle cx="260" cy="350" r="9" fill="#AF4F41" stroke="none"/><circle cx="305" cy="300" r="9" fill="#AF4F41" stroke="none"/><circle cx="305" cy="350" r="9" fill="#AF4F41" stroke="none"/><circle cx="350" cy="300" r="9" fill="#AF4F41" stroke="none"/><circle cx="350" cy="350" r="9" fill="#AF4F41" stroke="none"/></g>
+<text x="260" y="512" text-anchor="middle" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="30" font-weight="600" fill="#273248">Embroidered tote</text>
+</svg>

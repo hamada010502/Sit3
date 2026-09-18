@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 560" width="520" height="560">
+<rect width="520" height="560" fill="#FFEBD2"/>
+<g fill="#273248" stroke="#273248" stroke-linejoin="round" stroke-linecap="round"><path d="M110 260 L410 260 L380 420 L140 420 Z" stroke="none"/><path d="M170 260 Q260 120 350 260" fill="none" stroke-width="22"/><line x1="160" y1="290" x2="150" y2="395" stroke="#AF4F41" stroke-width="8"/><line x1="196" y1="290" x2="186" y2="395" stroke="#AF4F41" stroke-width="8"/><line x1="232" y1="290" x2="222" y2="395" stroke="#AF4F41" stroke-width="8"/><line x1="268" y1="290" x2="258" y2="395" stroke="#AF4F41" stroke-width="8"/><line x1="304" y1="290" x2="294" y2="395" stroke="#AF4F41" stroke-width="8"/><line x1="340" y1="290" x2="330" y2="395" stroke="#AF4F41" stroke-width="8"/><line x1="376" y1="290" x2="366" y2="395" stroke="#AF4F41" stroke-width="8"/></g>
+<text x="260" y="512" text-anchor="middle" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="30" font-weight="600" fill="#273248">Woven basket</text>
+</svg>

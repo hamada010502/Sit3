@@ -8,11 +8,11 @@ export function LogoIcon({ size = 32 }: { size?: number }) {
     </svg>
   );
 }
-export function Logo({ size = 32, wordmark = true }: { size?: number; wordmark?: boolean }) {
+export function Logo({ size = 32, wordmark = true, dark = false }: { size?: number; wordmark?: boolean; dark?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2">
       <LogoIcon size={size} />
-      {wordmark && <span className="font-bold tracking-tight text-bluewood" style={{ fontSize: size * 0.7 }}>Paylo</span>}
+      {wordmark && <span className={`font-bold tracking-tight ${dark ? 'text-karry' : 'text-bluewood'}`} style={{ fontSize: size * 0.7 }}>Paylo</span>}
     </span>
   );
 }

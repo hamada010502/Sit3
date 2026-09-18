@@ -96,5 +96,15 @@ export const en = {
   yes: 'Yes', no: 'No', back: 'Back', required: 'Required', none: 'None', search: 'Search', showing: 'Showing', of: 'of', page_not_found: 'Page not found',
   footer: 'Paylo — payments and delivery for Syrian sellers. SYP only. Card payments only.',
   by_buyer: 'Buyer', by_seller: 'Seller', by_admin: 'Paylo admin', by_system: 'System',
+  // landing hero (v2)
+  hero2_tab_sellers: 'For Sellers', hero2_tab_buyers: 'For Buyers', hero2_login: 'Log in', hero2_signup: "Sign up – it's free",
+  hero2_nav_what: 'What is Paylo?', hero2_nav_pricing: 'Pricing',
+  hero2_h1: 'Your store. One link.',
+  hero2_sub: "Sell on Instagram, get paid by card, and let us handle delivery. Join Syria's independent sellers.",
+  hero2_cta: "Start selling – it's free",
+  step1_t: 'Add your product', step1_d: 'Title, price, photos.',
+  step2_t: 'Share your link', step2_d: 'Paste it in your Instagram bio or DMs.',
+  step3_t: 'Get paid, we deliver', step3_d: 'Card payment collected, order delivered in Damascus or ready for pickup elsewhere.',
+  pricing_note: 'No subscription. Paylo takes a small commission per completed sale.',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

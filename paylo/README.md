@@ -78,6 +78,7 @@ pending_payment ─► payment_failed
 - **Payment provider** — `lib/payments/provider.ts` defines `charge()` / `refund()`. `mock.ts` is the dev adapter; `qnb.ts` is an empty stub for the QNB Syria Mastercard rail. Select with `PAYMENT_PROVIDER=mock|qnb`. Checkout, refunds and admin never import a concrete adapter.
 - **Email** — `lib/email.ts`. `EMAIL_TRANSPORT=log` (default) stores every notification in the DB (Admin → Emails) so flows are verifiable without SMTP. `EMAIL_TRANSPORT=smtp` + `SMTP_*` sends for real (`npm i nodemailer`).
 - **Real-time status** — pages poll the server every 5–15 s (`components/AutoRefresh.tsx`); no websocket infra needed.
+- **Landing hero** — `components/HeroCardWaterfall.tsx` renders the tilted, infinitely scrolling product-card grid (desktop/tablet) and the horizontal strip (mobile). Animation is CSS-only on `transform` (`.wf-*` rules in `app/globals.css`), honours `prefers-reduced-motion`, and mirrors in RTL. Replace the `products[]` array (currently on-palette placeholder SVGs in `public/hero/`) with real photos; layout does not change.
 - **Uploads** — stored in `UPLOAD_DIR` (default `data/uploads`) and served by `/uploads/[name]`, so they work in production without a rebuild.
 
 ## Tests

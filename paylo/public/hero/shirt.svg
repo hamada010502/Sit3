@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 560" width="520" height="560">
+<rect width="520" height="560" fill="#FFEBD2"/>
+<g fill="#273248" stroke="#273248" stroke-linejoin="round" stroke-linecap="round"><path d="M180 130 L220 110 Q260 150 300 110 L340 130 L420 190 L380 240 L350 220 L350 420 L170 420 L170 220 L140 240 L100 190 Z" stroke="none"/><rect x="230" y="260" width="60" height="12" rx="6" fill="#AF4F41" stroke="none"/><rect x="230" y="300" width="60" height="12" rx="6" fill="#AF4F41" stroke="none"/></g>
+<text x="260" y="512" text-anchor="middle" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="30" font-weight="600" fill="#273248">Linen shirt</text>
+</svg>
