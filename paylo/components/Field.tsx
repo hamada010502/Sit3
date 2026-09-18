@@ -1,0 +1,10 @@
+export function Field({ label, children, hint, error }: { label: string; children: React.ReactNode; hint?: string; error?: string }) {
+  return (
+    <div>
+      <label className="label">{label}</label>
+      {children}
+      {hint && !error && <p className="mt-1 text-xs text-bluewood/50">{hint}</p>}
+      {error && <p className="mt-1 text-xs text-blossom">{error}</p>}
+    </div>
+  );
+}
