@@ -60,3 +60,25 @@ export async function verifyPassword(pw: string, hash: string) { return bcrypt.c
 export function findUserByEmail(email: string): User | undefined {
   return getDb().prepare('SELECT * FROM users WHERE lower(email) = lower(?)').get(email) as User | undefined;
 }
+
+/* --------------------------- two-factor login --------------------------- */
+
+const PENDING = 'paylo_2fa';
+const PENDING_MAX_AGE = 10 * 60;
+
+/** Marks a password check as passed while the second factor is still outstanding. */
+export function startTwoFactor(userId: string) {
+  const token = encode({ uid: userId, role: 'seller', exp: Math.floor(Date.now() / 1000) + PENDING_MAX_AGE });
+  cookies().set(PENDING, token, { httpOnly: true, sameSite: 'lax', path: '/', maxAge: PENDING_MAX_AGE, secure: process.env.NODE_ENV === 'production' });
+}
+export function getPendingTwoFactorUser(): User | null {
+  const p = decode(cookies().get(PENDING)?.value);
+  if (!p) return null;
+  return (getDb().prepare('SELECT * FROM users WHERE id = ?').get(p.uid) as User | undefined) ?? null;
+}
+export function clearTwoFactor() {
+  cookies().set(PENDING, '', { httpOnly: true, path: '/', maxAge: 0 });
+}
+export function recordLogin(userId: string) {
+  getDb().prepare("UPDATE users SET last_login_at = datetime('now') WHERE id = ?").run(userId);
+}

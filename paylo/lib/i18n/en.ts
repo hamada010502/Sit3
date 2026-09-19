@@ -38,7 +38,7 @@ export const en = {
   products_title: 'Products', products_new: 'New product', products_empty: 'No products yet.', title: 'Title', price: 'Price (SYP)', stock: 'Stock',
   description: 'Description', images: 'Images', status: 'Status', actions: 'Actions', edit: 'Edit', save: 'Save', delete: 'Delete', cancel: 'Cancel',
   checkout_link: 'Checkout link', product_active: 'Active', product_inactive: 'Inactive', product_out_of_stock: 'Out of stock', product_removed: 'Removed by admin',
-  product_saved: 'Product saved.', images_hint: 'Up to 6 images, JPG/PNG/WebP, max 4 MB each.', add_images: 'Add images', existing_images: 'Current images (untick to remove)',
+  product_saved: 'Product saved.', images_hint: 'Up to 5 images, JPG/PNG/WebP, max 4 MB each.', add_images: 'Add images', existing_images: 'Current images (untick to remove)',
   set_inactive: 'Deactivate', set_active: 'Activate', product_error: 'Check the title, price and stock.',
   // orders
   orders_title: 'Orders', order: 'Order', buyer: 'Buyer', total: 'Total', date: 'Date', all: 'All', filter: 'Filter', view: 'View',
@@ -47,10 +47,10 @@ export const en = {
   timeline: 'Timeline', hand_off_title: 'Hand off this order', hand_off_hint_dmc: 'Hand the parcel to the Paylo rider (or Yalla Go courier if assigned). Confirm only after it has physically left your hands.',
   hand_off_hint_out: 'Deliver the parcel to the partner logistics company. Enter the shipment / receipt number they give you.',
   hand_off_ref: 'Rider name or shipment reference', hand_off_btn: 'Mark as handed off', hand_off_done: 'Handed off',
-  fm_platform_rider: 'Paylo rider (Damascus)', fm_yalla_go: 'Yalla Go courier (Damascus)', fm_logistics_pickup: 'Logistics partner — buyer pickup',
+  fm_platform_rider: 'Paylo rider (Damascus)', fm_yalla_go: 'Yalla Go courier (Damascus)', fm_logistics_pickup: 'Logistics partner — buyer pickup', fm_digital: 'Digital delivery',
   pickup_location: 'Pickup location', payout: 'Payout', unpaid: 'Not yet paid out',
   // order statuses
-  st_pending_payment: 'Awaiting payment', st_payment_failed: 'Payment failed', st_paid: 'Payment confirmed — to fulfill', st_handed_off: 'Handed off',
+  st_awaiting_payment: 'Awaiting payment', st_payment_failed: 'Payment failed', st_confirmed: 'Ready to fulfil', st_handed_off: 'Handed off',
   st_in_transit: 'In transit', st_ready_for_pickup: 'Ready for pickup', st_delivered: 'Delivered', st_disputed: 'Disputed', st_refunded: 'Refunded', st_cancelled: 'Cancelled',
   // payouts
   payouts_title: 'Payouts', payouts_sub: 'Paylo pays sellers weekly for orders that are delivered and have no open dispute. Funds for orders still in delivery or under dispute are held.',
@@ -94,7 +94,7 @@ export const en = {
   payment: 'Payment', card: 'Card', provider_ref: 'Provider reference',
   // misc
   yes: 'Yes', no: 'No', back: 'Back', required: 'Required', none: 'None', search: 'Search', showing: 'Showing', of: 'of', page_not_found: 'Page not found',
-  footer: 'Paylo — payments and delivery for Syrian sellers. SYP only. Card payments only.',
+  footer: 'Paylo — orders, delivery and payouts for independent Syrian sellers. Prices in SYP.',
   by_buyer: 'Buyer', by_seller: 'Seller', by_admin: 'Paylo admin', by_system: 'System',
   // landing hero (v2)
   hero2_tab_sellers: 'For Sellers', hero2_tab_buyers: 'For Buyers', hero2_login: 'Log in', hero2_signup: "Sign up – it's free",
@@ -104,7 +104,106 @@ export const en = {
   hero2_cta: "Start selling – it's free",
   step1_t: 'Add your product', step1_d: 'Title, price, photos.',
   step2_t: 'Share your link', step2_d: 'Paste it in your Instagram bio or DMs.',
-  step3_t: 'Get paid, we deliver', step3_d: 'Card payment collected, order delivered in Damascus or ready for pickup elsewhere.',
+  step3_t: 'We deliver, you get paid', step3_d: 'Cash collected on delivery or a bank transfer confirmed, then a weekly payout into your account.',
   pricing_note: 'No subscription. Paylo takes a small commission per completed sale.',
+  // landing v3 (canonical brand)
+  hero2_h1_pre: 'Your store.', hero2_h1_accent: 'One', hero2_h1_post: 'link.',
+  hero2_sub2: 'Share one link on Instagram. Take orders, arrange delivery, and follow every payment from a single dashboard.',
+  hero2_seen: 'Built for independent sellers in Syria',
+  trust_title: 'Why sellers use Paylo',
+  trust_1_t: 'One link, everything behind it', trust_1_d: 'Your storefront and every product link live at one address you can paste into a bio or a DM.',
+  trust_2_t: 'Orders that cannot get lost', trust_2_d: 'Every order moves through a strict set of states. Nothing is marked shipped or closed by accident.',
+  trust_3_t: 'Delivery coordinated for you', trust_3_d: 'Courier in Damascus, or a pickup point run by our logistics partner elsewhere. You hand over the parcel, we do the rest.',
+  trust_4_t: 'A record of every change', trust_4_d: 'Payment, dispatch, refund: each step is timestamped and kept, so a disputed order is never one person\u2019s word against another.',
+  final_t: 'Start taking orders this week',
+  final_sub: 'Create your store, add a few products, and share the link. Approval is manual and usually takes a day.',
+  final_cta: 'Create your store',
+  final_note: 'No subscription fee. Commission is agreed per seller while payment partners are being finalised.',
+  pay_phase_note: 'Today buyers pay cash on delivery or by bank transfer. Card payment opens once a settlement partner is confirmed.',
+  prod_candle: 'Rose scented candle', prod_cup: 'Ceramic coffee cups', prod_tote: 'Embroidered tote', prod_soap: 'Olive oil soap',
+  prod_perfume: 'Amber perfume oil', prod_shirt: 'Linen shirt', prod_earrings: 'Brass earrings', prod_basket: 'Woven basket',
+  prod_honey: 'Mountain honey', prod_plant: 'Potted olive seedling', prod_gift: 'Gift box', prod_sun: 'Sunglasses',
+  // --- v2 surfaces ---
+  os_open: 'Open', os_closed: 'Closed', os_cancelled: 'Cancelled', os_returned: 'Returned',
+  order_state: 'Order state', fulfillment_state: 'Fulfilment',
+  pm_cod: 'Cash on delivery', pm_bank_transfer: 'Bank transfer', pm_card: 'Card',
+  pm_cod_d: 'Pay the courier in cash when the parcel reaches you.',
+  pm_bank_transfer_d: 'Transfer the total to our account and upload the receipt. We ship once it is confirmed.',
+  pm_card_d: 'Pay now by card.',
+  payment_method: 'Payment method', payment_status: 'Payment',
+  ps_pending: 'Not collected yet', ps_confirmed: 'Confirmed', ps_collected_cod: 'Cash collected', ps_failed: 'Failed', ps_refunded: 'Refunded',
+  mark_cod_collected: 'Record cash received', cod_collected_note: 'Confirms the courier handed the cash to Paylo. Required before this order can be paid out.',
+  // balances
+  bal_available: 'Available balance', bal_pending: 'Pending balance', bal_lifetime: 'Lifetime earnings', bal_next_payout: 'Next payout',
+  bal_available_d: 'Cleared and included in the next payout run.', bal_pending_d: 'From orders that are not payout-eligible yet.',
+  quick_stats: 'This week', orders_today: 'Orders today', orders_week: 'Orders this week',
+  // KYC
+  kyc_title: 'Identity verification', kyc_sub: 'Paylo verifies every seller before releasing a payout. Your documents are visible only to the Paylo team.',
+  kyc_legal_name: 'Full legal name', kyc_national_id: 'National ID number', kyc_doc: 'Photo of your ID', kyc_submit: 'Submit for verification',
+  kyc_not_started: 'Not started', kyc_submitted: 'Under review', kyc_approved: 'Verified', kyc_rejected: 'Rejected',
+  kyc_blocked_note: 'Payouts are held until your identity is verified.', kyc_submitted_note: 'Your documents are with the Paylo team.',
+  kyc_review_title: 'Identity checks', kyc_approve: 'Verify seller', kyc_reject: 'Reject documents', kyc_none: 'Nothing waiting for review.',
+  // 2FA
+  tfa_title: 'Two-factor authentication', tfa_sub: 'Paylo requires an authenticator app on every seller account. It is the only thing standing between a stolen password and your payouts.',
+  tfa_step1: 'Scan this with your authenticator app', tfa_manual: 'Or enter this key manually', tfa_code: 'Six-digit code', tfa_verify: 'Turn on two-factor',
+  tfa_on: 'Two-factor is on', tfa_off: 'Two-factor is off', tfa_disable: 'Turn off', tfa_invalid: 'That code did not match. Check your phone clock and try again.',
+  tfa_recovery: 'Recovery codes', tfa_recovery_note: 'Save these now. Each one works once if you lose your phone. They are not shown again.',
+  tfa_required_note: 'Turn on two-factor authentication so an admin can approve your store.',
+  tfa_login_title: 'Two-factor code', tfa_login_sub: 'Open your authenticator app and enter the current code.',
+  tfa_or_recovery: 'You can also use a recovery code.', tfa_enabled_ok: 'Two-factor authentication is on.', tfa_disabled_ok: 'Two-factor authentication is off.',
+  // products
+  product_type: 'Product type', pt_physical: 'Physical', pt_digital: 'Digital', digital_note: 'Delivery details for the buyer',
+  digital_note_hint: 'Sent by email the moment payment clears — a download link, a code, or how you will send the files.',
+  options_title: 'Options', option1_name: 'First option name', option2_name: 'Second option name', options_hint: 'Up to two, for example Size and Colour. Leave empty for a single-variant product.',
+  variants_title: 'Variants', variant_label: 'Variant', variant_add: 'Add variant', variant_remove: 'Remove', variants_hint: 'Each row gets its own price and stock. The lowest price shows on the storefront.',
+  choose_variant: 'Choose an option', variant_required: 'Please choose an option.', from_price: 'From',
+  // checkout
+  checkout_step1: 'Your details', checkout_step2: 'Payment', checkout_continue: 'Continue to payment', checkout_back: 'Back to details',
+  place_order: 'Place order', order_summary: 'Order summary', bank_details: 'Our bank details',
+  bank_details_none: 'Bank details will be emailed to you once the order is placed.',
+  payment_method_unavailable: 'That payment method is not available.',
+  // bank transfer (buyer)
+  bt_title: 'Confirm your bank transfer', bt_instructions: 'Transfer the total below, then upload the receipt so we can release your order.',
+  bt_reference: 'Transfer reference', bt_proof: 'Photo of the receipt', bt_submit: 'Send for confirmation',
+  bt_awaiting_proof: 'Waiting for your receipt', bt_submitted: 'Receipt received — being checked', bt_confirmed: 'Payment confirmed', bt_rejected: 'Receipt not accepted',
+  bt_review_title: 'Bank transfers to confirm', bt_confirm: 'Confirm payment', bt_reject: 'Reject', bt_none: 'No transfers waiting.', bt_view_proof: 'View receipt',
+  // address change
+  ac_title: 'Change the delivery address', ac_hint: 'Possible until the seller hands the parcel over.', ac_submit: 'Request change',
+  ac_pending: 'Address change requested — under review', ac_approved: 'Address change applied', ac_rejected: 'Address change declined',
+  ac_review_title: 'Address changes', ac_approve: 'Apply change', ac_reject: 'Decline', ac_none: 'No requests.', ac_closed: 'The address-change window has closed.',
+  // returns
+  return_title: 'Return or refund', return_open: 'Request a return', return_open_pre: 'Report a problem with this order',
+  tracking_number: 'Tracking number', tracking_number_hint: 'From the courier or logistics partner, if they gave you one.',
+  // admin ops
+  ops_title: 'Operations', ops_sub: 'Everything that is stuck, waiting on Paylo, or at risk.',
+  ops_awaiting_transfer: 'Bank transfers to confirm', ops_unfulfilled: 'Paid, not shipped', ops_stuck_transit: 'In delivery over a week',
+  ops_cod_uncollected: 'Delivered, cash not recorded', ops_failed_payments: 'Failed payments', ops_open_returns: 'Open returns',
+  ops_kyc_waiting: 'Identity checks waiting', ops_address_requests: 'Address changes', ops_failed_payouts: 'Failed payouts', ops_all_clear: 'Nothing needs attention.',
+  days_open: 'days', reopen_payout: 'Return to pool', mark_failed: 'Mark failed',
+  // webhooks + api
+  wh_title: 'Webhooks', wh_sub: 'Paylo signs every delivery with HMAC-SHA256 in the Paylo-Signature header.',
+  wh_url: 'Endpoint URL', wh_events: 'Events', wh_all_events: 'All events', wh_secret: 'Signing secret', wh_add: 'Add endpoint',
+  wh_deliveries: 'Recent deliveries', wh_none: 'No endpoints yet.', wh_delete: 'Delete endpoint', wh_active: 'Active',
+  api_title: 'API tokens', api_sub: 'Bearer tokens for the REST API at /api/v1. Scoped to your store.',
+  api_new: 'Create token', api_name: 'Token name', api_token_once: 'Copy this token now. It is not shown again.', api_revoke: 'Revoke', api_none: 'No tokens yet.', api_revoked: 'Revoked',
+  // audit
+  audit_title: 'Audit trail', audit_sub: 'Every state change, kept as written. This is the record Paylo relies on in a dispute.',
+  audit_actor: 'Actor', audit_action: 'Action', audit_entity: 'Entity', audit_detail: 'Detail', audit_none: 'Nothing recorded yet.',
+  // notifications
+  notif_title: 'Notifications', notif_sub: 'Every message Paylo sent, on every channel.', notif_channel: 'Channel', notif_event: 'Event',
+  ch_email: 'Email', ch_sms: 'SMS', ch_whatsapp: 'WhatsApp',
+  // store customization
+  store_visible: 'Storefront visible', store_visible_hint: 'Turn off to hide your store page and all product links.', store_about: 'About your store',
+  // settings
+  commission_fixed_fee: 'Fixed fee per order (SYP)', commission_vat_rate: 'VAT on commission (%)',
+  payout_cutoff_day: 'Payout cutoff day', payout_cutoff_hour: 'Payout cutoff hour (UTC)', payout_transfer_day: 'Transfer day',
+  payout_eligibility: 'Prepaid payout unlocks at', pe_on_close: 'Hand-off (order closed)', pe_on_delivery: 'Confirmed delivery',
+  payment_methods: 'Payment methods', cod_enabled: 'Cash on delivery', bank_transfer_enabled: 'Bank transfer',
+  card_enabled: 'Card (needs a settlement partner)', card_gate_note: 'Card checkout stays hidden until a bank confirms in writing what it will settle. It also requires PAYMENT_CARD_ENABLED=1.',
+  bank_name: 'Bank name', bank_account_name: 'Account holder', bank_iban: 'IBAN / account number', bank_note: 'Note shown to buyers',
+  address_change_window_hours: 'Address-change window (hours)', notify_email: 'Send email', notify_sms: 'Send SMS / WhatsApp',
+  weekday_0: 'Sunday', weekday_1: 'Monday', weekday_2: 'Tuesday', weekday_3: 'Wednesday', weekday_4: 'Thursday', weekday_5: 'Friday', weekday_6: 'Saturday',
+  nav_security: 'Security', nav_ops: 'Operations', nav_audit: 'Audit', nav_webhooks: 'Webhooks', nav_kyc: 'Verification', nav_notifications: 'Notifications',
+  saved: 'Saved.', confirm: 'Confirm', pending_review: 'Under review', not_set: 'Not set',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

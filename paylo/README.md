@@ -1,103 +1,198 @@
-# Paylo — Link It. Get Paid.
+# Paylo — Your store. One link.
 
-Link-based payment and delivery platform for Syrian social-media sellers, modeled on Shopier (Turkey).
-Sellers list products, share a checkout link or storefront on Instagram, buyers pay by card as guests,
-Paylo holds the funds (escrow-style), handles delivery, and pays sellers weekly minus a commission.
+Link-in-bio commerce for independent sellers in Syria. A seller gets one storefront link
+plus a checkout link per product, shares them on Instagram, and Paylo handles order state,
+delivery coordination, and payouts.
 
-Built from `paylo-project-overview.md`, `shopier-syria-fable-prompt.md` and `paylo-brand-identity-prompt.md`.
+Built against **`Paylo_Full_Spec_v2.md`**, which is the source of truth. Where the v1 draft
+and the functional spec disagreed with it, v2 wins — the reconciliations are listed in
+[What v2 changed](#what-v2-changed).
 
 ## Stack
 
-- Next.js 14 (App Router, server actions), TypeScript, Tailwind CSS
-- SQLite via `better-sqlite3` (single file, zero infrastructure; schema in `lib/schema.sql`)
-- Signed-cookie sessions, bcrypt passwords
-- Bilingual UI: English (LTR) and Arabic (RTL), switchable, RTL-safe layout via logical CSS properties
-- Brand palette: Karry `#FFEBD2`, Atomic Tangerine `#FFA364`, Crusta `#FC7643`, Apple Blossom `#AF4F41`, Pickled Bluewood `#273248`
+- Next.js 14 (App Router, server actions), TypeScript, Tailwind
+- SQLite via `better-sqlite3` — right for pilot scale; v2 §7.1 puts the move to
+  PostgreSQL + Redis *before scaling past pilot*, not before launch
+- Signed-cookie sessions, bcrypt passwords, hand-rolled TOTP on `node:crypto`
+- Bilingual English (LTR) / Arabic (RTL), switchable, RTL-safe via CSS logical properties
 
 ## Quick start
 
 ```bash
 cd paylo
 npm install
-cp .env.example .env        # optional; defaults work for local dev
-npm run seed                # creates DB + admin + demo sellers
-npm run dev                 # http://localhost:3000
+cp .env.example .env     # optional; defaults work for local development
+npm run db:reset         # creates the schema and seeds demo data
+npm run dev              # http://localhost:3000
 ```
 
-Seeded accounts:
+| Role | Email | Password | Notes |
+|---|---|---|---|
+| Admin | admin@paylo.sy | admin1234 | |
+| Seller (live) | demo@paylo.sy | seller1234 | Two-factor on. TOTP secret `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP` |
+| Seller (pending) | pending@paylo.sy | seller1234 | |
 
-| Role | Email | Password |
+The demo seller's storefront is at `/s/lina-handmade`. The fixed TOTP secret exists so the
+end-to-end test can log in; never ship a fixed secret to production.
+
+Production: `npm run build && npm start`. Set `SESSION_SECRET`, `APP_URL`, `DATABASE_PATH`
+and `UPLOAD_DIR` to durable values.
+
+## What v2 changed
+
+| Area | Before | Now |
 |---|---|---|
-| Admin | admin@paylo.sy | admin1234 |
-| Seller (approved) | demo@paylo.sy | seller1234 — storefront `/s/lina-handmade` |
-| Seller (pending) | pending@paylo.sy | seller1234 |
+| Brand | Cream/orange palette, "Link It. Get Paid." | Velvet Rose `#E63E88`, Midnight Tide `#384D95`, Pearl Dust `#FFFFFF`, "Your store. One link." |
+| Payment | Card via an abstracted provider | **Cash on delivery + bank transfer.** Card is built but switched off behind a phase gate |
+| Order status | One delivery status | `order_state` (Open/Closed/Cancelled/Returned) over a separate fulfilment status |
+| Products | No variants | Physical and digital, up to two option types, per-variant price and stock |
+| Missing systems | — | Seller KYC, mandatory 2FA, operations dashboard, inventory reservation, notifications, audit trail |
 
-Test cards (mock provider): any Luhn-valid number succeeds, e.g. `5555 5555 5555 4444`.
-A number ending in `0002` is declined (insufficient funds); ending in `0069` is declined (expired).
+The old palette is gone from the codebase; `public/brand/` holds the new logo package.
 
-Production: `npm run build && npm start`. Set `SESSION_SECRET`, `APP_URL`, and `DATABASE_PATH` / `UPLOAD_DIR` to persistent locations.
+## The payment phase gate
 
-## Entry points (no public catalog, no search)
+v2 §3 is the load-bearing constraint: **no bank has confirmed it will settle international
+card payment for Syrian sellers**, so no card integration may be built on spec.
+
+What that means here:
+
+- Checkout offers **cash on delivery** and **bank transfer with receipt confirmation**.
+- Card checkout exists behind `lib/payments/` but is hidden unless *both*
+  `PAYMENT_CARD_ENABLED=1` and the admin `card_enabled` setting are on. The buyer never
+  sees a card form before then.
+- `lib/payments/qnb.ts` is a deliberate stub. When a bank confirms in writing what it
+  settles, implement `charge()` and `refund()` there and flip the two switches. Nothing
+  else changes.
+- Commission is configurable and frozen per order, not hard-coded, because the fee model
+  depends on what the settlement partner charges Paylo.
+
+## Order state machine
+
+`lib/orders.ts` is the single authority. Two dimensions, deliberately separate:
+
+- **`order_state`** — the commercial state that drives payout eligibility and the seller's
+  filter tabs: `open → closed`, `open → cancelled`, `closed → returned`.
+- **`status`** — the operational detail inside that state.
+
+```
+awaiting_payment ──► confirmed ──► handed_off ──► in_transit ─────────┐
+ (bank transfer)     (COD taken    (seller       (rider / Yalla Go)   ▼
+                      or payment    hand-off)                      delivered
+                      confirmed)         └──► ready_for_pickup ───────┘
+                                              (logistics partner)
+
+any post-payment status ──► disputed ──► back to previous | refunded
+```
+
+- **Hand-off is manual.** The seller clicks it; nothing closes an order automatically. The
+  one exception is a digital product, which has no courier step and delivers on payment.
+- **Refund before fulfilment → Cancelled. Refund after fulfilment → Returned.**
+- **Stock is reserved at placement**, for every payment method, and released on cancel or a
+  pre-shipment refund, so the last unit cannot be oversold.
+- Invalid transitions throw; the table in `TRANSITIONS` is the whole contract.
+
+## Payout eligibility
+
+v2 §4.2 puts Closed orders in the payout pool. Money that has not reached Paylo cannot be
+paid out, so the rule is split by method:
+
+| Payment method | Becomes eligible when |
+|---|---|
+| Cash on delivery | Delivered **and** the courier's cash is recorded by an admin |
+| Bank transfer / card | Payment confirmed, then Closed — or delivered, if `payout_eligibility` is set to `on_delivery` |
+
+On top of that: seller KYC approved, no open return, not already in a payout, and closed
+before the cutoff. The cycle is weekly, cutoff Tuesday 18:00 UTC, transfer Wednesday, all
+admin-configurable.
+
+## Security and evidence
+
+- **Two-factor is mandatory.** A seller cannot be approved until TOTP is on; an admin
+  approval attempt before that is refused with a message. Recovery codes are stored hashed
+  and are single-use. TOTP is verified against the RFC 6238 vectors in `npm run test:totp`.
+- **KYC gates payouts, not selling.** A seller can list and take orders while verification
+  is pending, but nothing is released until an admin approves the documents.
+- **Audit trail.** Every payment, dispatch, refund, approval and account change is appended
+  to `audit_log` and never updated. This is Paylo's only evidence in a dispute, since no
+  card network sits behind the platform.
+
+## Surfaces
 
 | URL | Who | What |
 |---|---|---|
-| `/` | public | Landing + order-tracking box |
-| `/s/[slug]` | buyer | Seller storefront (active products only) |
-| `/p/[id]` | buyer | Single-product checkout link (guest, card only, SYP) |
-| `/track/[code]` | buyer | Live order status, confirm receipt, open a dispute (no login) |
-| `/apply`, `/login` | seller | Application (pending until admin approval), login |
-| `/seller/**` | seller | Dashboard, products, orders (hand-off step), payouts, settings |
-| `/admin/**` | admin | Sellers (approve/reject/suspend, remove listings), orders (delivery ops), disputes, payouts, settings, email log |
+| `/` | public | Hero, how it works, value props, final call to action |
+| `/s/[slug]` | buyer | Storefront: banner, logo, active products, "from" pricing for variants |
+| `/p/[id]` | buyer | Two-step checkout: details, then payment method |
+| `/track/[code]` | buyer | Live status, receipt upload, address change, return request, receipt confirmation |
+| `/seller` | seller | Balances (available / pending / lifetime / next payout) and recent orders |
+| `/seller/products` | seller | Physical and digital products, up to two option types with per-variant price and stock |
+| `/seller/orders` | seller | Open / Closed / Cancelled / Returned, hand-off, tracking number, cancel, refund |
+| `/seller/security` | seller | Two-factor enrolment — reachable before approval, because approval depends on it |
+| `/seller/verification` | seller | KYC submission |
+| `/seller/developers` | seller | Webhook endpoints with signing secrets, API tokens |
+| `/admin/ops` | admin | Every queue that is stuck or waiting on Paylo |
+| `/admin/sellers` | admin | Approve, suspend, review KYC, reset two-factor, remove listings |
+| `/admin/orders` | admin | Confirm transfers, apply address changes, drive delivery, record cash, refund |
+| `/admin/disputes` | admin | Resolve returns and record who bears the loss |
+| `/admin/payouts` | admin | Run the weekly cycle, mark paid or failed, return a payout to the pool |
+| `/admin/audit`, `/admin/notifications` | admin | The record, and every message sent |
 
-## Order state machine (`lib/orders.ts`)
+## Integrations
+
+**Webhooks** (`lib/webhooks.ts`) — `order.created`, `order.updated`, `order.closed`,
+`refund.created`, `refund.updated`, `payout.sent`. Every delivery is signed:
 
 ```
-pending_payment ─► payment_failed
-       │
-       ▼
-     paid ─────────► handed_off ─► in_transit ──────┐
-   (funds held)     (seller must    (Damascus rider │
-                     confirm)        or Yalla Go)   ▼
-                        │                        delivered ─► [weekly payout]
-                        └─► ready_for_pickup ────┘  (admin or buyer confirms)
-                            (logistics partner,
-                             other governorates)
-
-   any paid state ─► disputed ─► back to previous state | refunded
+Paylo-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of "<t>.<raw body>">
 ```
 
-- **Funds hold:** an order is payout-eligible only when `delivered`, has no open dispute, is not yet in a payout, and `payout_hold_days` (admin setting, default 0) have passed. Everything else is reported as "held".
-- **Hand-off is manual:** the seller must click "Mark as handed off" (with rider name / shipment reference). Nothing moves automatically.
-- **Fulfillment path per order:** `platform_rider` (Damascus default), `yalla_go` (admin can outsource on rider shortage, toggle in settings), `logistics_pickup` (all other governorates; admin enters the pickup location, buyer is emailed and sees it on the tracking page).
-- **Disputes:** opened by the buyer from the tracking page. Admin marks investigating, then resolves as refund / shipment found / dismissed and records **who bears the loss** (`seller` if never handed off, `logistics`, `platform`, `none`). Refunds go through the payment provider; stock is restored only if the parcel never left the seller. An order already paid out cannot be refunded in-app.
-- **Payouts:** admin clicks "Generate this week's payouts" → one pending payout per seller for all eligible orders; then "Mark as paid" with a bank reference. Sellers see eligible / held / paid totals.
-- **Commission** (default 7.5%, admin-adjustable) is computed on the product subtotal at order time and frozen on the order. Delivery fee (per zone, admin-adjustable) is charged to the buyer on top.
+Recompute the MAC over the raw body, compare in constant time, and reject timestamps
+outside your tolerance. `verifySignature()` is exported so receivers can share the
+implementation. A broken endpoint never fails a checkout; failures are recorded instead.
 
-## Abstractions for unresolved business items
+**REST API** (`/api/v1`) — bearer tokens, scoped to one store, tokens stored as SHA-256
+hashes and shown once. `GET /api/v1` describes itself.
 
-- **Payment provider** — `lib/payments/provider.ts` defines `charge()` / `refund()`. `mock.ts` is the dev adapter; `qnb.ts` is an empty stub for the QNB Syria Mastercard rail. Select with `PAYMENT_PROVIDER=mock|qnb`. Checkout, refunds and admin never import a concrete adapter.
-- **Email** — `lib/email.ts`. `EMAIL_TRANSPORT=log` (default) stores every notification in the DB (Admin → Emails) so flows are verifiable without SMTP. `EMAIL_TRANSPORT=smtp` + `SMTP_*` sends for real (`npm i nodemailer`).
-- **Real-time status** — pages poll the server every 5–15 s (`components/AutoRefresh.tsx`); no websocket infra needed.
-- **Landing hero** — `components/HeroCardWaterfall.tsx` renders the tilted, infinitely scrolling product-card grid (desktop/tablet) and the horizontal strip (mobile). Animation is CSS-only on `transform` (`.wf-*` rules in `app/globals.css`), honours `prefers-reduced-motion`, and mirrors in RTL. Replace the `products[]` array (currently on-palette placeholder SVGs in `public/hero/`) with real photos; layout does not change.
-- **Uploads** — stored in `UPLOAD_DIR` (default `data/uploads`) and served by `/uploads/[name]`, so they work in production without a rebuild.
+```bash
+curl -H "Authorization: Bearer plo_..." http://localhost:3000/api/v1/orders?state=closed
+```
+
+**Notifications** (`lib/notify.ts`) — v2 §5.2 prefers SMS and WhatsApp over email, but no
+gateway is contracted, so every channel defaults to the `log` transport: the exact message
+is stored and visible under Admin → Notifications. Point `EMAIL_TRANSPORT=smtp` or
+`SMS_TRANSPORT` at a provider to start sending; no calling code changes.
 
 ## Tests
 
-`e2e/smoke.js` drives the whole lifecycle through a real browser (seller application → approval → product with image → declined then successful card → hand-off → pickup/delivery → dispute → refund with liability → second order via Yalla Go → weekly payout → Arabic RTL). Run against a seeded, running instance:
-
 ```bash
-npm i -g playwright && npx playwright install chromium
-node e2e/smoke.js
+npm run test:totp                                   # RFC 6238 vectors
+npm run db:reset && npm run build && npm start &    # a seeded, running app
+npm run test:e2e                                    # 55 assertions in a real browser
 ```
 
-## Deliberately out of scope (per spec)
+The end-to-end run covers the whole v2 path: application → mandatory two-factor →
+approval refused without it → KYC → variants and digital products → cash-on-delivery
+checkout → address change → hand-off → pickup and delivery → cash recorded → payout run →
+bank transfer with receipt review → return refunded with liability → digital
+auto-delivery → two-factor login → REST API → a live webhook receiver verifying the
+HMAC → audit trail → Arabic RTL. Screenshots land in `e2e/shots/`.
 
-Buyer accounts, catalog/search, product variants, multi-currency, SMS/WhatsApp, native apps, automatic refund timers, seller subscriptions.
+Requires Playwright: `npm i -g playwright && npx playwright install chromium`.
 
-## Open items carried forward (not resolved by this build)
+## Further documentation
 
-1. QNB Syria / PSP merchant contract — no owner yet; `qnb.ts` stays a stub until the gateway spec exists.
-2. Delivery-ops costing (riders, Yalla Go fees, logistics partner) — outside the software budget.
-3. Domain / trademark / Instagram handle for "Paylo" — unverified.
-4. Logistics partner for outside-Damascus pickup — unnamed (`logistics_partner_name` setting is a placeholder).
-5. Spec §4 item 6(b) ("payment-confirmed with no dispute" as payout-eligible) contradicts the sentence after it ("orders pending delivery confirmation are held"). This build holds funds until **delivered**, with an optional post-delivery hold in days. Change `payoutEligibleOrders()` in `lib/orders.ts` if the business wants the looser rule.
+- [`docs/design-system.md`](docs/design-system.md) — colours, type, components, spacing, logo package
+- [`docs/technical-addendum.md`](docs/technical-addendum.md) — state machine, payout maths, webhook events, KYC flow
+
+## Open items this build does not resolve
+
+1. **A bank that will settle card payments.** Everything downstream of it — card checkout,
+   the commission percentages, payout automation — is gated and must stay gated.
+2. **A real SMS/WhatsApp gateway.** The channel abstraction is there; no provider is.
+3. **Delivery operations costing** — riders, Yalla Go fees, the logistics partner contract.
+4. **The logistics partner itself.** `logistics_partner_name` is a placeholder setting.
+5. **Domain, trademark and Instagram handle for "Paylo"** — still unverified.
+6. **A reconciliation ledger for cash on delivery.** Today an admin records that the courier
+   handed the cash in. At volume that needs to reconcile against courier manifests, not a
+   single click.

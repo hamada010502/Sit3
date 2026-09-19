@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getDb, newId } from '@/lib/db';
 import { createSession, findUserByEmail, hashPassword } from '@/lib/auth';
 import { GOVERNORATES, type User } from '@/lib/types';
+import { audit } from '@/lib/audit';
 
 function slugify(s: string) {
   return s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
@@ -34,6 +35,7 @@ export async function applyAction(_prev: { error?: string } | null, formData: Fo
   })();
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(await hashPassword(password), userId);
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as User;
+  audit('seller', userId, email, 'seller', slug, 'applied', { storeName, governorate });
   createSession(user);
   redirect('/seller');
 }

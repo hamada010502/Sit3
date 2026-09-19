@@ -1,9 +1,9 @@
-node_modules
+*.tsbuildinfo
+.env
 .next
 data/*.db
 data/*.db-*
 data/uploads/
-.env
-*.tsbuildinfo
-next-env.d.ts
 e2e/shots/
+next-env.d.ts
+node_modules

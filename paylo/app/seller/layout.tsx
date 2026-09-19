@@ -1,21 +1,24 @@
+import Link from 'next/link';
 import { Shell } from '@/components/Shell';
 import { requireSeller } from '@/lib/guards';
 import { getT } from '@/lib/i18n/server';
 
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
-  const { seller } = requireSeller();
+  const { user, seller } = requireSeller();
   const { t } = getT();
-  if (seller.status !== 'approved') {
-    const key = seller.status === 'pending' ? 'pending' : seller.status === 'rejected' ? 'rejected' : 'suspended';
-    return (
-      <Shell>
-        <div className="card-pad max-w-xl mx-auto text-center py-10">
-          <h1 className="text-2xl font-bold">{t(`status_${key}_title` as const)}</h1>
-          <p className="mt-3 text-bluewood/70">{t(`status_${key}_body` as const)}</p>
-          {seller.review_note && <div className="alert-info mt-5 text-start"><strong>{t('review_note')}:</strong> {seller.review_note}</div>}
+  const approved = seller.status === 'approved';
+  return (
+    <Shell wide>
+      {!user.totp_enabled && (
+        <div className="alert-warn mb-5">{t('tfa_required_note')} <Link href="/seller/security" className="link">{t('nav_security')} →</Link></div>
+      )}
+      {approved && seller.kyc_status !== 'approved' && (
+        <div className="alert-info mb-5">
+          {seller.kyc_status === 'submitted' ? t('kyc_submitted_note') : t('kyc_blocked_note')}{' '}
+          <Link href="/seller/verification" className="link">{t('nav_kyc')} →</Link>
         </div>
-      </Shell>
-    );
-  }
-  return <Shell wide>{children}</Shell>;
+      )}
+      {children}
+    </Shell>
+  );
 }

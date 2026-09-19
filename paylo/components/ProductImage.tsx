@@ -3,7 +3,7 @@ export function ProductImage({ images, alt, className = '' }: { images: string; 
   let list: string[] = [];
   try { list = JSON.parse(images); } catch {}
   if (list.length === 0) {
-    return <div className={`bg-karry flex items-center justify-center text-bluewood/30 ${className}`}><span className="text-4xl">▣</span></div>;
+    return <div className={`bg-mist flex items-center justify-center text-ink-soft/50 ${className}`}><span className="text-4xl">▣</span></div>;
   }
   return <img src={list[0]} alt={alt} className={`object-cover ${className}`} />;
 }

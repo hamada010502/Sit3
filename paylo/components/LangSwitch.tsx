@@ -12,7 +12,7 @@ export function LangSwitch({ className = '' }: { className?: string }) {
     <button
       type="button"
       disabled={pending}
-      className={className || 'text-sm font-semibold text-bluewood/70 hover:text-crusta'}
+      className={className || 'text-sm font-semibold text-ink-soft hover:text-rose-600'}
       onClick={() => start(async () => {
         await fetch('/api/lang', { method: 'POST', body: JSON.stringify({ lang: next }), headers: { 'content-type': 'application/json' } });
         router.refresh();

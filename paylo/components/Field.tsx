@@ -3,8 +3,8 @@ export function Field({ label, children, hint, error }: { label: string; childre
     <div>
       <label className="label">{label}</label>
       {children}
-      {hint && !error && <p className="mt-1 text-xs text-bluewood/50">{hint}</p>}
-      {error && <p className="mt-1 text-xs text-blossom">{error}</p>}
+      {hint && !error && <p className="mt-1 text-xs text-ink-soft">{hint}</p>}
+      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
     </div>
   );
 }

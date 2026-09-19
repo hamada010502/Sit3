@@ -1,35 +1,49 @@
 /* eslint-disable @next/next/no-img-element */
+import type { Lang, TFn, TKey } from '@/lib/i18n';
+import { formatSYP } from '@/lib/money';
+
 /**
- * Animated product-card "waterfall" for the landing hero (mechanic modeled on shopier.com, re-skinned for Paylo).
- * Pure CSS keyframes on `transform` only (see .wf-* rules in app/globals.css) — no JS animation.
- * Swap the placeholder artwork below for real product photos without touching layout.
+ * Product-card "waterfall" for the landing hero.
+ * Pure CSS keyframes on `transform` only (`.wf-*` in app/globals.css) — no JS animation,
+ * honours prefers-reduced-motion, and mirrors under [dir="rtl"].
+ * Swap `SHOWCASE` for real seller products; the layout does not change.
  */
-export interface HeroProduct { name: string; image: string; bg: string }
+export interface ShowcaseItem { key: string; price: number; tone: '' | 'tint' | 'blush' }
 
-const PALETTE = ['#FFA364', '#FC7643', '#FFEBD2'] as const; // card backgrounds cycle through these only
-
-const NAMES: [string, string][] = [
-  ['Pistachio baklava', 'baklava'], ['Roasted mixed nuts', 'nuts'], ['Damascus rose candle', 'candle'], ['Olive oil soap', 'soap'],
-  ['Embroidered tote', 'tote'], ['Ceramic coffee cups', 'cups'], ['Silk scarf', 'scarf'], ['Aleppo pepper', 'pepper'],
-  ['Handmade earrings', 'earrings'], ['Linen shirt', 'shirt'], ['Woven basket', 'basket'], ['Copper tray', 'tray'],
+export const SHOWCASE: ShowcaseItem[] = [
+  { key: 'candle', price: 85000, tone: '' },
+  { key: 'cup', price: 140000, tone: 'tint' },
+  { key: 'tote', price: 95000, tone: 'blush' },
+  { key: 'soap', price: 30000, tone: '' },
+  { key: 'perfume', price: 260000, tone: 'tint' },
+  { key: 'shirt', price: 175000, tone: 'blush' },
+  { key: 'earrings', price: 120000, tone: '' },
+  { key: 'basket', price: 68000, tone: 'tint' },
+  { key: 'honey', price: 54000, tone: 'blush' },
+  { key: 'plant', price: 72000, tone: '' },
+  { key: 'gift', price: 110000, tone: 'tint' },
+  { key: 'sun', price: 195000, tone: 'blush' },
 ];
-export const products: HeroProduct[] = NAMES.map(([name, key], i) => ({ name, image: `/hero/${key}.svg`, bg: PALETTE[i % PALETTE.length] }));
 
 const COLUMNS = 4;
-const CARDS_PER_COLUMN = 6;                 // one loop half must be taller than the visible area for a seamless loop
-const SPEEDS_S = [28, 36, 44, 32];          // different speeds per column for depth
-const OFFSETS_PX = [0, -160, -70, -230];    // vertical stagger per column
+const CARDS_PER_COLUMN = 6;               // each loop half must exceed the viewport height for a seamless join
+const SPEEDS_S = [30, 38, 46, 34];        // varied speeds give the grid depth
+const OFFSETS_PX = [0, -150, -64, -224];  // vertical stagger per column
 
-function Card({ p }: { p: HeroProduct }) {
+function Card({ item, t, lang }: { item: ShowcaseItem; t: TFn; lang: Lang }) {
   return (
-    <div className="wf-card" style={{ background: p.bg }}>
-      <img src={p.image} alt="" decoding="async" draggable={false} />
+    <div className={`wf-card${item.tone ? ' wf-card--' + item.tone : ''}`}>
+      <div className="wf-figure"><img src={`/hero/${item.key}.svg`} alt="" decoding="async" draggable={false} /></div>
+      <div className="wf-meta">
+        <div className="wf-name">{t(`prod_${item.key}` as TKey)}</div>
+        <div className="wf-price">{formatSYP(item.price, lang)}</div>
+      </div>
     </div>
   );
 }
 
-/** Desktop / tablet: tilted columns scrolling downward forever. Renders nothing visible below `md`. */
-export function HeroCardWaterfall({ items = products }: { items?: HeroProduct[] }) {
+/** Desktop / tablet: tilted columns scrolling downward forever. Hidden below `md`. */
+export function HeroCardWaterfall({ t, lang, items = SHOWCASE }: { t: TFn; lang: Lang; items?: ShowcaseItem[] }) {
   const columns = Array.from({ length: COLUMNS }, (_, c) =>
     Array.from({ length: CARDS_PER_COLUMN }, (_, k) => items[(c + k * COLUMNS) % items.length]),
   );
@@ -38,7 +52,7 @@ export function HeroCardWaterfall({ items = products }: { items?: HeroProduct[] 
       <div className="wf-grid">
         {columns.map((col, i) => (
           <div key={i} className="wf-col" style={{ animationDuration: `${SPEEDS_S[i]}s`, marginTop: OFFSETS_PX[i] }}>
-            {[...col, ...col].map((p, j) => <Card key={j} p={p} />)}
+            {[...col, ...col].map((item, j) => <Card key={j} item={item} t={t} lang={lang} />)}
           </div>
         ))}
       </div>
@@ -46,13 +60,11 @@ export function HeroCardWaterfall({ items = products }: { items?: HeroProduct[] 
   );
 }
 
-/** Mobile: one horizontal strip scrolling sideways with the same seamless technique. */
-export function HeroCardStrip({ items = products }: { items?: HeroProduct[] }) {
+/** Mobile: one sideways strip using the same seamless technique. */
+export function HeroCardStrip({ t, lang, items = SHOWCASE }: { t: TFn; lang: Lang; items?: ShowcaseItem[] }) {
   return (
     <div className="wf-strip-wrap" aria-hidden="true">
-      <div className="wf-strip">
-        {[...items, ...items].map((p, j) => <Card key={j} p={p} />)}
-      </div>
+      <div className="wf-strip">{[...items, ...items].map((item, j) => <Card key={j} item={item} t={t} lang={lang} />)}</div>
     </div>
   );
 }

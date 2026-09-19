@@ -6,18 +6,20 @@ import { requireApprovedSeller } from '@/lib/guards';
 import { getT } from '@/lib/i18n/server';
 import type { Order } from '@/lib/types';
 
-export default function SellerOrdersPage({ searchParams }: { searchParams: { status?: string } }) {
+const STATES = ['open', 'closed', 'cancelled', 'returned'];
+
+export default function SellerOrdersPage({ searchParams }: { searchParams: { state?: string } }) {
   const { seller } = requireApprovedSeller();
   const { t, lang } = getT();
-  const status = searchParams.status || 'all';
-  const orders = (status === 'all'
-    ? getDb().prepare("SELECT * FROM orders WHERE seller_id = ? AND status NOT IN ('pending_payment','payment_failed') ORDER BY created_at DESC").all(seller.id)
-    : getDb().prepare('SELECT * FROM orders WHERE seller_id = ? AND status = ? ORDER BY created_at DESC').all(seller.id, status)) as Order[];
+  const state = searchParams.state && STATES.includes(searchParams.state) ? searchParams.state : 'all';
+  const orders = (state === 'all'
+    ? getDb().prepare('SELECT * FROM orders WHERE seller_id = ? ORDER BY created_at DESC').all(seller.id)
+    : getDb().prepare('SELECT * FROM orders WHERE seller_id = ? AND order_state = ? ORDER BY created_at DESC').all(seller.id, state)) as Order[];
   return (
     <div>
       <AutoRefresh seconds={10} />
-      <h1 className="text-2xl font-bold mb-4">{t('orders_title')}</h1>
-      <StatusFilter current={status} t={t} base="/seller/orders" />
+      <h1 className="section-title mb-4">{t('orders_title')}</h1>
+      <StatusFilter current={state} t={t} base="/seller/orders" />
       <OrdersTable orders={orders} t={t} lang={lang} base="/seller/orders" />
     </div>
   );

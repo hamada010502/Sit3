@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 560" width="520" height="560">
-<rect width="520" height="560" fill="#FFEBD2"/>
-<g fill="#273248" stroke="#273248" stroke-linejoin="round" stroke-linecap="round"><path d="M80 200 C160 120 220 320 300 240 S440 200 460 340" fill="none" stroke-width="70"/><path d="M80 200 C160 120 220 320 300 240 S440 200 460 340" fill="none" stroke="#AF4F41" stroke-width="16" stroke-dasharray="30 26"/></g>
-<text x="260" y="512" text-anchor="middle" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="30" font-weight="600" fill="#273248">Silk scarf</text>
-</svg>
