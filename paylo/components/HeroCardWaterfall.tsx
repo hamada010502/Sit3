@@ -3,26 +3,27 @@ import type { Lang, TFn, TKey } from '@/lib/i18n';
 import { formatSYP } from '@/lib/money';
 
 /**
- * Product-card "waterfall" for the landing hero.
+ * Glyph-card "waterfall" for the landing hero.
  * Pure CSS keyframes on `transform` only (`.wf-*` in app/globals.css) — no JS animation,
  * honours prefers-reduced-motion, and mirrors under [dir="rtl"].
- * Swap `SHOWCASE` for real seller products; the layout does not change.
+ * Cards carry an abstract glyph rather than a picture: the product name is the meaning,
+ * the glyph is identity. Swap `SHOWCASE` for real products; the layout does not change.
  */
-export interface ShowcaseItem { key: string; price: number; tone: '' | 'tint' | 'blush' }
+export interface ShowcaseItem { key: string; price: number }
 
 export const SHOWCASE: ShowcaseItem[] = [
-  { key: 'candle', price: 85000, tone: '' },
-  { key: 'cup', price: 140000, tone: 'tint' },
-  { key: 'tote', price: 95000, tone: 'blush' },
-  { key: 'soap', price: 30000, tone: '' },
-  { key: 'perfume', price: 260000, tone: 'tint' },
-  { key: 'shirt', price: 175000, tone: 'blush' },
-  { key: 'earrings', price: 120000, tone: '' },
-  { key: 'basket', price: 68000, tone: 'tint' },
-  { key: 'honey', price: 54000, tone: 'blush' },
-  { key: 'plant', price: 72000, tone: '' },
-  { key: 'gift', price: 110000, tone: 'tint' },
-  { key: 'sun', price: 195000, tone: 'blush' },
+  { key: 'seal', price: 85000 },
+  { key: 'count', price: 140000 },
+  { key: 'cross', price: 95000 },
+  { key: 'vessel', price: 30000 },
+  { key: 'axis', price: 260000 },
+  { key: 'path', price: 175000 },
+  { key: 'split', price: 120000 },
+  { key: 'arch', price: 68000 },
+  { key: 'peak', price: 54000 },
+  { key: 'stem', price: 72000 },
+  { key: 'frame', price: 110000 },
+  { key: 'wave', price: 195000 },
 ];
 
 const COLUMNS = 4;
@@ -32,7 +33,7 @@ const OFFSETS_PX = [0, -150, -64, -224];  // vertical stagger per column
 
 function Card({ item, t, lang }: { item: ShowcaseItem; t: TFn; lang: Lang }) {
   return (
-    <div className={`wf-card${item.tone ? ' wf-card--' + item.tone : ''}`}>
+    <div className="wf-card">
       <div className="wf-figure"><img src={`/hero/${item.key}.svg`} alt="" decoding="async" draggable={false} /></div>
       <div className="wf-meta">
         <div className="wf-name">{t(`prod_${item.key}` as TKey)}</div>

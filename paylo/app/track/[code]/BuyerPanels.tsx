@@ -61,7 +61,7 @@ export function ReturnPanel({ code, delivered }: { code: string; delivered: bool
   const [state, action] = useFormState(openDisputeAction.bind(null, code), null);
   return (
     <details className="card-pad mb-6">
-      <summary className="cursor-pointer font-semibold text-danger">{delivered ? t('return_open') : t('return_open_pre')}</summary>
+      <summary className="cursor-pointer font-semibold text-cherry">{delivered ? t('return_open') : t('return_open_pre')}</summary>
       <form action={action} className="mt-4 space-y-3">
         {state?.error && <div className="alert-error">{state.error}</div>}
         <Field label={t('dispute_reason')}>

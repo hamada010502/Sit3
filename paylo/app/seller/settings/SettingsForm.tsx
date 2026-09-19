@@ -30,7 +30,7 @@ export function SettingsForm({ seller }: { seller: Seller }) {
         <Field label="Banner"><input name="banner" type="file" accept="image/jpeg,image/png,image/webp" className="input" /></Field>
       </div>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="visible" defaultChecked={!!seller.visible} className="accent-rose h-4 w-4" />
+        <input type="checkbox" name="visible" defaultChecked={!!seller.visible} className="accent-cherry h-4 w-4" />
         <span><strong>{t('store_visible')}</strong> — <span className="text-ink-soft">{t('store_visible_hint')}</span></span>
       </label>
       <Field label={t('payout_details')} hint={t('payout_details_hint')}><textarea name="payout_details" className="input" rows={3} defaultValue={seller.payout_details ?? ''} /></Field>

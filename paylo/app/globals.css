@@ -4,63 +4,75 @@
 
 :root { color-scheme: light; }
 html { scroll-behavior: smooth; }
-body { @apply bg-mist text-ink antialiased; }
+body { @apply bg-cream text-ink antialiased; }
 
 @layer components {
-  /* Buttons — 10–12px radius, soft shadows (v2 §7.3).
-     Large CTAs use rose; small/dense buttons use rose-600 so white text keeps AA contrast. */
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed; }
-  .btn-primary { @apply btn bg-rose-600 text-white hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose/40; }
-  .btn-cta { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-rose px-7 py-3.5 text-base font-bold text-white shadow-lift transition hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose/40; }
-  .btn-secondary { @apply btn bg-white text-ink border border-ink/15 hover:border-ink/35 hover:bg-mist; }
-  .btn-dark { @apply btn bg-tide text-white hover:bg-tide-700; }
-  .btn-danger { @apply btn bg-danger text-white hover:bg-[#BC3535]; }
-  .btn-ghost { @apply btn text-ink-soft hover:text-rose-600 hover:bg-rose-50; }
+  /* Buttons. One filled style only — everything else is an outline or plain text,
+     which is what keeps a two-colour palette from turning noisy. */
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed; }
+  .btn-primary { @apply btn bg-cherry text-white hover:bg-cherry-dark focus:outline-none focus:ring-2 focus:ring-cherry/30 focus:ring-offset-2 focus:ring-offset-cream; }
+  .btn-cta { @apply inline-flex items-center justify-center rounded-lg bg-cherry px-7 py-3.5 text-base font-semibold text-white transition-colors hover:bg-cherry-dark focus:outline-none focus:ring-2 focus:ring-cherry/30 focus:ring-offset-2; }
+  .btn-secondary { @apply btn border border-ink/15 bg-transparent text-ink hover:border-ink/40; }
+  .btn-dark { @apply btn bg-ink text-cream hover:bg-ink/85; }
+  /* Destructive reads as an outline, so it never competes with the primary call to action. */
+  .btn-danger { @apply btn border border-cherry/35 bg-transparent text-cherry hover:bg-cherry/8; }
+  .btn-ghost { @apply btn text-ink-soft hover:text-cherry; }
   .btn-sm { @apply px-3 py-1.5 text-xs; }
 
-  .input { @apply w-full rounded-lg border border-ink/15 bg-white px-3 py-2.5 text-sm text-ink placeholder:text-ink-soft/60 focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/25 disabled:bg-mist disabled:text-ink-soft; }
-  .label { @apply block text-xs font-semibold uppercase tracking-wide text-ink-soft mb-1.5; }
+  .input { @apply w-full rounded-lg border border-ink/15 bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-soft/55 focus:border-cherry focus:outline-none focus:ring-1 focus:ring-cherry/30 disabled:bg-cream disabled:text-ink-soft; }
+  .label { @apply block text-xs font-semibold uppercase tracking-[0.08em] text-ink-soft mb-1.5; }
 
-  .card { @apply rounded-2xl bg-white border border-ink/8 shadow-soft; }
-  .card-pad { @apply card p-5 sm:p-6; }
+  /* Hairline borders instead of shadows: flatter, quieter, and it keeps cream reading as space. */
+  .card { @apply rounded-xl border border-ink/10 bg-paper; }
+  .card-pad { @apply card p-6 sm:p-7; }
 
   .table { @apply w-full text-sm; }
-  .table th { @apply text-start text-xs font-semibold uppercase tracking-wide text-ink-soft py-2.5 px-3 border-b border-ink/10; }
-  .table td { @apply py-3 px-3 border-b border-ink/5 align-top; }
+  .table th { @apply text-start text-xs font-semibold uppercase tracking-[0.08em] text-ink-soft py-3 px-4 border-b border-ink/10; }
+  .table td { @apply py-3.5 px-4 border-b border-ink/8 align-top; }
   .table tr:last-child td { @apply border-b-0; }
 
-  .badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap; }
+  .badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap; }
   .alert { @apply rounded-lg px-4 py-3 text-sm; }
-  .alert-error { @apply alert bg-danger/8 text-danger border border-danger/25; }
-  .alert-success { @apply alert bg-success/8 text-success border border-success/25; }
-  .alert-info { @apply alert bg-rose-50 text-ink border border-rose/20; }
-  .alert-warn { @apply alert bg-warn/8 text-warn border border-warn/25; }
+  .alert-error { @apply alert border border-cherry/25 bg-cherry/8 text-cherry; }
+  .alert-success { @apply alert border border-success/25 bg-success/8 text-success; }
+  .alert-info { @apply alert border border-ink/12 bg-cream text-ink; }
+  .alert-warn { @apply alert border border-warn/25 bg-warn/8 text-warn; }
 
-  .stat { @apply card p-4; }
-  .stat-label { @apply text-xs font-semibold uppercase tracking-wide text-ink-soft; }
-  .stat-value { @apply mt-1 text-2xl font-bold text-ink; }
+  .stat { @apply card p-5; }
+  .stat-label { @apply text-xs font-semibold uppercase tracking-[0.08em] text-ink-soft; }
+  .stat-value { @apply mt-1.5 text-2xl font-semibold tracking-tight text-ink; }
 
-  .link { @apply font-semibold text-rose-600 hover:text-rose-700; }
-  .section-title { @apply text-2xl font-bold tracking-tight text-ink; }
+  .link { @apply font-semibold text-cherry underline-offset-4 hover:underline; }
+  .section-title { @apply text-2xl font-semibold tracking-tight text-ink; }
 }
 
-/* ---------- Loading mark (v2 §7.3: subtle, premium, never decorative) ---------- */
-.pl-loader-ring { stroke-dasharray: 80 152; transform-origin: 50% 50%; animation: pl-spin 1.15s linear infinite; }
-.pl-loader-mark { transform-origin: 50% 50%; animation: pl-breathe 1.9s ease-in-out infinite; }
-@keyframes pl-spin { to { transform: rotate(360deg); } }
-@keyframes pl-breathe { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+/* ---------- Loader (three variants on one shared cycle) ---------- */
+.ld { display: inline-flex; align-items: center; gap: 6px; }
+.ld-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: ld-pulse var(--ld-cycle) ease-in-out infinite; }
+.ld-dot:nth-child(2) { animation-delay: calc(var(--ld-cycle) / -6); }
+.ld-dot:nth-child(3) { animation-delay: calc(var(--ld-cycle) / -3); }
+@keyframes ld-pulse { 0%, 70%, 100% { opacity: .25; transform: scale(.82); } 35% { opacity: 1; transform: scale(1); } }
 
-/* ---------- Landing hero: product-card waterfall (transform-only animation) ---------- */
-:root { --wf-card-w: 244px; --wf-card-h: 270px; --wf-gap: 22px; }
-@media (max-width: 1023px) { :root { --wf-card-w: 194px; --wf-card-h: 214px; --wf-gap: 16px; } }
+/* The bar sweeps, it never fills: a wait of unknown length must not imply a finish time. */
+.ld-track { position: relative; width: 132px; height: 3px; border-radius: 999px; background: currentColor; opacity: .18; overflow: hidden; }
+.ld-sweep { position: absolute; inset-block: 0; width: 38%; border-radius: 999px; background: currentColor; animation: ld-sweep var(--ld-cycle) cubic-bezier(.65,0,.35,1) infinite; }
+@keyframes ld-sweep { 0% { inset-inline-start: -40%; } 100% { inset-inline-start: 102%; } }
+
+.ld-grid { display: grid; grid-template-columns: repeat(3, 7px); gap: 5px; }
+.ld-cell { width: 7px; height: 7px; border-radius: 2px; background: currentColor; animation: ld-fade var(--ld-cycle) ease-in-out infinite; }
+@keyframes ld-fade { 0%, 65%, 100% { opacity: .2; } 32% { opacity: 1; } }
+
+/* ---------- Landing hero: glyph-card waterfall (transform-only animation) ---------- */
+:root { --wf-card-w: 214px; --wf-card-h: 236px; --wf-gap: 20px; }
+@media (max-width: 1023px) { :root { --wf-card-w: 176px; --wf-card-h: 196px; --wf-gap: 14px; } }
 
 .wf-wrap { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .wf-grid {
-  position: absolute; top: -14%; inset-inline-start: 5%; height: 128%; width: 132%;
+  position: absolute; top: -14%; inset-inline-start: 4%; height: 128%; width: 134%;
   display: flex; gap: var(--wf-gap); align-items: flex-start;
-  transform: rotate(-10deg) scale(1.1); transform-origin: center;
+  transform: rotate(-10deg) scale(1.08); transform-origin: center;
 }
-[dir="rtl"] .wf-grid { transform: rotate(10deg) scale(1.1); }
+[dir="rtl"] .wf-grid { transform: rotate(10deg) scale(1.08); }
 .wf-col {
   display: flex; flex-direction: column; gap: var(--wf-gap); flex: none;
   animation-name: wf-down; animation-timing-function: linear; animation-iteration-count: infinite;
@@ -69,30 +81,29 @@ body { @apply bg-mist text-ink antialiased; }
 @media (max-width: 1023px) { .wf-col:nth-child(4) { display: none; } }
 
 .wf-card {
-  position: relative; width: var(--wf-card-w); height: var(--wf-card-h); border-radius: 16px; overflow: hidden; flex: none;
-  display: flex; flex-direction: column; background: #FFFFFF; box-shadow: 0 14px 34px rgba(16, 24, 50, .22);
+  position: relative; width: var(--wf-card-w); height: var(--wf-card-h); border-radius: 12px; overflow: hidden; flex: none;
+  display: flex; flex-direction: column; background: #FFFFFF; border: 1px solid rgba(42, 26, 23, .10);
   pointer-events: auto; transition: transform .3s ease, box-shadow .3s ease; transform: translateZ(0);
 }
-.wf-card:hover { transform: scale(1.04) translateZ(0); box-shadow: 0 22px 46px rgba(16, 24, 50, .34); }
-.wf-card--tint { background: #F4F5FA; }
-.wf-card--blush { background: #FDEDF4; }
-.wf-figure { flex: 1; display: grid; place-items: center; padding: 14px; }
-.wf-figure img { width: 62%; max-width: 132px; height: auto; user-select: none; }
-.wf-meta { padding: 0 16px 16px; }
-.wf-name { font-size: 13px; font-weight: 700; color: #1E2748; line-height: 1.25; }
-.wf-price { margin-top: 2px; font-size: 12px; font-weight: 600; color: #C42E71; }
+.wf-card:hover { transform: scale(1.03) translateZ(0); box-shadow: 0 14px 34px rgba(42, 26, 23, .14); }
+.wf-figure { flex: 1; display: grid; place-items: center; padding: 18px; }
+.wf-figure img { width: 54%; max-width: 96px; height: auto; user-select: none; }
+.wf-meta { padding: 0 18px 18px; }
+.wf-name { font-size: 12.5px; font-weight: 600; color: #2A1A17; line-height: 1.3; }
+.wf-price { margin-top: 3px; font-size: 12px; color: #6B5A54; }
 @keyframes wf-down { from { transform: translateY(-50%); } to { transform: translateY(0); } }
 
 /* Mobile strip */
-.wf-strip-wrap { overflow: hidden; height: 210px; margin-inline: -16px; }
-.wf-strip { display: flex; gap: 14px; width: max-content; padding-block: 8px; animation: wf-side 34s linear infinite; will-change: transform; }
+.wf-strip-wrap { overflow: hidden; height: 186px; margin-inline: -16px; }
+.wf-strip { display: flex; gap: 12px; width: max-content; padding-block: 6px; animation: wf-side 36s linear infinite; will-change: transform; }
 [dir="rtl"] .wf-strip { animation-name: wf-side-rtl; }
-.wf-strip .wf-card { width: 168px; height: 186px; border-radius: 14px; }
-.wf-strip .wf-figure img { width: 58%; }
+.wf-strip .wf-card { width: 152px; height: 168px; }
+.wf-strip .wf-figure img { width: 50%; }
 @keyframes wf-side { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @keyframes wf-side-rtl { from { transform: translateX(0); } to { transform: translateX(50%); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .wf-col, .wf-strip, .pl-loader-ring, .pl-loader-mark { animation: none; }
+  .wf-col, .wf-strip, .ld-dot, .ld-sweep, .ld-cell { animation: none; }
   .wf-card { transition: none; }
+  .ld-sweep { inset-inline-start: 0; width: 100%; }
 }

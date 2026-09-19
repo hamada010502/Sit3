@@ -27,10 +27,10 @@ export default function DevelopersPage() {
       <div className="card-pad text-sm">
         <h2 className="font-bold mb-2">{t('api_title')}</h2>
         <p className="text-ink-soft mb-3">{t('api_sub')}</p>
-        <pre className="bg-mist rounded-lg p-3 overflow-x-auto text-xs" dir="ltr">{`curl -H "Authorization: Bearer plo_..." \\
+        <pre className="bg-cream rounded-lg p-3 overflow-x-auto text-xs" dir="ltr">{`curl -H "Authorization: Bearer plo_..." \\
   ${appUrl('/api/v1/orders')}`}</pre>
         <div className="mt-3 flex items-center gap-2">
-          <code className="bg-mist rounded px-2 py-1 text-xs" dir="ltr">{appUrl('/api/v1')}</code>
+          <code className="bg-cream rounded px-2 py-1 text-xs" dir="ltr">{appUrl('/api/v1')}</code>
           <CopyButton text={appUrl('/api/v1')} />
         </div>
       </div>

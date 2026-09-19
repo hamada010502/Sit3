@@ -39,7 +39,7 @@ export function TwoFactorPanel({ enabled, secret, qr }: { enabled: boolean; secr
           {secret && (
             <div>
               <label className="label">{t('tfa_manual')}</label>
-              <code className="block break-all rounded bg-mist px-3 py-2 text-sm" dir="ltr">{secret}</code>
+              <code className="block break-all rounded bg-cream px-3 py-2 text-sm" dir="ltr">{secret}</code>
             </div>
           )}
           <div>

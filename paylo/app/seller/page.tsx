@@ -44,7 +44,7 @@ export default function SellerDashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-        <div className="stat"><div className="stat-label">{t('dash_to_fulfill')}</div><div className="stat-value text-rose-600">{toFulfil}</div></div>
+        <div className="stat"><div className="stat-label">{t('dash_to_fulfill')}</div><div className="stat-value text-cherry">{toFulfil}</div></div>
         <div className="stat"><div className="stat-label">{t('st_awaiting_payment')}</div><div className="stat-value">{awaitingPayment}</div></div>
         <div className="stat"><div className="stat-label">{t('orders_today')}</div><div className="stat-value">{today}</div></div>
         <div className="stat"><div className="stat-label">{t('orders_week')}</div><div className="stat-value">{week}</div></div>

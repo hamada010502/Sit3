@@ -41,7 +41,7 @@ export default function AdminOrderPage({ params }: { params: { id: string } }) {
   return (
     <div>
       <AutoRefresh seconds={15} />
-      <Link href="/admin/orders" className="text-sm text-ink-soft hover:text-rose-600">← {t('a_orders_title')}</Link>
+      <Link href="/admin/orders" className="text-sm text-ink-soft hover:text-cherry">← {t('a_orders_title')}</Link>
       <div className="flex flex-wrap items-center gap-3 mt-2 mb-2">
         <h1 className="text-2xl font-bold font-mono" dir="ltr">{order.code}</h1>
         <OrderStateBadge state={order.order_state} t={t} />
@@ -89,7 +89,7 @@ export default function AdminOrderPage({ params }: { params: { id: string } }) {
       <div className="mb-6"><OrderSummary order={order} t={t} lang={lang} admin /></div>
 
       {active && order.product_type !== 'digital' && (
-        <div className="card-pad mb-6 border-rose/30">
+        <div className="card-pad mb-6 border-cherry/30">
           <h2 className="text-lg font-bold mb-3">{t('a_update_delivery')}</h2>
           <div className="grid md:grid-cols-2 gap-4">
             {isDmc && yalla && order.fulfillment_method === 'platform_rider' && (
@@ -131,9 +131,9 @@ export default function AdminOrderPage({ params }: { params: { id: string } }) {
           {payments.map((p) => (
             <div key={p.id} className="flex flex-wrap justify-between gap-2 border-b border-ink/5 py-1.5 last:border-0">
               <span>
-                <span className={`badge ${p.status === 'captured' ? 'bg-success/12 text-success' : p.status === 'failed' ? 'bg-danger/10 text-danger' : 'bg-ink/8 text-ink-soft'}`}>{p.status}</span>{' '}
+                <span className={`badge ${p.status === 'captured' ? 'bg-success/12 text-success' : p.status === 'failed' ? 'bg-cherry/8 text-cherry' : 'bg-ink/8 text-ink-soft'}`}>{p.status}</span>{' '}
                 {t(`pm_${p.method}` as 'pm_cod')}{p.card_last4 ? ` •••• ${p.card_last4}` : ''}
-                {p.failure_reason && <span className="text-danger"> · {p.failure_reason}</span>}
+                {p.failure_reason && <span className="text-cherry"> · {p.failure_reason}</span>}
               </span>
               <span dir="ltr" className="text-xs text-ink-soft">{formatSYP(p.amount, lang)} · {p.provider}:{p.provider_ref ?? '—'}</span>
             </div>

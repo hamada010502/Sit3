@@ -45,7 +45,7 @@ export default function ProductsPage() {
                   {p.status !== 'removed' && (
                     <div className="mt-2 flex items-center gap-2 text-xs">
                       <span className="text-ink-soft">{t('checkout_link')}:</span>
-                      <code className="bg-mist rounded px-1.5 py-0.5 truncate max-w-[220px] sm:max-w-xs" dir="ltr">{link}</code>
+                      <code className="bg-cream rounded px-1.5 py-0.5 truncate max-w-[220px] sm:max-w-xs" dir="ltr">{link}</code>
                       <CopyButton text={link} />
                     </div>
                   )}

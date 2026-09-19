@@ -16,7 +16,7 @@ export function LoginForm() {
       <Field label={t('password')}><input name="password" type="password" className="input" required autoComplete="current-password" /></Field>
       <SubmitButton className="btn-primary w-full">{t('login_btn')}</SubmitButton>
       <p className="text-sm text-center text-ink-soft">
-        <Link href="/apply" className="text-rose-600 font-semibold">{t('nav_apply')}</Link>
+        <Link href="/apply" className="text-cherry font-semibold">{t('nav_apply')}</Link>
       </p>
     </form>
   );

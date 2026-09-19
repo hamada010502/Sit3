@@ -31,11 +31,11 @@ export default function AdminSellersPage({ searchParams }: { searchParams: { sta
       <div className="flex flex-wrap gap-2 mb-4">
         {TABS.map((f) => (
           <Link key={f} href={f === 'all' ? '/admin/sellers' : `/admin/sellers?status=${f}`}
-            className={`badge border px-3 py-1 ${status === f && !kyc ? 'bg-tide text-white border-tide' : 'bg-white border-ink/15 text-ink-soft'}`}>
+            className={`badge border px-3 py-1 ${status === f && !kyc ? 'bg-ink text-white border-ink' : 'bg-white border-ink/15 text-ink-soft'}`}>
             {f === 'all' ? t('all') : t(`st_seller_${f}` as const)}
           </Link>
         ))}
-        <Link href="/admin/sellers?kyc=submitted" className={`badge border px-3 py-1 ${kyc ? 'bg-tide text-white border-tide' : 'bg-white border-ink/15 text-ink-soft'}`}>{t('ops_kyc_waiting')}</Link>
+        <Link href="/admin/sellers?kyc=submitted" className={`badge border px-3 py-1 ${kyc ? 'bg-ink text-white border-ink' : 'bg-white border-ink/15 text-ink-soft'}`}>{t('ops_kyc_waiting')}</Link>
       </div>
       <div className="card overflow-x-auto"><table className="table">
         <thead><tr><th>{t('store_name')}</th><th>{t('full_name')}</th><th>{t('governorate')}</th><th>{t('products_of')}</th><th>{t('orders_count')}</th>
@@ -47,7 +47,7 @@ export default function AdminSellersPage({ searchParams }: { searchParams: { sta
             <td>{s.governorate}</td><td>{s.product_count}</td><td>{s.order_count}</td>
             <td><SellerStatusBadge status={s.status} t={t} /></td>
             <td><KycBadge status={s.kyc_status} t={t} /></td>
-            <td><span className={`badge ${s.totp_enabled ? 'bg-success/12 text-success' : 'bg-danger/10 text-danger'}`}>{s.totp_enabled ? t('yes') : t('no')}</span></td>
+            <td><span className={`badge ${s.totp_enabled ? 'bg-success/12 text-success' : 'bg-cherry/8 text-cherry'}`}>{s.totp_enabled ? t('yes') : t('no')}</span></td>
             <td><Link href={`/admin/sellers/${s.id}`} className="link text-sm">{t('view')}</Link></td>
           </tr>))}</tbody>
       </table></div>

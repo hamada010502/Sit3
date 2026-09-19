@@ -28,7 +28,7 @@ export default function SellerOrderPage({ params }: { params: { id: string } }) 
   return (
     <div>
       <AutoRefresh seconds={10} />
-      <Link href="/seller/orders" className="text-sm text-ink-soft hover:text-rose-600">← {t('orders_title')}</Link>
+      <Link href="/seller/orders" className="text-sm text-ink-soft hover:text-cherry">← {t('orders_title')}</Link>
       <div className="flex flex-wrap items-center gap-3 mt-2 mb-6">
         <h1 className="text-2xl font-bold font-mono" dir="ltr">{order.code}</h1>
         <OrderStateBadge state={order.order_state} t={t} />

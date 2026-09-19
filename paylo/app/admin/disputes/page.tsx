@@ -36,7 +36,7 @@ export default function AdminDisputesPage({ searchParams }: { searchParams: { al
             <div key={d.id} id={d.id} className="card-pad">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <DisputeStatusBadge status={d.status} t={t} />
-                <span className="font-semibold">{t('a_dispute_for')} <Link href={`/admin/orders/${d.order.id}`} className="font-mono text-rose-600" dir="ltr">{d.order.code}</Link></span>
+                <span className="font-semibold">{t('a_dispute_for')} <Link href={`/admin/orders/${d.order.id}`} className="font-mono text-cherry" dir="ltr">{d.order.code}</Link></span>
                 <OrderStatusBadge status={d.order.status} t={t} />
                 <span className="text-xs text-ink-soft">{d.created_at}</span>
               </div>
@@ -54,7 +54,7 @@ export default function AdminDisputesPage({ searchParams }: { searchParams: { al
                     {d.status === 'open' && (
                       <form action={investigateAction.bind(null, d.id)} className="flex gap-2"><input name="note" className="input" placeholder={t('admin_note')} /><SubmitButton className="btn-secondary shrink-0">{t('a_investigate')}</SubmitButton></form>
                     )}
-                    <form action={resolveAction.bind(null, d.id)} className="space-y-2 rounded-xl bg-mist p-3">
+                    <form action={resolveAction.bind(null, d.id)} className="space-y-2 rounded-xl bg-cream p-3">
                       <label className="label">{t('resolve')}</label>
                       <select name="resolution" className="input">
                         <option value="refund">{t('a_resolve_refund')}</option>

@@ -32,7 +32,7 @@ export function ProductForm({ product, images, variants = [] }: { product?: Prod
         <Field label={t('product_type')}>
           <div className="flex gap-2">
             {(['physical', 'digital'] as const).map((v) => (
-              <label key={v} className={`flex-1 cursor-pointer rounded-lg border px-3 py-2.5 text-sm font-semibold text-center ${type === v ? 'border-rose bg-rose-50 text-rose-700' : 'border-ink/15 text-ink-soft'}`}>
+              <label key={v} className={`flex-1 cursor-pointer rounded-lg border px-3 py-2.5 text-sm font-semibold text-center ${type === v ? 'border-cherry bg-cherry/8 text-cherry-dark' : 'border-ink/15 text-ink-soft'}`}>
                 <input type="radio" name="type" value={v} checked={type === v} onChange={() => setType(v)} className="sr-only" />
                 {t(`pt_${v}` as const)}
               </label>
@@ -86,7 +86,7 @@ export function ProductForm({ product, images, variants = [] }: { product?: Prod
                       <input type="number" min={1} dir="ltr" className="input" value={r.price} onChange={(e) => setRow(i, { price: Number(e.target.value) })} /></div>
                     <div className="w-24"><label className="label">{t('stock')}</label>
                       <input type="number" min={0} dir="ltr" className="input" value={r.stock} onChange={(e) => setRow(i, { stock: Number(e.target.value) })} /></div>
-                    <button type="button" className="btn-ghost btn-sm text-danger" onClick={() => setRows((r) => r.filter((_, j) => j !== i))}>{t('variant_remove')}</button>
+                    <button type="button" className="btn-ghost btn-sm text-cherry" onClick={() => setRows((r) => r.filter((_, j) => j !== i))}>{t('variant_remove')}</button>
                   </div>
                 ))}
               </div>
@@ -104,7 +104,7 @@ export function ProductForm({ product, images, variants = [] }: { product?: Prod
               {images.map((src) => (
                 <label key={src} className="relative cursor-pointer">
                   <img src={src} alt="" className="h-20 w-20 object-cover rounded-lg border border-ink/10" />
-                  <input type="checkbox" name="keep_image" value={src} defaultChecked className="absolute top-1 start-1 h-4 w-4 accent-rose" />
+                  <input type="checkbox" name="keep_image" value={src} defaultChecked className="absolute top-1 start-1 h-4 w-4 accent-cherry" />
                 </label>
               ))}
             </div>

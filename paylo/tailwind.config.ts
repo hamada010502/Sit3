@@ -1,35 +1,32 @@
 import type { Config } from 'tailwindcss';
 
 /**
- * Paylo design tokens — canonical brand per Full Spec v2 §1.1.
- * Velvet Rose (accent/CTA), Midnight Tide (deep surfaces), Pearl Dust (white).
- * `ink`/`mist` are tint/shade derivations of Midnight Tide, never pure black (v2 §1.1).
- * `success`/`warn`/`danger` are UI status semantics only — they never carry brand meaning.
+ * Paylo design tokens.
+ * Two brand colours: Cherry Cola and Cream Vanilla. Everything else is a derivation —
+ * `ink` is a very dark warm brown rather than black, so the whole surface stays warm.
+ * `success`/`warn` are status semantics only and never carry brand meaning; destructive
+ * actions reuse `cherry` and separate themselves by treatment, not by a second red.
  */
 const config: Config = {
   content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        rose: { DEFAULT: '#E63E88', 600: '#C42E71', 700: '#A32560', 50: '#FDEDF4', 100: '#FBD9E8' },
-        tide: { DEFAULT: '#384D95', 700: '#2C3D77', 800: '#22305F', 900: '#16203F' },
-        pearl: '#FFFFFF',
-        mist: '#F4F5FA',
-        ink: { DEFAULT: '#1E2748', soft: '#5A648A' },
-        success: '#1E9E6A',
-        warn: '#B7791F',
-        danger: '#D94141',
+        cherry: { DEFAULT: '#9A0002', dark: '#7A0002', tint: '#F4E4E2' },
+        cream: { DEFAULT: '#EFE6DE', deep: '#E3D8CE' },
+        paper: '#FFFFFF',
+        ink: { DEFAULT: '#2A1A17', soft: '#6B5A54' },
+        success: '#2F6B4F',
+        warn: '#8A6318',
       },
-      fontFamily: {
-        sans: ['"Plus Jakarta Sans"', 'Cairo', 'system-ui', 'sans-serif'],
-      },
+      fontFamily: { sans: ['"Plus Jakarta Sans"', 'Cairo', 'system-ui', 'sans-serif'] },
       opacity: { 8: '.08', 12: '.12', 15: '.15' },
-      borderRadius: { DEFAULT: '10px', lg: '12px', xl: '14px', '2xl': '16px' },
+      borderRadius: { DEFAULT: '8px', lg: '10px', xl: '12px', '2xl': '14px' },
       boxShadow: {
-        soft: '0 2px 8px rgba(30, 39, 72, .06), 0 1px 2px rgba(30, 39, 72, .04)',
-        lift: '0 12px 32px rgba(30, 39, 72, .12)',
-        deep: '0 20px 48px rgba(22, 32, 63, .28)',
+        hair: '0 1px 2px rgba(42, 26, 23, .04)',
+        lift: '0 10px 30px rgba(42, 26, 23, .10)',
       },
+      maxWidth: { prose: '62ch' },
     },
   },
   plugins: [],

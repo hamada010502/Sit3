@@ -52,9 +52,9 @@ export default function AdminPayoutsPage({ searchParams }: { searchParams: { gen
               <div className="text-xs text-ink-soft whitespace-pre-line max-w-xs">{sellers[p.seller_id]?.payout_details ?? t('not_set')}</div></td>
             <td className="text-xs">{p.period_label}</td><td>{p.order_count}</td><td>{formatSYP(p.gross, lang)}</td><td>{formatSYP(p.commission, lang)}</td>
             <td className="font-semibold">{formatSYP(p.amount, lang)}</td>
-            <td><span className={`badge ${p.status === 'paid' ? 'bg-success/12 text-success' : p.status === 'failed' ? 'bg-danger/10 text-danger' : 'bg-warn/12 text-warn'}`}>
+            <td><span className={`badge ${p.status === 'paid' ? 'bg-success/12 text-success' : p.status === 'failed' ? 'bg-cherry/8 text-cherry' : 'bg-warn/12 text-warn'}`}>
               {p.status === 'paid' ? t('payout_paid') : p.status === 'failed' ? t('mark_failed') : t('payout_pending')}</span>
-              {p.failure_reason && <div className="text-xs text-danger mt-1">{p.failure_reason}</div>}</td>
+              {p.failure_reason && <div className="text-xs text-cherry mt-1">{p.failure_reason}</div>}</td>
             <td>
               {p.status === 'paid' ? <span className="text-xs" dir="ltr">{p.reference ?? '—'}<div className="text-ink-soft">{p.paid_at}</div></span> : (
                 <form action={markPaidAction.bind(null, p.id)} className="flex flex-wrap gap-1">

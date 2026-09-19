@@ -1,24 +1,17 @@
 export const en = {
   // brand
   brand: 'Paylo',
-  slogan: 'Link It. Get Paid.',
-  vision: 'The payment and delivery layer every Syrian seller builds on — starting with a single link.',
   // nav
   nav_home: 'Home', nav_login: 'Log in', nav_apply: 'Become a seller', nav_logout: 'Log out',
   nav_dashboard: 'Dashboard', nav_products: 'Products', nav_orders: 'Orders', nav_payouts: 'Payouts',
   nav_settings: 'Settings', nav_sellers: 'Sellers', nav_disputes: 'Disputes', nav_emails: 'Emails', nav_track: 'Track an order',
   lang_switch: 'العربية',
   // landing
-  hero_title: 'Sell on Instagram. Get paid by card. We deliver.',
-  hero_sub: 'Paylo gives Syrian social-media sellers a checkout link and a storefront. Buyers pay by Mastercard, we hold the funds, handle delivery, and pay you out every week.',
-  hero_cta: 'Apply as a seller', hero_cta2: 'Seller login',
   how_title: 'How it works',
   how_1_t: '1. Add a product', how_1_d: 'Title, price in SYP, stock and photos. No variants, no catalog — just the items you post on Instagram.',
   how_2_t: '2. Share the link', how_2_d: 'Every product gets a checkout link. Your store page lists everything active. Put it in your bio or a DM.',
   how_3_t: '3. Buyer pays by card', how_3_d: 'No account needed. Name, phone, address, card. Paylo holds the money until the order is safely delivered.',
   how_4_t: '4. We deliver, you get paid', how_4_d: 'Damascus: our riders or Yalla Go. Other governorates: partner logistics pickup point. Weekly payouts, minus a small commission.',
-  track_title: 'Track your order', track_placeholder: 'Order code, e.g. PL-XXXXXXXX', track_btn: 'Track',
-  no_catalog_note: 'Paylo has no public catalog. Every visitor arrives through a link a seller shared.',
   // auth
   login_title: 'Log in', email: 'Email', password: 'Password', login_btn: 'Log in', login_error: 'Wrong email or password.',
   apply_title: 'Apply as a seller', apply_sub: 'Applications are reviewed manually by the Paylo team. You can log in right away, but you cannot sell until approved.',
@@ -98,7 +91,6 @@ export const en = {
   by_buyer: 'Buyer', by_seller: 'Seller', by_admin: 'Paylo admin', by_system: 'System',
   // landing hero (v2)
   hero2_tab_sellers: 'For Sellers', hero2_tab_buyers: 'For Buyers', hero2_login: 'Log in', hero2_signup: "Sign up – it's free",
-  hero2_nav_what: 'What is Paylo?', hero2_nav_pricing: 'Pricing',
   hero2_h1: 'Your store. One link.',
   hero2_sub: "Sell on Instagram, get paid by card, and let us handle delivery. Join Syria's independent sellers.",
   hero2_cta: "Start selling – it's free",
@@ -107,22 +99,8 @@ export const en = {
   step3_t: 'We deliver, you get paid', step3_d: 'Cash collected on delivery or a bank transfer confirmed, then a weekly payout into your account.',
   pricing_note: 'No subscription. Paylo takes a small commission per completed sale.',
   // landing v3 (canonical brand)
-  hero2_h1_pre: 'Your store.', hero2_h1_accent: 'One', hero2_h1_post: 'link.',
-  hero2_sub2: 'Share one link on Instagram. Take orders, arrange delivery, and follow every payment from a single dashboard.',
-  hero2_seen: 'Built for independent sellers in Syria',
-  trust_title: 'Why sellers use Paylo',
-  trust_1_t: 'One link, everything behind it', trust_1_d: 'Your storefront and every product link live at one address you can paste into a bio or a DM.',
-  trust_2_t: 'Orders that cannot get lost', trust_2_d: 'Every order moves through a strict set of states. Nothing is marked shipped or closed by accident.',
-  trust_3_t: 'Delivery coordinated for you', trust_3_d: 'Courier in Damascus, or a pickup point run by our logistics partner elsewhere. You hand over the parcel, we do the rest.',
-  trust_4_t: 'A record of every change', trust_4_d: 'Payment, dispatch, refund: each step is timestamped and kept, so a disputed order is never one person\u2019s word against another.',
-  final_t: 'Start taking orders this week',
-  final_sub: 'Create your store, add a few products, and share the link. Approval is manual and usually takes a day.',
-  final_cta: 'Create your store',
   final_note: 'No subscription fee. Commission is agreed per seller while payment partners are being finalised.',
   pay_phase_note: 'Today buyers pay cash on delivery or by bank transfer. Card payment opens once a settlement partner is confirmed.',
-  prod_candle: 'Rose scented candle', prod_cup: 'Ceramic coffee cups', prod_tote: 'Embroidered tote', prod_soap: 'Olive oil soap',
-  prod_perfume: 'Amber perfume oil', prod_shirt: 'Linen shirt', prod_earrings: 'Brass earrings', prod_basket: 'Woven basket',
-  prod_honey: 'Mountain honey', prod_plant: 'Potted olive seedling', prod_gift: 'Gift box', prod_sun: 'Sunglasses',
   // --- v2 surfaces ---
   os_open: 'Open', os_closed: 'Closed', os_cancelled: 'Cancelled', os_returned: 'Returned',
   order_state: 'Order state', fulfillment_state: 'Fulfilment',
@@ -205,5 +183,16 @@ export const en = {
   weekday_0: 'Sunday', weekday_1: 'Monday', weekday_2: 'Tuesday', weekday_3: 'Wednesday', weekday_4: 'Thursday', weekday_5: 'Friday', weekday_6: 'Saturday',
   nav_security: 'Security', nav_ops: 'Operations', nav_audit: 'Audit', nav_webhooks: 'Webhooks', nav_kyc: 'Verification', nav_notifications: 'Notifications',
   saved: 'Saved.', confirm: 'Confirm', pending_review: 'Under review', not_set: 'Not set',
+  // landing (simplified)
+  hero_title: 'Your store. One link.',
+  hero_sub: 'Sell on Instagram, take every order in one place, and let us handle delivery.',
+  hero_micro: 'Cash on delivery or bank transfer. No subscription.',
+  aud_sellers: 'For sellers', aud_buyers: 'For buyers',
+  track_title: 'Track your order', track_placeholder: 'Order code', track_btn: 'Track',
+  slogan: 'Your store. One link.',
+  prod_seal: 'Rose scented candle', prod_stem: 'Potted olive seedling', prod_wave: 'Silk scarf',
+  prod_peak: 'Mountain honey', prod_axis: 'Amber perfume oil', prod_count: 'Ceramic coffee cups',
+  prod_vessel: 'Olive oil soap', prod_frame: 'Gift box', prod_cross: 'Embroidered tote',
+  prod_split: 'Brass earrings', prod_arch: 'Woven basket', prod_path: 'Linen shirt',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

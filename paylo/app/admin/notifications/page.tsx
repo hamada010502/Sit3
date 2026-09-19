@@ -20,7 +20,7 @@ export default function AdminNotificationsPage({ searchParams }: { searchParams:
       <div className="flex flex-wrap gap-2 mb-4">
         {CHANNELS.map((f) => (
           <Link key={f} href={f === 'all' ? '/admin/notifications' : `/admin/notifications?channel=${f}`}
-            className={`badge border px-3 py-1 ${ch === f ? 'bg-tide text-white border-tide' : 'bg-white border-ink/15 text-ink-soft'}`}>
+            className={`badge border px-3 py-1 ${ch === f ? 'bg-ink text-white border-ink' : 'bg-white border-ink/15 text-ink-soft'}`}>
             {f === 'all' ? t('all') : t(`ch_${f}` as const)}
           </Link>
         ))}
@@ -34,7 +34,7 @@ export default function AdminNotificationsPage({ searchParams }: { searchParams:
             <td dir="ltr" className="text-xs">{r.recipient}</td>
             <td className="text-xs" dir="ltr">{r.event}</td>
             <td><details><summary className="cursor-pointer text-sm">{r.subject || r.body.slice(0, 48)}</summary>
-              <pre className="mt-2 whitespace-pre-wrap text-xs bg-mist rounded p-2" dir="ltr">{r.body}</pre></details></td>
+              <pre className="mt-2 whitespace-pre-wrap text-xs bg-cream rounded p-2" dir="ltr">{r.body}</pre></details></td>
             <td className="text-xs">{r.transport} · {r.status}</td>
           </tr>))}</tbody>
       </table></div>

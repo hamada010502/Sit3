@@ -29,12 +29,12 @@ export default function EditProductPage({ params, searchParams }: { params: { id
         <>
           <div className="card-pad mb-4 flex flex-wrap items-center gap-2 text-sm">
             <span className="text-ink-soft">{t('checkout_link')}:</span>
-            <code className="bg-mist rounded px-2 py-1 truncate max-w-full" dir="ltr">{link}</code>
+            <code className="bg-cream rounded px-2 py-1 truncate max-w-full" dir="ltr">{link}</code>
             <CopyButton text={link} />
           </div>
           <ProductForm product={product} images={parseImages(product.images)} variants={variants} />
           <form action={deleteProductAction.bind(null, product.id)} className="mt-4 text-end">
-            <button className="text-sm font-semibold text-danger">{t('delete')}</button>
+            <button className="text-sm font-semibold text-cherry">{t('delete')}</button>
           </form>
         </>
       )}

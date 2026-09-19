@@ -26,12 +26,12 @@ export default function AdminSellerPage({ params }: { params: { id: string } }) 
 
   return (
     <div>
-      <Link href="/admin/sellers" className="text-sm text-ink-soft hover:text-rose-600">← {t('a_sellers_title')}</Link>
+      <Link href="/admin/sellers" className="text-sm text-ink-soft hover:text-cherry">← {t('a_sellers_title')}</Link>
       <div className="flex flex-wrap items-center gap-3 mt-2 mb-6">
         <h1 className="section-title">{seller.store_name}</h1>
         <SellerStatusBadge status={seller.status} t={t} />
         <KycBadge status={seller.kyc_status} t={t} />
-        <span className={`badge ${user.totp_enabled ? 'bg-success/12 text-success' : 'bg-danger/10 text-danger'}`}>2FA {user.totp_enabled ? t('yes') : t('no')}</span>
+        <span className={`badge ${user.totp_enabled ? 'bg-success/12 text-success' : 'bg-cherry/8 text-cherry'}`}>2FA {user.totp_enabled ? t('yes') : t('no')}</span>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4 mb-6">
@@ -44,7 +44,7 @@ export default function AdminSellerPage({ params }: { params: { id: string } }) 
           <Info k={t('bio')} v={seller.bio} />
           <Info k={t('payout_details')} v={<span className="whitespace-pre-line">{seller.payout_details}</span>} />
           <Info k={t('date')} v={seller.created_at} />
-          <form action={resetTotpAction.bind(null, seller.id)} className="pt-2"><button className="btn-ghost btn-sm text-danger">{t('tfa_disable')} (2FA)</button></form>
+          <form action={resetTotpAction.bind(null, seller.id)} className="pt-2"><button className="btn-ghost btn-sm text-cherry">{t('tfa_disable')} (2FA)</button></form>
         </div>
         <div className="space-y-4">
           <SellerDecision sellerId={seller.id} status={seller.status} reviewNote={seller.review_note} />

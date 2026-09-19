@@ -13,7 +13,7 @@ export function AdminSettingsForm({ s, cardEnvEnabled }: { s: Record<string, str
   const [state, action] = useFormState(saveAdminSettingsAction, null);
   const Check = ({ name, label, disabled, hint }: { name: string; label: string; disabled?: boolean; hint?: string }) => (
     <label className={`flex items-start gap-2 text-sm ${disabled ? 'opacity-60' : ''}`}>
-      <input type="checkbox" name={name} defaultChecked={s[name] === '1'} disabled={disabled} className="accent-rose h-4 w-4 mt-0.5" />
+      <input type="checkbox" name={name} defaultChecked={s[name] === '1'} disabled={disabled} className="accent-cherry h-4 w-4 mt-0.5" />
       <span>{label}{hint && <span className="block text-xs text-ink-soft">{hint}</span>}</span>
     </label>
   );

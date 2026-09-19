@@ -25,7 +25,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
       <div className="card-pad mb-8 flex flex-col sm:flex-row sm:items-center gap-4">
         {seller.logo_path
           ? <img src={seller.logo_path} alt="" className="h-16 w-16 rounded-full object-cover shrink-0" />
-          : <div className="h-16 w-16 rounded-full bg-tide text-white flex items-center justify-center text-2xl font-bold shrink-0">{seller.store_name.slice(0, 1).toUpperCase()}</div>}
+          : <div className="h-16 w-16 rounded-full bg-ink text-white flex items-center justify-center text-2xl font-bold shrink-0">{seller.store_name.slice(0, 1).toUpperCase()}</div>}
         <div className="flex-1 min-w-0">
           <p className="text-xs uppercase tracking-wide text-ink-soft">{t('store_by')}</p>
           <h1 className="text-2xl font-bold">{seller.store_name}</h1>
@@ -44,7 +44,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
               <Link key={p.id} href={`/p/${p.id}`} className="card overflow-hidden group hover:shadow-lift transition">
                 <ProductImage images={p.images} alt={p.title} className="w-full aspect-square" />
                 <div className="p-3">
-                  <h2 className="font-semibold text-sm line-clamp-2 group-hover:text-rose-600">{p.title}</h2>
+                  <h2 className="font-semibold text-sm line-clamp-2 group-hover:text-cherry">{p.title}</h2>
                   <p className="mt-1 text-sm font-bold">{v ? `${t('from_price')} ` : ''}{formatSYP(price, lang)}</p>
                   {out ? <span className="badge bg-ink/10 text-ink-soft mt-2">{t('sold_out')}</span> : <span className="btn-primary btn-sm mt-2">{t('buy')}</span>}
                 </div>

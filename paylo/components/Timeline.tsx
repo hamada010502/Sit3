@@ -7,7 +7,7 @@ export function Timeline({ events, t, showActor = true }: { events: OrderEvent[]
     <ol className="relative border-s border-ink/15 ms-2 space-y-4">
       {events.map((e) => (
         <li key={e.id} className="ms-5">
-          <span className="absolute -start-1.5 mt-1.5 h-3 w-3 rounded-full bg-rose ring-4 ring-white" />
+          <span className="absolute -start-1.5 mt-1.5 h-3 w-3 rounded-full bg-cherry ring-4 ring-white" />
           <div className="flex flex-wrap items-center gap-2">
             <OrderStatusBadge status={e.to_status as OrderStatus} t={t} />
             <span className="text-xs text-ink-soft">{e.created_at} UTC</span>

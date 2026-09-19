@@ -57,8 +57,8 @@ export default function TrackPage({ params, searchParams }: { params: { code: st
         <div className="card-pad mb-6">
           <ol className="grid grid-cols-4 gap-2 text-center text-xs">
             {STEPS.map((s, i) => (
-              <li key={s} className={`flex flex-col items-center gap-2 ${i <= stepIdx ? 'text-rose-600 font-semibold' : 'text-ink-soft/60'}`}>
-                <span className={`h-3 w-3 rounded-full ${i <= stepIdx ? 'bg-rose' : 'bg-ink/15'}`} />
+              <li key={s} className={`flex flex-col items-center gap-2 ${i <= stepIdx ? 'text-cherry font-semibold' : 'text-ink-soft/60'}`}>
+                <span className={`h-3 w-3 rounded-full ${i <= stepIdx ? 'bg-cherry' : 'bg-ink/15'}`} />
                 <span>{s === 'in_transit' && isPickup ? t('st_ready_for_pickup') : t(`st_${s}` as const)}</span>
               </li>
             ))}

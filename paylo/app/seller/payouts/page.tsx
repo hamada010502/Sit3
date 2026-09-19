@@ -28,7 +28,7 @@ export default function SellerPayoutsPage() {
             <tr key={p.id}>
               <td>{p.period_label}</td><td>{p.order_count}</td><td>{formatSYP(p.gross, lang)}</td><td>− {formatSYP(p.commission, lang)}</td>
               <td className="font-semibold">{formatSYP(p.amount, lang)}</td>
-              <td><span className={`badge ${p.status === 'paid' ? 'bg-success/12 text-success' : p.status === 'failed' ? 'bg-danger/10 text-danger' : 'bg-warn/12 text-warn'}`}>
+              <td><span className={`badge ${p.status === 'paid' ? 'bg-success/12 text-success' : p.status === 'failed' ? 'bg-cherry/8 text-cherry' : 'bg-warn/12 text-warn'}`}>
                 {p.status === 'paid' ? t('payout_paid') : p.status === 'failed' ? t('mark_failed') : t('payout_pending')}</span></td>
               <td className="text-xs" dir="ltr">{p.reference ?? '—'}<div className="text-ink-soft">{p.paid_at ?? ''}</div></td>
             </tr>))}</tbody>

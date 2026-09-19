@@ -31,10 +31,10 @@ export default function AdminDashboard() {
         <span className="text-sm text-ink-soft">{t('bal_next_payout')}: <strong dir="ltr">{nextTransferDate().toISOString().slice(0, 10)}</strong></span>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <Link href="/admin/sellers?status=pending" className="stat hover:border-rose"><div className="stat-label">{t('a_pending_sellers')}</div><div className="stat-value text-rose-600">{pendingSellers}</div></Link>
-        <Link href="/admin/sellers?kyc=submitted" className="stat hover:border-rose"><div className="stat-label">{t('ops_kyc_waiting')}</div><div className="stat-value">{kycWaiting}</div></Link>
-        <Link href="/admin/ops" className="stat hover:border-rose"><div className="stat-label">{t('ops_awaiting_transfer')}</div><div className="stat-value">{awaitingTransfer}</div></Link>
-        <Link href="/admin/disputes" className="stat hover:border-rose"><div className="stat-label">{t('ops_open_returns')}</div><div className="stat-value text-danger">{openReturns}</div></Link>
+        <Link href="/admin/sellers?status=pending" className="stat hover:border-cherry"><div className="stat-label">{t('a_pending_sellers')}</div><div className="stat-value text-cherry">{pendingSellers}</div></Link>
+        <Link href="/admin/sellers?kyc=submitted" className="stat hover:border-cherry"><div className="stat-label">{t('ops_kyc_waiting')}</div><div className="stat-value">{kycWaiting}</div></Link>
+        <Link href="/admin/ops" className="stat hover:border-cherry"><div className="stat-label">{t('ops_awaiting_transfer')}</div><div className="stat-value">{awaitingTransfer}</div></Link>
+        <Link href="/admin/disputes" className="stat hover:border-cherry"><div className="stat-label">{t('ops_open_returns')}</div><div className="stat-value text-cherry">{openReturns}</div></Link>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
         <div className="stat"><div className="stat-label">{t('a_orders_today')}</div><div className="stat-value">{orders30}</div></div>

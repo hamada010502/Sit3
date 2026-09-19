@@ -17,7 +17,7 @@ export default function AdminAuditPage({ searchParams }: { searchParams: { type?
       <div className="flex flex-wrap gap-2 mb-4">
         {TYPES.map((f) => (
           <Link key={f} href={f === 'all' ? '/admin/audit' : `/admin/audit?type=${f}`}
-            className={`badge border px-3 py-1 ${type === f ? 'bg-tide text-white border-tide' : 'bg-white border-ink/15 text-ink-soft'}`}>
+            className={`badge border px-3 py-1 ${type === f ? 'bg-ink text-white border-ink' : 'bg-white border-ink/15 text-ink-soft'}`}>
             {f === 'all' ? t('all') : f}
           </Link>
         ))}

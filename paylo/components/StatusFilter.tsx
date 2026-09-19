@@ -10,7 +10,7 @@ export function StatusFilter({ current, t, base }: { current: string; t: TFn; ba
     <div className="flex flex-wrap gap-2 mb-4">
       {STATES.map((f) => (
         <Link key={f} href={f === 'all' ? base : `${base}?state=${f}`}
-          className={`badge border px-3 py-1 ${current === f ? 'bg-tide text-white border-tide' : 'bg-white border-ink/15 text-ink-soft hover:border-ink/35'}`}>
+          className={`badge border px-3 py-1 ${current === f ? 'bg-ink text-white border-ink' : 'bg-white border-ink/15 text-ink-soft hover:border-ink/35'}`}>
           {f === 'all' ? t('all') : t(`os_${f}` as const)}
         </Link>
       ))}

@@ -1,89 +1,100 @@
 # Paylo design system
 
-Canonical brand per Full Spec v2 §1.1. Tokens live in `tailwind.config.ts`; component
-classes live in `app/globals.css`.
+Two brand colours, a lot of cream, and one filled element per view. Tokens live in
+`tailwind.config.ts`; component classes live in `app/globals.css`.
 
 ## Colour
 
 | Token | Hex | Role |
 |---|---|---|
-| `rose` | `#E63E88` | Primary accent, large calls to action |
-| `rose-600` | `#C42E71` | Small buttons and text links — see contrast note |
-| `rose-700` | `#A32560` | Hover on `rose-600` |
-| `rose-50` / `rose-100` | `#FDEDF4` / `#FBD9E8` | Accent tints, selected states |
-| `tide` | `#384D95` | Midnight Tide: deep surfaces, secondary buttons |
-| `tide-700/800/900` | `#2C3D77` / `#22305F` / `#16203F` | Hero and footer surfaces, darkest text |
-| `pearl` | `#FFFFFF` | Cards, clean surfaces |
-| `mist` | `#F4F5FA` | Page background |
-| `ink` | `#1E2748` | Body text |
-| `ink-soft` | `#5A648A` | Secondary text |
-| `success` / `warn` / `danger` | `#1E9E6A` / `#B7791F` / `#D94141` | Status semantics only, never brand |
+| `cherry` | `#9A0002` | Cherry Cola. The single accent: primary buttons, links, glyph accents |
+| `cherry-dark` | `#7A0002` | Hover |
+| `cherry-tint` | `#F4E4E2` | Rare wash behind an accented block |
+| `cream` | `#EFE6DE` | Cream Vanilla. The page itself, and the whitespace |
+| `cream-deep` | `#E3D8CE` | Quiet dividers and hover fills |
+| `paper` | `#FFFFFF` | Cards and inputs, so they lift off cream without a shadow |
+| `ink` | `#2A1A17` | Body text. A very dark warm brown, never black |
+| `ink-soft` | `#6B5A54` | Secondary text |
+| `success` / `warn` | `#2F6B4F` / `#8A6318` | Status only, never brand |
 
-Pure black is never used; the darkest value is a Midnight Tide shade (v2 §1.1).
+**Contrast.** White on Cherry Cola is 8.8:1 and Cherry Cola on Cream Vanilla is 7.2:1, so
+the accent works as both a filled button and body-size text. Ink on cream is 13.5:1 and
+ink-soft is 5.3:1. Every pairing in the system clears AA without special cases, which is
+what a two-colour palette buys you.
 
-**Contrast.** White on `rose` measures about 3.9:1 — fine for large bold text, short of AA
-for body copy. So `rose` carries big calls to action (`.btn-cta`) and `rose-600` (5.3:1)
-carries small buttons and links. Do not put small white text on `rose`.
-
-Status colours are reserved for state. A green badge always means the same thing wherever
-it appears, which is why they sit outside the three brand colours.
+**There is no second red.** Destructive actions reuse `cherry` as an outline
+(`.btn-danger`), so a delete never competes with the primary call to action on the same
+screen. A filled cherry button always means "the main thing to do here".
 
 ## Type
 
-Plus Jakarta Sans for Latin, Cairo for Arabic, both from Google Fonts. Arabic glyphs fall
-through to Cairo automatically because Jakarta has none, so one stack serves both scripts.
+Plus Jakarta Sans for Latin, Cairo for Arabic. Arabic glyphs fall through to Cairo
+automatically because Jakarta has none, so one stack serves both scripts.
 
-- Display: 800 weight, `tracking-[-0.035em]`, `leading-[1.02]`
-- Section heading: `.section-title` — 24px, 700
-- Body: 16px, 400; secondary text in `ink-soft`
-- Labels: `.label` — 12px, 600, uppercase, wide tracking
-- Headlines may colour one word in `rose` (v2 §1.3)
+- Display: 600 weight, `tracking-[-0.035em]`, `leading-[1.04]`. Semibold, not extrabold —
+  at this size weight reads as shouting.
+- Section heading: `.section-title`, 24px, 600
+- Body 16px, measure capped at `max-w-prose` (62ch)
+- Labels: 12px, 600, uppercase, `tracking-[0.08em]`
+
+## Space
+
+Space is the main design element, so it gets a budget rather than leftovers. Sections
+breathe at `py-20 sm:py-24`; cards pad at `p-6 sm:p-7`; step lists gap at 40px. When a
+layout feels wrong, add space before adding anything else.
 
 ## Shape and depth
 
-- Radius 8–16px (v2 §7.3). Cards 16px, buttons 10–12px, badges pill.
-- Three shadows only: `soft` for resting cards, `lift` for raised or hovered elements,
-  `deep` for elements over a dark surface.
-- Icons are geometric line art: 24px box, 1.8–2px stroke, round caps and joins, no fills.
+Radius 8–14px. **Shadows are for lift on hover only** — resting surfaces separate with a
+1px `ink/10` hairline. Cream and white are close enough in value that a border reads more
+cleanly than a shadow and keeps the page flat and quiet.
 
-## Components
+## Glyphs
 
-`app/globals.css` defines `.btn-*`, `.input`, `.label`, `.card`, `.card-pad`, `.table`,
-`.badge`, `.alert-*`, `.stat*`, `.link`, `.section-title`. Compose these rather than
-restating colours inline, so a token change lands everywhere at once.
+The product cards carry an invented symbol system, not pictures. Twelve glyphs in
+`public/hero/`, each composed from the same primitives — ring, bar, arc, dot, triangle,
+square — on a 120 box with an 8px stroke, and each carrying exactly one cherry mark.
 
-## Spacing and layout
+The product name next to the glyph carries the meaning; the glyph carries identity, like a
+seal. That is why they are abstract: a literal drawing of a candle competes with the word
+"candle" beside it and loses. Two rules when adding one: no glyph may resolve into a face,
+and no glyph may use a primitive the rest of the set does not.
 
-4px base. Page gutters `px-4`; content `max-w-7xl` for dashboards, `max-w-3xl` for reading,
-`max-w-2xl` for forms. Card padding `p-5 sm:p-6`. Grid gaps 12–20px.
-
-Everything directional uses logical properties — `ms-*`, `me-*`, `text-start`,
-`inset-inline-start` — so Arabic mirrors without a second stylesheet.
-
-## Motion
-
-Subtle and purposeful (v2 §7.3). Transitions 200–300ms on `transform`, `opacity`, `color`
-and `box-shadow` only, never on layout properties. The hero waterfall and the loading mark
-animate `transform` and `opacity` alone, and every animation is disabled under
-`prefers-reduced-motion: reduce`.
-
-## Logo
-
-`components/Logo.tsx` renders all variants; `public/brand/` holds the static exports.
-
-The mark is a circular containment holding an upward chevron and a dot: containment for the
-"o" substitution, the chevron for dispatch and movement, the dot to stop it reading as a
-plain arrow. It is vertically symmetric, so it needs no mirrored variant in RTL.
+The logo is the same vocabulary — a ring holding a chevron and a dot — so the mark and the
+cards read as one system. It is vertically symmetric, so RTL needs no mirrored variant, and
+the ring lets it stand in for the "o" in headline use.
 
 | Export | Use |
 |---|---|
-| `logo-primary-dark.svg` / `logo-primary-light.svg` | Horizontal lockup |
+| `logo-primary-light.svg`, `logo-primary-cherry.svg` | Horizontal lockup |
 | `icon-square-*.svg`, `icon-circle-*.svg` | App icon and favicon |
-| `icon-transparent.svg` | Placement over an existing surface |
-| `logo-mono-*.svg`, `icon-mono-*.svg` | Single-colour for print and constrained contexts |
+| `icon-transparent.svg` | Over an existing surface |
+| `logo-mono-*.svg`, `icon-mono-*.svg` | Single colour for print and constrained contexts |
 
-In React: `<LogoMark />`, `<Logo onDark />`, `<WordmarkWithMark />` for the headline
-treatment, `<LogoLoader />` for loading states.
+Minimum icon size 24px. Clear space equals the ring's stroke width. Never recolour outside
+the palette.
 
-Minimum icon size 24px. Clear space on all sides equals the ring's stroke width. Never
-recolour the mark outside the palette, stretch it, or add effects.
+## Motion
+
+`components/Loader.tsx` — three variants (`dots`, `bar`, `grid`) sharing one exported cycle,
+`AI_LOADER_CYCLE_SECONDS`. Two loaders on a screen at different tempos read as two
+unrelated things loading, so anything ambient should align to the same beat:
+
+```tsx
+import Loader, { AI_LOADER_CYCLE_SECONDS } from '@/components/Loader';
+```
+
+**The bar sweeps; it never fills.** Determinate progress on a wait of unknown length
+promises a finish time nobody knows. For waits that can run long, pass `showElapsed`: real
+elapsed time is honest and still reassuring. Every variant is a `role="status"` with a
+polite live region and a screen-reader label.
+
+Elsewhere: transitions 200–300ms on `transform`, `opacity`, `color` and `box-shadow` only,
+never on layout properties. The hero waterfall animates `transform` alone. Everything stops
+under `prefers-reduced-motion: reduce`.
+
+## Direction
+
+Everything directional uses logical properties — `ms-*`, `me-*`, `text-start`,
+`inset-inline-start` — so Arabic mirrors without a second stylesheet. The hero waterfall
+tilts the opposite way under `[dir="rtl"]` and the mobile strip reverses its sweep.

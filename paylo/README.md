@@ -42,13 +42,17 @@ and `UPLOAD_DIR` to durable values.
 
 | Area | Before | Now |
 |---|---|---|
-| Brand | Cream/orange palette, "Link It. Get Paid." | Velvet Rose `#E63E88`, Midnight Tide `#384D95`, Pearl Dust `#FFFFFF`, "Your store. One link." |
+| Brand | Cream/orange palette, "Link It. Get Paid." | Cherry Cola `#9A0002` on Cream Vanilla `#EFE6DE`, "Your store. One link." |
 | Payment | Card via an abstracted provider | **Cash on delivery + bank transfer.** Card is built but switched off behind a phase gate |
 | Order status | One delivery status | `order_state` (Open/Closed/Cancelled/Returned) over a separate fulfilment status |
 | Products | No variants | Physical and digital, up to two option types, per-variant price and stock |
 | Missing systems | — | Seller KYC, mandatory 2FA, operations dashboard, inventory reservation, notifications, audit trail |
 
-The old palette is gone from the codebase; `public/brand/` holds the new logo package.
+The old palettes are gone from the codebase; `public/brand/` holds the current logo package.
+
+The landing page is deliberately spare: one header, a hero, three steps, a footer. Product
+cards carry abstract glyphs rather than illustrations — the product name is the meaning,
+the glyph is identity. See [`docs/design-system.md`](docs/design-system.md).
 
 ## The payment phase gate
 
@@ -121,7 +125,7 @@ admin-configurable.
 
 | URL | Who | What |
 |---|---|---|
-| `/` | public | Hero, how it works, value props, final call to action |
+| `/` | public | Hero, how it works |
 | `/s/[slug]` | buyer | Storefront: banner, logo, active products, "from" pricing for variants |
 | `/p/[id]` | buyer | Two-step checkout: details, then payment method |
 | `/track/[code]` | buyer | Live status, receipt upload, address change, return request, receipt confirmation |
