@@ -105,7 +105,7 @@ export async function approveRegistrationRequest(req: StoreRegistrationRequest, 
       .run(nowIso(), reviewerId, sellerId, nowIso(), req.id);
   })();
 
-  audit('owner', reviewerId, 'owner', 'store_registration_request', req.id, 'approved', { sellerId });
+  audit('owner', reviewerId, 'owner', 'store_registration_request', req.id, 'approved', { sellerId, submittedAt: req.submitted_at });
   await notify({
     event: 'registration.approved',
     email: { to: req.email, subject: 'Paylo — your store is approved', body:
@@ -119,7 +119,7 @@ export async function rejectRegistrationRequest(req: StoreRegistrationRequest, r
   const db = getDb();
   db.prepare("UPDATE store_registration_requests SET status = 'REJECTED', admin_notes = ?, reviewed_at = ?, reviewed_by = ?, updated_at = ? WHERE id = ?")
     .run(note, nowIso(), reviewerId, nowIso(), req.id);
-  audit('owner', reviewerId, 'owner', 'store_registration_request', req.id, 'rejected', { note, notifyApplicant });
+  audit('owner', reviewerId, 'owner', 'store_registration_request', req.id, 'rejected', { note, notifyApplicant, submittedAt: req.submitted_at });
   if (notifyApplicant) {
     await notify({
       event: 'registration.rejected',
@@ -134,7 +134,7 @@ export async function requestMoreInformation(req: StoreRegistrationRequest, revi
   const db = getDb();
   db.prepare("UPDATE store_registration_requests SET status = 'MORE_INFORMATION_REQUIRED', info_request_note = ?, updated_at = ? WHERE id = ?")
     .run(note, nowIso(), req.id);
-  audit('owner', reviewerId, 'owner', 'store_registration_request', req.id, 'more_info_requested', { note });
+  audit('owner', reviewerId, 'owner', 'store_registration_request', req.id, 'more_info_requested', { note, submittedAt: req.submitted_at });
   await notify({
     event: 'registration.more_info',
     email: { to: req.email, subject: 'Paylo — more information needed', body:
