@@ -16,8 +16,9 @@ CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('admin','seller','owner')),
+  role TEXT NOT NULL CHECK (role IN ('admin','seller','owner','customer')),
   name TEXT NOT NULL,
+  phone TEXT,
   totp_secret TEXT,
   totp_enabled INTEGER NOT NULL DEFAULT 0,
   totp_recovery TEXT,
@@ -88,6 +89,10 @@ CREATE TABLE IF NOT EXISTS orders (
   code TEXT NOT NULL UNIQUE,
   seller_id TEXT NOT NULL REFERENCES sellers(id),
   product_id TEXT NOT NULL REFERENCES products(id),
+  -- Set only when the buyer was signed in to a customer account at checkout. NULL for a
+  -- guest order — the order keeps its own buyer_name/phone/email/address copy either way
+  -- (see lib/checkout-account.ts), so nothing here depends on the account still existing.
+  user_id TEXT REFERENCES users(id),
   product_title TEXT NOT NULL,
   product_type TEXT NOT NULL DEFAULT 'physical',
   variant_id TEXT,
@@ -324,3 +329,41 @@ CREATE INDEX IF NOT EXISTS idx_reg_status ON store_registration_requests(status)
 -- constraints (partial: only "live" requests hold a claim), not just an app-level check.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reg_phone_active ON store_registration_requests(phone) WHERE status != 'REJECTED';
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reg_national_id_active ON store_registration_requests(national_id) WHERE status != 'REJECTED';
+
+-- Optional customer accounts (Full Spec v2 §guest checkout). Deliberately separate from
+-- orders: an order always keeps its own buyer_name/phone/email/governorate/address copy
+-- (guest OR signed-in), so account deletion, address edits, or the account never having
+-- existed at all can never rewrite fulfilment history. This table is only ever the
+-- customer's current, editable saved data.
+CREATE TABLE IF NOT EXISTS customer_addresses (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  label TEXT,
+  full_name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  governorate TEXT NOT NULL,
+  address TEXT NOT NULL,
+  is_default INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_customer_addresses_user ON customer_addresses(user_id);
+
+-- Guest -> account order linking (spec §4): possession of the order code alone is not
+-- proof of identity (order codes are only semi-secret — they travel over SMS/email and
+-- sit in a browser URL), so a claim additionally requires a one-time code sent to the
+-- email or phone already on the order, verified before orders.user_id is ever set. This
+-- is the only path that may attach a past guest order to an account; nothing auto-matches
+-- on email.
+CREATE TABLE IF NOT EXISTS order_claims (
+  id TEXT PRIMARY KEY,
+  order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  channel TEXT NOT NULL CHECK (channel IN ('email','sms')),
+  contact TEXT NOT NULL,
+  code_hash TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  expires_at TEXT NOT NULL,
+  verified_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_order_claims_order ON order_claims(order_id);

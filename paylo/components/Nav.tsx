@@ -16,6 +16,8 @@ export function Nav() {
     ? [['/seller', t('nav_dashboard')], ['/seller/products', t('nav_products')], ['/seller/orders', t('nav_orders')],
        ['/seller/payouts', t('nav_payouts')], ['/seller/verification', t('nav_kyc')], ['/seller/security', t('nav_security')],
        ['/seller/developers', t('nav_webhooks')], ['/seller/settings', t('nav_settings')]]
+    : user?.role === 'customer'
+    ? [['/account', t('account_title')], ['/account/addresses', t('account_addresses')], ['/account/orders', t('account_orders')]]
     : [];
   return (
     <header className="bg-white border-b border-ink/10 sticky top-0 z-30">

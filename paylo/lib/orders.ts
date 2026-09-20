@@ -103,6 +103,10 @@ export interface CheckoutInput {
   note?: string;
   paymentMethod: PaymentMethod;
   card?: CardInput;
+  /** Set only when the buyer is signed in to a customer account at checkout — never
+   * required. The order always keeps its own buyer_name/phone/email/address copy
+   * regardless, so this is purely "which account, if any, gets this in its history." */
+  userId?: string | null;
 }
 export type CheckoutResult = { ok: true; order: Order } | { ok: false; error: string; order?: Order };
 
@@ -147,12 +151,12 @@ export async function checkout(input: CheckoutInput): Promise<CheckoutResult> {
 
   db.transaction(() => {
     db.prepare(`INSERT INTO orders (
-        id, code, seller_id, product_id, product_title, product_type, variant_id, variant_label, unit_price, quantity,
+        id, code, seller_id, product_id, user_id, product_title, product_type, variant_id, variant_label, unit_price, quantity,
         subtotal, delivery_fee, total, commission_rate, commission_fixed, commission_vat, commission_amount, seller_net,
         buyer_name, buyer_phone, buyer_email, governorate, address, note, payment_method, payment_status,
         fulfillment_method, order_state, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'open', ?)`).run(
-      id, code, seller.id, product.id, product.title, product.type, variant?.id ?? null, variant?.label ?? null, unitPrice, qty,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'open', ?)`).run(
+      id, code, seller.id, product.id, input.userId || null, product.title, product.type, variant?.id ?? null, variant?.label ?? null, unitPrice, qty,
       subtotal, deliveryFee, total, fees.rate, fees.fixed, fees.vat, fees.commission, fees.sellerNet,
       input.buyerName, input.buyerPhone, input.buyerEmail || null, input.governorate, input.address, input.note || null,
       input.paymentMethod, defaultFulfillment(input.governorate, isDigital), initialStatus,
@@ -162,7 +166,7 @@ export async function checkout(input: CheckoutInput): Promise<CheckoutResult> {
     if (!isDigital) reserveStock(product.id, variant?.id ?? null, qty);
   })();
 
-  audit('buyer', null, input.buyerName, 'order', id, 'created', { code, method: input.paymentMethod, total });
+  audit('buyer', input.userId || null, input.buyerName, 'order', id, 'created', { code, method: input.paymentMethod, total });
   const order0 = getOrder(id)!;
 
   if (input.paymentMethod === 'card') {

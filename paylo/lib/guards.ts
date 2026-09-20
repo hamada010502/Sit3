@@ -19,6 +19,12 @@ export function requireApprovedSeller() {
   return s;
 }
 
+export function requireCustomer() {
+  const u = getCurrentUser();
+  if (!u || u.role !== 'customer') redirect('/login');
+  return u;
+}
+
 export function requireAdmin() {
   const u = getCurrentUser();
   if (!u || u.role !== 'admin') redirect('/login');

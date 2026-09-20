@@ -25,6 +25,9 @@ function migrate(db: Database.Database) {
   migrateUsersRoleOwner(db);
   migrateAuditActorOwner(db);
   migrateSellerUniqueIdentity(db);
+  migrateUsersRoleCustomer(db);
+  migrateOrdersUserId(db);
+  migrateUsersPhone(db);
 
   const defaults: Record<string, string> = {
     // Commission (Functional Spec §2.4). Percentages stay provisional until a settlement
@@ -137,6 +140,51 @@ function migrateSellerUniqueIdentity(db: Database.Database) {
   } catch (e) {
     console.warn('[db] Could not enforce unique sellers.kyc_national_id (existing duplicate data?):', (e as Error).message);
   }
+}
+
+/** Same problem, same fix, as migrateUsersRoleOwner — widens the CHECK to include the
+ * 'customer' role for a database created before optional customer accounts existed. */
+function migrateUsersRoleCustomer(db: Database.Database) {
+  const row = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").get() as { sql: string } | undefined;
+  if (!row || row.sql.includes("'customer'")) return;
+
+  const rebuild = db.transaction(() => {
+    db.pragma('foreign_keys = OFF');
+    db.exec(`
+      CREATE TABLE users_new (
+        id TEXT PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('admin','seller','owner','customer')),
+        name TEXT NOT NULL,
+        phone TEXT,
+        totp_secret TEXT,
+        totp_enabled INTEGER NOT NULL DEFAULT 0,
+        totp_recovery TEXT,
+        last_login_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO users_new (id, email, password_hash, role, name, totp_secret, totp_enabled, totp_recovery, last_login_at, created_at)
+        SELECT id, email, password_hash, role, name, totp_secret, totp_enabled, totp_recovery, last_login_at, created_at FROM users;
+      DROP TABLE users;
+      ALTER TABLE users_new RENAME TO users;
+    `);
+    db.pragma('foreign_keys = ON');
+  });
+  rebuild();
+}
+
+/** orders.user_id and users.phone are plain nullable columns (no CHECK involved), so
+ * unlike the role migrations above these can be added in place — no table rebuild needed. */
+function migrateOrdersUserId(db: Database.Database) {
+  const cols = db.prepare('PRAGMA table_info(orders)').all() as { name: string }[];
+  if (cols.some((c) => c.name === 'user_id')) return;
+  db.exec('ALTER TABLE orders ADD COLUMN user_id TEXT REFERENCES users(id);');
+}
+function migrateUsersPhone(db: Database.Database) {
+  const cols = db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
+  if (cols.some((c) => c.name === 'phone')) return;
+  db.exec('ALTER TABLE users ADD COLUMN phone TEXT;');
 }
 
 export function getSetting(key: string): string {

@@ -1,5 +1,6 @@
 'use server';
 import { redirect } from 'next/navigation';
+import { getCurrentUser } from '@/lib/auth';
 import { checkout } from '@/lib/orders';
 import { GOVERNORATES, type PaymentMethod } from '@/lib/types';
 
@@ -29,9 +30,14 @@ export async function checkoutAction(productId: string, _prev: CheckoutState | n
   }
   if (Object.keys(fields).length) return { error: 'checkout_error', fields };
 
+  // Optional: if a customer account is signed in, the order is linked to it. Guests
+  // (the common case — checkout never requires this) simply have no user here.
+  const user = getCurrentUser();
+  const userId = user && user.role === 'customer' ? user.id : null;
+
   const result = await checkout({
     productId, variantId, quantity, buyerName, buyerPhone, buyerEmail: buyerEmail || undefined,
-    governorate, address, note: f('note') || undefined, paymentMethod, card,
+    governorate, address, note: f('note') || undefined, paymentMethod, card, userId,
   });
   if (!result.ok) return { error: result.error };
   redirect(`/track/${result.order.code}?new=1`);

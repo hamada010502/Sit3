@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'seller' | 'owner';
+export type Role = 'admin' | 'seller' | 'owner' | 'customer';
 export type SellerStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
 export type KycStatus = 'not_started' | 'submitted' | 'approved' | 'rejected';
 export type ProductType = 'physical' | 'digital';
@@ -23,7 +23,7 @@ export type ActorType = 'buyer' | 'seller' | 'admin' | 'owner' | 'system' | 'api
 export type RegistrationStatus = 'PENDING_REVIEW' | 'MORE_INFORMATION_REQUIRED' | 'APPROVED' | 'REJECTED';
 
 export interface User {
-  id: string; email: string; password_hash: string; role: Role; name: string;
+  id: string; email: string; password_hash: string; role: Role; name: string; phone: string | null;
   totp_secret: string | null; totp_enabled: number; totp_recovery: string | null;
   last_login_at: string | null; created_at: string;
 }
@@ -44,7 +44,7 @@ export interface ProductVariant {
   label: string; price: number; stock: number; position: number;
 }
 export interface Order {
-  id: string; code: string; seller_id: string; product_id: string; product_title: string; product_type: ProductType;
+  id: string; code: string; seller_id: string; product_id: string; user_id: string | null; product_title: string; product_type: ProductType;
   variant_id: string | null; variant_label: string | null; unit_price: number; quantity: number; subtotal: number;
   delivery_fee: number; total: number; commission_rate: number; commission_fixed: number; commission_vat: number;
   commission_amount: number; seller_net: number; buyer_name: string; buyer_phone: string; buyer_email: string | null;
@@ -89,6 +89,14 @@ export interface StoreRegistrationRequest {
   password_hash: string; status: RegistrationStatus; admin_notes: string | null; info_request_note: string | null;
   duplicate_check: string; created_seller_id: string | null;
   submitted_at: string; reviewed_at: string | null; reviewed_by: string | null; updated_at: string;
+}
+export interface CustomerAddress {
+  id: string; user_id: string; label: string | null; full_name: string; phone: string;
+  governorate: string; address: string; is_default: number; created_at: string;
+}
+export interface OrderClaim {
+  id: string; order_id: string; user_id: string; channel: 'email' | 'sms'; contact: string;
+  code_hash: string; attempts: number; expires_at: string; verified_at: string | null; created_at: string;
 }
 export interface AuditEntry {
   id: number; actor_type: ActorType; actor_id: string | null; actor_label: string | null;

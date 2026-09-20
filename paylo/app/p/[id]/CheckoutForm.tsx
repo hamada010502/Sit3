@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import { useFormState } from 'react-dom';
 import { checkoutAction, type CheckoutState } from './actions';
 import { useI18n } from '@/lib/i18n/client';
@@ -9,22 +10,30 @@ import { formatSYP } from '@/lib/money';
 import { DAMASCUS, GOVERNORATES, type PaymentMethod, type ProductVariant } from '@/lib/types';
 import type { TKey } from '@/lib/i18n';
 
+interface Account {
+  name: string; phone: string; email: string;
+  address: { governorate: string; address: string } | null;
+}
 interface Props {
   productId: string; basePrice: number; stock: number; isDigital: boolean;
   variants: ProductVariant[]; option1: string | null; option2: string | null;
   feeDamascus: number; feeOther: number; methods: PaymentMethod[];
   bank: { name: string; account: string; iban: string; note: string };
+  /** Signed-in customer's saved info, purely to pre-fill — see spec §7/§11. Guests (the
+   * default) get this as null and every field below just starts empty; nothing here
+   * gates submission either way. */
+  account: Account | null;
 }
 
 const KNOWN_FAILS = ['invalid_card', 'expired_card', 'insufficient_funds', 'provider_not_configured'];
 
 /** Two steps at most (v2 §5.1): details, then payment. */
-export function CheckoutForm({ productId, basePrice, stock, isDigital, variants, option1, option2, feeDamascus, feeOther, methods, bank }: Props) {
+export function CheckoutForm({ productId, basePrice, stock, isDigital, variants, option1, option2, feeDamascus, feeOther, methods, bank, account }: Props) {
   const { t, lang } = useI18n();
   const [state, action] = useFormState(checkoutAction.bind(null, productId), null as CheckoutState | null);
   const [step, setStep] = useState<1 | 2>(1);
   const [qty, setQty] = useState(1);
-  const [gov, setGov] = useState<string>(DAMASCUS);
+  const [gov, setGov] = useState<string>(account?.address?.governorate ?? DAMASCUS);
   const [variantId, setVariantId] = useState(variants[0]?.id ?? '');
   const [method, setMethod] = useState<PaymentMethod>(methods[0] ?? 'cod');
 
@@ -56,6 +65,19 @@ export function CheckoutForm({ productId, basePrice, stock, isDigital, variants,
       {state?.error === 'checkout_error' && <div className="alert-error">{t('checkout_error')}</div>}
       {failMsg && <div className="alert-error"><strong>{t('payment_declined')}</strong> — {failMsg}</div>}
 
+      {account ? (
+        <div className="alert-info text-sm">{t('checkout_signed_in_as', { name: account.name })}</div>
+      ) : (
+        <div className="rounded-lg border border-ink/10 bg-cream p-4 text-sm space-y-2">
+          <p className="text-ink-soft">{t('checkout_guest_hint')}</p>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/login" className="btn-secondary btn-sm">{t('login_btn')}</Link>
+            <Link href="/account/register" className="btn-secondary btn-sm">{t('create_account_btn')}</Link>
+            <span className="text-ink-soft self-center">{t('checkout_guest_or')}</span>
+          </div>
+        </div>
+      )}
+
       {/* Step 1 stays mounted so its values still post with the final submit. */}
       <section className={`space-y-4 ${step === 1 ? '' : 'hidden'}`}>
         {variants.length > 0 && (
@@ -66,10 +88,10 @@ export function CheckoutForm({ productId, basePrice, stock, isDigital, variants,
           </Field>
         )}
         <div className="grid sm:grid-cols-2 gap-4">
-          <Field label={t('full_name')} error={err('buyer_name')}><input name="buyer_name" className="input" required /></Field>
-          <Field label={t('phone')} error={err('buyer_phone')}><input name="buyer_phone" className="input" dir="ltr" required placeholder="09xxxxxxxx" /></Field>
+          <Field label={t('full_name')} error={err('buyer_name')}><input name="buyer_name" className="input" required defaultValue={account?.name} /></Field>
+          <Field label={t('phone')} error={err('buyer_phone')}><input name="buyer_phone" className="input" dir="ltr" required placeholder="09xxxxxxxx" defaultValue={account?.phone} /></Field>
         </div>
-        <Field label={t('buyer_email_opt')} error={err('buyer_email')}><input name="buyer_email" type="email" className="input" dir="ltr" required={isDigital} /></Field>
+        <Field label={t('buyer_email_opt')} error={err('buyer_email')}><input name="buyer_email" type="email" className="input" dir="ltr" required={isDigital} defaultValue={account?.email} /></Field>
         <div className="grid sm:grid-cols-2 gap-4">
           {!isDigital && (
             <Field label={t('governorate')} error={err('governorate')}>
@@ -91,7 +113,7 @@ export function CheckoutForm({ productId, basePrice, stock, isDigital, variants,
           </>
         ) : (
           <Field label={t('address')} error={err('address')}>
-            <textarea name="address" className="input" rows={2} required />
+            <textarea name="address" className="input" rows={2} required defaultValue={account?.address?.address} />
           </Field>
         )}
         <Field label={t('note')}><input name="note" className="input" /></Field>

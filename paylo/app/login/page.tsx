@@ -6,7 +6,7 @@ import { LoginForm } from './LoginForm';
 
 export default function LoginPage() {
   const user = getCurrentUser();
-  if (user) redirect(user.role === 'admin' ? '/admin' : '/seller');
+  if (user) redirect(user.role === 'admin' ? '/admin' : user.role === 'owner' ? '/owner' : user.role === 'customer' ? '/account' : '/seller');
   const { t } = getT();
   return (
     <Shell>

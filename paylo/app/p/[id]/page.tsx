@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { Shell } from '@/components/Shell';
 import { ProductImage, parseImages } from '@/components/ProductImage';
+import { getCurrentUser } from '@/lib/auth';
+import { defaultAddress } from '@/lib/customer';
 import { getAllSettings, getDb } from '@/lib/db';
 import { getT } from '@/lib/i18n/server';
 import { formatSYP } from '@/lib/money';
@@ -23,6 +25,14 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   const inStock = isDigital || (product.status === 'active' && (variants.length ? variants.some((v) => v.stock > 0) : product.stock > 0));
   const methods = enabledPaymentMethods(isDigital);
   const display = variants.length ? Math.min(...variants.map((v) => v.price)) : product.price;
+
+  // Purely a convenience prefill — checkout works identically, and completes just as
+  // well, whether or not any of this is present (see lib/customer.ts, spec §1/§10).
+  const user = getCurrentUser();
+  const account = user && user.role === 'customer' ? {
+    name: user.name, phone: user.phone || '', email: user.email,
+    address: defaultAddress(user.id) || null,
+  } : null;
 
   return (
     <Shell wide>
@@ -54,7 +64,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                 variants={variants} option1={product.option1_name} option2={product.option2_name}
                 feeDamascus={parseInt(settings.delivery_fee_damascus, 10) || 0}
                 feeOther={parseInt(settings.delivery_fee_other, 10) || 0}
-                methods={methods}
+                methods={methods} account={account}
                 bank={{ name: settings.bank_name, account: settings.bank_account_name, iban: settings.bank_iban, note: settings.bank_note }}
               />
             )}

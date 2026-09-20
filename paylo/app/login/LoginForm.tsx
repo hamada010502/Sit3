@@ -18,6 +18,9 @@ export function LoginForm() {
       <p className="text-sm text-center text-ink-soft">
         <Link href="/apply" className="text-cherry font-semibold">{t('nav_apply')}</Link>
       </p>
+      <p className="text-sm text-center text-ink-soft">
+        {t('login_no_account_yet')} <Link href="/account/register" className="text-cherry font-semibold">{t('create_account_btn')}</Link>
+      </p>
     </form>
   );
 }

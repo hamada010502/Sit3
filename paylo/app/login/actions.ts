@@ -5,9 +5,15 @@ import { audit } from '@/lib/audit';
 import { getDb } from '@/lib/db';
 import { verifyTotp } from '@/lib/totp';
 import { createHash } from 'crypto';
+import type { ActorType, Role } from '@/lib/types';
 
 function redirectForRole(role: string): never {
-  redirect(role === 'admin' ? '/admin' : role === 'owner' ? '/owner' : '/seller');
+  redirect(role === 'admin' ? '/admin' : role === 'owner' ? '/owner' : role === 'customer' ? '/account' : '/seller');
+}
+/** audit_log's actor_type has no 'customer' value — a signed-in customer's own actions
+ * are simply a 'buyer' with an actor_id, same as any authenticated buyer action elsewhere. */
+function actorTypeFor(role: Role): ActorType {
+  return role === 'customer' ? 'buyer' : role;
 }
 
 export async function loginAction(_prev: { error?: string } | null, formData: FormData) {
@@ -24,7 +30,7 @@ export async function loginAction(_prev: { error?: string } | null, formData: Fo
   }
   await createSession(user);
   recordLogin(user.id);
-  audit(user.role, user.id, user.email, 'user', user.id, 'login.success');
+  audit(actorTypeFor(user.role), user.id, user.email, 'user', user.id, 'login.success');
   redirectForRole(user.role);
 }
 
@@ -41,7 +47,7 @@ export async function twoFactorAction(_prev: { error?: string } | null, formData
     if (idx >= 0) {
       remaining.splice(idx, 1);
       getDb().prepare('UPDATE users SET totp_recovery = ? WHERE id = ?').run(JSON.stringify(remaining), user.id);
-      audit(user.role, user.id, user.email, 'user', user.id, '2fa.recovery_used', { remaining: remaining.length });
+      audit(actorTypeFor(user.role), user.id, user.email, 'user', user.id, '2fa.recovery_used', { remaining: remaining.length });
       ok = true;
     }
   }
@@ -52,6 +58,6 @@ export async function twoFactorAction(_prev: { error?: string } | null, formData
   clearTwoFactor();
   await createSession(user);
   recordLogin(user.id);
-  audit(user.role, user.id, user.email, 'user', user.id, 'login.success.2fa');
+  audit(actorTypeFor(user.role), user.id, user.email, 'user', user.id, 'login.success.2fa');
   redirectForRole(user.role);
 }
