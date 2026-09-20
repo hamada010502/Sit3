@@ -1,5 +1,5 @@
 import type { TFn } from '@/lib/i18n';
-import type { DisputeStatus, KycStatus, OrderState, OrderStatus, PaymentStatus, ProductStatus, SellerStatus } from '@/lib/types';
+import type { DisputeStatus, KycStatus, OrderState, OrderStatus, PaymentStatus, ProductStatus, RegistrationStatus, SellerStatus } from '@/lib/types';
 
 const ORDER_COLORS: Record<OrderStatus, string> = {
   awaiting_payment: 'bg-warn/12 text-warn', payment_failed: 'bg-cherry/8 text-cherry', confirmed: 'bg-cherry/12 text-cherry-dark',
@@ -54,4 +54,15 @@ const PRODUCT_COLORS: Record<ProductStatus, string> = {
 };
 export function ProductStatusBadge({ status, t }: { status: ProductStatus; t: TFn }) {
   return <span className={`badge ${PRODUCT_COLORS[status]}`}>{t(`product_${status}` as const)}</span>;
+}
+
+const REG_COLORS: Record<RegistrationStatus, string> = {
+  PENDING_REVIEW: 'bg-warn/12 text-warn', MORE_INFORMATION_REQUIRED: 'bg-warn/12 text-warn',
+  APPROVED: 'bg-success/12 text-success', REJECTED: 'bg-cherry/12 text-cherry',
+};
+const REG_LABEL: Record<RegistrationStatus, string> = {
+  PENDING_REVIEW: 'Pending review', MORE_INFORMATION_REQUIRED: 'More info requested', APPROVED: 'Approved', REJECTED: 'Rejected',
+};
+export function RegistrationStatusBadge({ status }: { status: RegistrationStatus }) {
+  return <span className={`badge ${REG_COLORS[status]}`}>{REG_LABEL[status]}</span>;
 }

@@ -194,5 +194,11 @@ export const en = {
   prod_peak: 'Mountain honey', prod_axis: 'Amber perfume oil', prod_count: 'Ceramic coffee cups',
   prod_vessel: 'Olive oil soap', prod_frame: 'Gift box', prod_cross: 'Embroidered tote',
   prod_split: 'Brass earrings', prod_arch: 'Woven basket', prod_path: 'Linen shirt',
+  // store registration
+  national_id: 'National ID number', national_id_hint: 'Used only to prevent one person from registering more than one store.',
+  apply_error_duplicate: 'The information you entered is already associated with an existing account.',
+  reg_confirm_title: 'Registration received', reg_confirm_body: "Thanks for registering. Your application is under review — you'll hear back within 24 hours.",
+  reg_confirm_point1: 'Your store is not active yet.', reg_confirm_point2: "We'll email you once the review is complete.",
+  reg_confirm_point3: 'If approved, log in with the email and password you just used to register.',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

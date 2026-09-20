@@ -17,6 +17,10 @@ export function ApplyForm() {
         <Field label={t('full_name')}><input name="name" className="input" required /></Field>
         <Field label={t('email')}><input name="email" type="email" className="input" required /></Field>
       </div>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Field label={t('phone')}><input name="phone" className="input" dir="ltr" required placeholder="09xxxxxxxx" /></Field>
+        <Field label={t('national_id')} hint={t('national_id_hint')}><input name="national_id" className="input" dir="ltr" required /></Field>
+      </div>
       <Field label={t('password')} hint={t('password_hint')}><input name="password" type="password" className="input" required minLength={8} /></Field>
       <div className="grid sm:grid-cols-2 gap-4">
         <Field label={t('store_name')}><input name="store_name" className="input" required /></Field>
@@ -24,11 +28,10 @@ export function ApplyForm() {
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <Field label={t('instagram')}><input name="instagram" className="input" dir="ltr" placeholder="@yourstore" /></Field>
-        <Field label={t('phone')}><input name="phone" className="input" dir="ltr" required placeholder="09xxxxxxxx" /></Field>
+        <Field label={t('governorate')}>
+          <select name="governorate" className="input" required defaultValue="Damascus">{GOVERNORATES.map((g) => <option key={g} value={g}>{g}</option>)}</select>
+        </Field>
       </div>
-      <Field label={t('governorate')}>
-        <select name="governorate" className="input" required defaultValue="Damascus">{GOVERNORATES.map((g) => <option key={g} value={g}>{g}</option>)}</select>
-      </Field>
       <Field label={t('bio')}><textarea name="bio" className="input" rows={3} /></Field>
       <SubmitButton className="btn-primary w-full">{t('apply_btn')}</SubmitButton>
     </form>

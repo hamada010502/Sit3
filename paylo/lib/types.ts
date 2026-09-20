@@ -20,6 +20,7 @@ export type Liability = 'seller' | 'logistics' | 'platform' | 'none';
 export type BankTransferStatus = 'awaiting_proof' | 'submitted' | 'confirmed' | 'rejected';
 export type NotificationChannel = 'email' | 'sms' | 'whatsapp';
 export type ActorType = 'buyer' | 'seller' | 'admin' | 'owner' | 'system' | 'api';
+export type RegistrationStatus = 'PENDING_REVIEW' | 'MORE_INFORMATION_REQUIRED' | 'APPROVED' | 'REJECTED';
 
 export interface User {
   id: string; email: string; password_hash: string; role: Role; name: string;
@@ -81,6 +82,13 @@ export interface Payout {
   id: string; seller_id: string; period_label: string; cutoff_at: string | null; order_count: number;
   gross: number; commission: number; amount: number; status: 'pending' | 'paid' | 'failed';
   reference: string | null; failure_reason: string | null; created_at: string; paid_at: string | null;
+}
+export interface StoreRegistrationRequest {
+  id: string; full_name: string; phone: string; email: string; national_id: string;
+  store_name: string; slug: string; instagram: string | null; governorate: string; bio: string | null;
+  password_hash: string; status: RegistrationStatus; admin_notes: string | null; info_request_note: string | null;
+  duplicate_check: string; created_seller_id: string | null;
+  submitted_at: string; reviewed_at: string | null; reviewed_by: string | null; updated_at: string;
 }
 export interface AuditEntry {
   id: number; actor_type: ActorType; actor_id: string | null; actor_label: string | null;

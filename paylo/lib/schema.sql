@@ -291,3 +291,36 @@ CREATE TABLE IF NOT EXISTS analytics_cache (
   computed_at TEXT NOT NULL,
   payload TEXT NOT NULL
 );
+
+-- Pre-account registration gate (separate from an existing store's lifecycle: sellers.status
+-- covers pending/approved/rejected/suspended for a store that already exists; this table
+-- covers the request BEFORE any users/sellers row is created). Approval materializes the
+-- users+sellers rows from the fields captured here — see lib/registration.ts.
+CREATE TABLE IF NOT EXISTS store_registration_requests (
+  id TEXT PRIMARY KEY,
+  full_name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  email TEXT NOT NULL,
+  national_id TEXT NOT NULL,
+  store_name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  instagram TEXT,
+  governorate TEXT NOT NULL,
+  bio TEXT,
+  password_hash TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'PENDING_REVIEW' CHECK (status IN ('PENDING_REVIEW','MORE_INFORMATION_REQUIRED','APPROVED','REJECTED')),
+  admin_notes TEXT,
+  info_request_note TEXT,
+  duplicate_check TEXT NOT NULL DEFAULT 'clear',
+  created_seller_id TEXT REFERENCES sellers(id),
+  submitted_at TEXT NOT NULL DEFAULT (datetime('now')),
+  reviewed_at TEXT,
+  reviewed_by TEXT,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_reg_status ON store_registration_requests(status);
+-- A REJECTED request releases its phone/national_id back to the pool — someone rejected for
+-- a fixable reason must be able to submit again. These are the real DB-level uniqueness
+-- constraints (partial: only "live" requests hold a claim), not just an app-level check.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reg_phone_active ON store_registration_requests(phone) WHERE status != 'REJECTED';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reg_national_id_active ON store_registration_requests(national_id) WHERE status != 'REJECTED';

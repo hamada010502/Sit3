@@ -16,6 +16,7 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-6 text-sm">
             <span className="font-semibold tracking-tight">Paylo — Owner</span>
             <Link href="/owner" className="text-cream/70 hover:text-cream">Overview</Link>
+            <Link href="/owner/registrations" className="text-cream/70 hover:text-cream">Registrations</Link>
             <Link href="/owner/analytics" className="text-cream/70 hover:text-cream">Market analytics</Link>
           </div>
           <form action="/logout" method="post">

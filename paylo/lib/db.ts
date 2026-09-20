@@ -24,6 +24,7 @@ function migrate(db: Database.Database) {
   db.exec(fs.readFileSync(path.join(process.cwd(), 'lib', 'schema.sql'), 'utf8'));
   migrateUsersRoleOwner(db);
   migrateAuditActorOwner(db);
+  migrateSellerUniqueIdentity(db);
 
   const defaults: Record<string, string> = {
     // Commission (Functional Spec §2.4). Percentages stay provisional until a settlement
@@ -113,6 +114,29 @@ function migrateAuditActorOwner(db: Database.Database) {
     `);
   });
   rebuild();
+}
+
+/**
+ * Adds the DB-level uniqueness that store registration (lib/registration.ts) relies on:
+ * one phone, one national ID, per store. Unlike the CHECK-constraint migrations above,
+ * a UNIQUE INDEX can be added to an existing table without rebuilding it — but creating
+ * one over data that already has duplicates throws, and this must never take the whole
+ * app down on boot. If a deployment already has legacy duplicate phones (from before
+ * this constraint existed), the index is skipped and a warning is logged; the
+ * registration flow's own application-level check still blocks new collisions going
+ * forward regardless of whether this index could be created.
+ */
+function migrateSellerUniqueIdentity(db: Database.Database) {
+  try {
+    db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_sellers_phone_unique ON sellers(phone);');
+  } catch (e) {
+    console.warn('[db] Could not enforce unique sellers.phone (existing duplicate data?):', (e as Error).message);
+  }
+  try {
+    db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_sellers_national_id_unique ON sellers(kyc_national_id) WHERE kyc_national_id IS NOT NULL;");
+  } catch (e) {
+    console.warn('[db] Could not enforce unique sellers.kyc_national_id (existing duplicate data?):', (e as Error).message);
+  }
 }
 
 export function getSetting(key: string): string {
