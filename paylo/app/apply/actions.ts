@@ -36,6 +36,6 @@ export async function applyAction(_prev: { error?: string } | null, formData: Fo
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(await hashPassword(password), userId);
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as User;
   audit('seller', userId, email, 'seller', slug, 'applied', { storeName, governorate });
-  createSession(user);
+  await createSession(user);
   redirect('/seller');
 }

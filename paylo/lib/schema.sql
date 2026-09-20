@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('admin','seller')),
+  role TEXT NOT NULL CHECK (role IN ('admin','seller','owner')),
   name TEXT NOT NULL,
   totp_secret TEXT,
   totp_enabled INTEGER NOT NULL DEFAULT 0,
@@ -236,7 +236,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at
 -- Timestamped record of every state change — Paylo's evidence in a dispute (v2 §6)
 CREATE TABLE IF NOT EXISTS audit_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  actor_type TEXT NOT NULL CHECK (actor_type IN ('buyer','seller','admin','system','api')),
+  actor_type TEXT NOT NULL CHECK (actor_type IN ('buyer','seller','admin','owner','system','api')),
   actor_id TEXT,
   actor_label TEXT,
   entity_type TEXT NOT NULL,
@@ -282,3 +282,12 @@ CREATE TABLE IF NOT EXISTS api_tokens (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_tokens_seller ON api_tokens(seller_id);
+
+-- Pre-computed aggregates for the owner dashboards (see lib/analytics.ts). Populated by
+-- a manual "Refresh now" action or a scheduled call to /api/internal/refresh-analytics —
+-- never recomputed on a plain page load, so owner pages are cache reads, not table scans.
+CREATE TABLE IF NOT EXISTS analytics_cache (
+  key TEXT PRIMARY KEY,
+  computed_at TEXT NOT NULL,
+  payload TEXT NOT NULL
+);

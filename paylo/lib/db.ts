@@ -22,6 +22,8 @@ export function getDb(): Database.Database {
 
 function migrate(db: Database.Database) {
   db.exec(fs.readFileSync(path.join(process.cwd(), 'lib', 'schema.sql'), 'utf8'));
+  migrateUsersRoleOwner(db);
+  migrateAuditActorOwner(db);
 
   const defaults: Record<string, string> = {
     // Commission (Functional Spec §2.4). Percentages stay provisional until a settlement
@@ -44,6 +46,73 @@ function migrate(db: Database.Database) {
   };
   const ins = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
   for (const [k, v] of Object.entries(defaults)) ins.run(k, v);
+}
+
+/**
+ * SQLite can't ALTER a CHECK constraint in place, so a database created before the
+ * 'owner' role existed still has `role IN ('admin','seller')` on the users table —
+ * inserting an owner row would fail that constraint. This detects the stale
+ * constraint (by reading the table's own SQL back from sqlite_master) and rebuilds
+ * the table with the widened constraint, preserving every row and every foreign key
+ * that references users(id). No-op once the constraint already includes 'owner'.
+ */
+function migrateUsersRoleOwner(db: Database.Database) {
+  const row = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").get() as { sql: string } | undefined;
+  if (!row || row.sql.includes("'owner'")) return;
+
+  const rebuild = db.transaction(() => {
+    db.pragma('foreign_keys = OFF');
+    db.exec(`
+      CREATE TABLE users_new (
+        id TEXT PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('admin','seller','owner')),
+        name TEXT NOT NULL,
+        totp_secret TEXT,
+        totp_enabled INTEGER NOT NULL DEFAULT 0,
+        totp_recovery TEXT,
+        last_login_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO users_new SELECT id, email, password_hash, role, name, totp_secret, totp_enabled, totp_recovery, last_login_at, created_at FROM users;
+      DROP TABLE users;
+      ALTER TABLE users_new RENAME TO users;
+    `);
+    db.pragma('foreign_keys = ON');
+  });
+  rebuild();
+}
+
+/** Same problem, same fix, for audit_log.actor_type — audit() is called with actor_type
+ * 'owner' as soon as the owner account logs in, and a stale CHECK constraint would
+ * reject that insert. No FKs reference audit_log.id, so this rebuild is simpler than
+ * migrateUsersRoleOwner's. */
+function migrateAuditActorOwner(db: Database.Database) {
+  const row = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'audit_log'").get() as { sql: string } | undefined;
+  if (!row || row.sql.includes("'owner'")) return;
+
+  const rebuild = db.transaction(() => {
+    db.exec(`
+      CREATE TABLE audit_log_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        actor_type TEXT NOT NULL CHECK (actor_type IN ('buyer','seller','admin','owner','system','api')),
+        actor_id TEXT,
+        actor_label TEXT,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        detail TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO audit_log_new SELECT id, actor_type, actor_id, actor_label, entity_type, entity_id, action, detail, created_at FROM audit_log;
+      DROP TABLE audit_log;
+      ALTER TABLE audit_log_new RENAME TO audit_log;
+      CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log(entity_type, entity_id);
+      CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at);
+    `);
+  });
+  rebuild();
 }
 
 export function getSetting(key: string): string {

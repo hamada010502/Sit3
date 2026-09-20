@@ -35,6 +35,11 @@ const ADMIN_PASS = process.env.SEED_ADMIN_PASSWORD || 'admin1234';
 const SELLER_PASS = 'seller1234';
 // Fixed so the end-to-end test can compute valid codes. Never ship a fixed secret to production.
 const DEMO_TOTP = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+// Owner account: single, hard-coded identity (see lib/owner.ts). Email must match OWNER_EMAIL
+// in the environment (or this default) for the owner-only routes to ever authorize this login.
+const OWNER_EMAIL = (process.env.OWNER_EMAIL || 'owner@paylo.sy').toLowerCase();
+const OWNER_PASS = process.env.OWNER_SEED_PASSWORD || 'owner-change-me-1234';
+const OWNER_TOTP = 'KRSXG5CTMVRXEZLUKN2XAZLSEBB2EWDN';
 
 function upsertUser(email, pass, role, name, totp) {
   const ex = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
@@ -90,8 +95,15 @@ if (!db.prepare('SELECT id FROM sellers WHERE user_id = ?').get(pendUid)) {
     .run(id(), pendUid, 'Omar Sneakers', 'omar-sneakers', 'omar.kicks', '0944555666', 'Aleppo', 'Imported sneakers, Aleppo.');
 }
 
+// 2FA is on unconditionally at creation — the owner account has no code path that can
+// disable it (see app/seller/security: owner has no sellers row, so it can never reach
+// that action even if it tried the URL directly).
+const ownerUid = upsertUser(OWNER_EMAIL, OWNER_PASS, 'owner', 'Paylo Owner', OWNER_TOTP);
+db.prepare('UPDATE users SET totp_enabled = 1 WHERE id = ?').run(ownerUid);
+
 console.log('Seeded.');
 console.log(`  Admin:            ${ADMIN_EMAIL} / ${ADMIN_PASS}`);
 console.log(`  Seller (live):    demo@paylo.sy / ${SELLER_PASS}  — 2FA on, TOTP secret ${DEMO_TOTP}`);
 console.log(`                    storefront /s/lina-handmade`);
 console.log(`  Seller (pending): pending@paylo.sy / ${SELLER_PASS}`);
+console.log(`  Owner (internal): ${OWNER_EMAIL} / ${OWNER_PASS}  — 2FA on, TOTP secret ${OWNER_TOTP}, route /owner`);

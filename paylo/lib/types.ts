@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'seller';
+export type Role = 'admin' | 'seller' | 'owner';
 export type SellerStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
 export type KycStatus = 'not_started' | 'submitted' | 'approved' | 'rejected';
 export type ProductType = 'physical' | 'digital';
@@ -19,7 +19,7 @@ export type DisputeStatus = 'open' | 'investigating' | 'resolved_refund' | 'reso
 export type Liability = 'seller' | 'logistics' | 'platform' | 'none';
 export type BankTransferStatus = 'awaiting_proof' | 'submitted' | 'confirmed' | 'rejected';
 export type NotificationChannel = 'email' | 'sms' | 'whatsapp';
-export type ActorType = 'buyer' | 'seller' | 'admin' | 'system' | 'api';
+export type ActorType = 'buyer' | 'seller' | 'admin' | 'owner' | 'system' | 'api';
 
 export interface User {
   id: string; email: string; password_hash: string; role: Role; name: string;

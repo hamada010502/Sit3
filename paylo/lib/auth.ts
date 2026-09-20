@@ -2,6 +2,8 @@ import { cookies } from 'next/headers';
 import { createHmac, timingSafeEqual } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { getDb } from './db';
+import { isOwnerAccount } from './owner';
+import { signOwnerToken, OWNER_COOKIE, OWNER_COOKIE_MAX_AGE } from './owner-token';
 import type { Role, Seller, User } from './types';
 
 const COOKIE = 'paylo_session';
@@ -31,12 +33,20 @@ function decode(token: string | undefined): SessionPayload | null {
   } catch { return null; }
 }
 
-export function createSession(user: User) {
+export async function createSession(user: User) {
   const token = encode({ uid: user.id, role: user.role, exp: Math.floor(Date.now() / 1000) + MAX_AGE });
   cookies().set(COOKIE, token, { httpOnly: true, sameSite: 'lax', path: '/', maxAge: MAX_AGE, secure: process.env.NODE_ENV === 'production' });
+
+  // Owner is a single, hard-coded account (see lib/owner.ts) — this is the only place
+  // that ever issues the owner claim, and only when the email, role AND 2FA all match.
+  if (isOwnerAccount(user.email, user.role, user.totp_enabled)) {
+    const ownerToken = await signOwnerToken(user.id, Math.floor(Date.now() / 1000) + OWNER_COOKIE_MAX_AGE);
+    cookies().set(OWNER_COOKIE, ownerToken, { httpOnly: true, sameSite: 'lax', path: '/owner', maxAge: OWNER_COOKIE_MAX_AGE, secure: process.env.NODE_ENV === 'production' });
+  }
 }
 export function destroySession() {
   cookies().set(COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 });
+  cookies().set(OWNER_COOKIE, '', { httpOnly: true, path: '/owner', maxAge: 0 });
 }
 
 export function getCurrentUser(): User | null {

@@ -6,6 +6,10 @@ import { getDb } from '@/lib/db';
 import { verifyTotp } from '@/lib/totp';
 import { createHash } from 'crypto';
 
+function redirectForRole(role: string): never {
+  redirect(role === 'admin' ? '/admin' : role === 'owner' ? '/owner' : '/seller');
+}
+
 export async function loginAction(_prev: { error?: string } | null, formData: FormData) {
   const email = String(formData.get('email') || '').trim();
   const password = String(formData.get('password') || '');
@@ -18,10 +22,10 @@ export async function loginAction(_prev: { error?: string } | null, formData: Fo
     startTwoFactor(user.id);
     redirect('/login/2fa');
   }
-  createSession(user);
+  await createSession(user);
   recordLogin(user.id);
   audit(user.role, user.id, user.email, 'user', user.id, 'login.success');
-  redirect(user.role === 'admin' ? '/admin' : '/seller');
+  redirectForRole(user.role);
 }
 
 /** Second factor. Accepts a live TOTP code or one single-use recovery code. */
@@ -46,8 +50,8 @@ export async function twoFactorAction(_prev: { error?: string } | null, formData
     return { error: 'tfa_invalid' };
   }
   clearTwoFactor();
-  createSession(user);
+  await createSession(user);
   recordLogin(user.id);
   audit(user.role, user.id, user.email, 'user', user.id, 'login.success.2fa');
-  redirect(user.role === 'admin' ? '/admin' : '/seller');
+  redirectForRole(user.role);
 }
