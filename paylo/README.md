@@ -28,12 +28,17 @@ npm run dev              # http://localhost:3000
 
 | Role | Email | Password | Notes |
 |---|---|---|---|
-| Admin | admin@paylo.sy | admin1234 | |
-| Seller (live) | demo@paylo.sy | seller1234 | Two-factor on. TOTP secret `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP` |
-| Seller (pending) | pending@paylo.sy | seller1234 | |
+| Platform owner | owner@paylo.sy | owner-change-me-1234 | 2FA: `npm run totp -- KRSXG5CTMVRXEZLUKN2XAZLSEBB2EWDN` · `/owner` |
+| Admin | admin@paylo.sy | admin1234 | `/admin` |
+| Store (no 2FA) | spice@paylo.sy | seller1234 | Damascus Spice House · `/seller` |
+| Store (2FA on) | demo@paylo.sy | seller1234 | 2FA: `npm run totp -- JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP` |
+| Store (pending) | pending@paylo.sy | seller1234 | Awaiting approval |
+| Customer | customer@paylo.sy | customer1234 | Saved addresses + order history · `/account` |
 
-The demo seller's storefront is at `/s/lina-handmade`. The fixed TOTP secret exists so the
-end-to-end test can log in; never ship a fixed secret to production.
+`npm run totp -- <secret>` prints the current 2FA code, so no authenticator app is needed
+locally. Buyer share links (no account needed): `/s/spice-house` and `/s/lina-handmade`.
+The seed also creates orders in every state and three store registrations waiting in the
+owner's review queue. The fixed TOTP secrets exist for local testing; never ship them to production.
 
 Production: `npm run build && npm start`. Set `SESSION_SECRET`, `APP_URL`, `DATABASE_PATH`
 and `UPLOAD_DIR` to durable values.

@@ -95,15 +95,152 @@ if (!db.prepare('SELECT id FROM sellers WHERE user_id = ?').get(pendUid)) {
     .run(id(), pendUid, 'Omar Sneakers', 'omar-sneakers', 'omar.kicks', '0944555666', 'Aleppo', 'Imported sneakers, Aleppo.');
 }
 
+/* ---------------- richer demo data so every dashboard has something to show ---------------- */
+
+const orderCode = () => {
+  const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = 'PL-';
+  for (const b of crypto.randomBytes(8)) s += a[b % a.length];
+  return s;
+};
+const daysAgo = (n, h = 12) => {
+  const d = new Date(Date.now() - n * 86400000);
+  d.setUTCHours(h, 0, 0, 0);
+  return d.toISOString().replace('T', ' ').slice(0, 19);
+};
+const RATE = 5;
+
+/** Mirrors lib/orders.ts checkout(): same fee maths, fulfilment choice and event trail. */
+function seedOrder({ sellerId, product, buyer, qty = 1, method = 'cod', status, state, userId = null, ago = 1 }) {
+  const oid = id();
+  const subtotal = product.price * qty;
+  const fee = product.type === 'digital' ? 0 : buyer.governorate === 'Damascus' ? 15000 : 25000;
+  const commission = Math.round((subtotal * RATE) / 100);
+  const created = daysAgo(ago);
+  const fulfil = product.type === 'digital' ? 'digital' : buyer.governorate === 'Damascus' ? 'platform_rider' : 'logistics_pickup';
+  const paid = ['handed_off', 'in_transit', 'delivered', 'refunded'].includes(status) || (status === 'confirmed' && method !== 'cod');
+  const paymentStatus = status === 'refunded' ? 'refunded' : status === 'delivered' && method === 'cod' ? 'collected_cod' : paid ? 'confirmed' : 'pending';
+  db.prepare(`INSERT INTO orders (id, code, seller_id, product_id, user_id, product_title, product_type, unit_price, quantity,
+      subtotal, delivery_fee, total, commission_rate, commission_amount, seller_net, buyer_name, buyer_phone, buyer_email,
+      governorate, address, payment_method, payment_status, fulfillment_method, order_state, status, created_at,
+      paid_at, handed_off_at, delivered_at, closed_at, refunded_at, returned_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+    oid, orderCode(), sellerId, product.id, userId, product.title, product.type, product.price, qty,
+    subtotal, fee, subtotal + fee, RATE, commission, subtotal - commission, buyer.name, buyer.phone, buyer.email || null,
+    buyer.governorate, buyer.address, method, paymentStatus, fulfil, state, status, created,
+    paid ? created : null,
+    ['handed_off', 'in_transit', 'delivered', 'refunded'].includes(status) ? daysAgo(ago - 1) : null,
+    status === 'delivered' ? daysAgo(Math.max(0, ago - 2)) : null,
+    state === 'closed' ? daysAgo(ago - 1) : null,
+    status === 'refunded' ? daysAgo(Math.max(0, ago - 3)) : null,
+    state === 'returned' ? daysAgo(Math.max(0, ago - 3)) : null,
+    created);
+  const ev = db.prepare('INSERT INTO order_events (order_id, from_status, to_status, from_state, to_state, actor, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+  ev.run(oid, null, method === 'bank_transfer' ? 'awaiting_payment' : 'confirmed', null, 'open', 'buyer', `Placed via ${method}`, created);
+  if (['handed_off', 'in_transit', 'delivered', 'refunded'].includes(status)) ev.run(oid, 'confirmed', 'handed_off', 'open', 'closed', 'seller', 'Handed to courier', daysAgo(ago - 1));
+  if (status === 'delivered') ev.run(oid, 'handed_off', 'delivered', 'closed', 'closed', 'admin', 'Delivered', daysAgo(Math.max(0, ago - 2)));
+  if (status === 'refunded') ev.run(oid, 'handed_off', 'refunded', 'closed', 'returned', 'admin', 'Return accepted, refunded', daysAgo(Math.max(0, ago - 3)));
+  db.prepare('INSERT INTO payments (id, order_id, method, provider, amount, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(id(), oid, method, method === 'cod' ? 'courier' : 'manual', subtotal + fee,
+      paymentStatus === 'refunded' ? 'refunded' : paymentStatus === 'pending' ? 'pending' : 'captured', created);
+  if (method === 'bank_transfer') {
+    db.prepare('INSERT INTO bank_transfers (id, order_id, amount, status, reference, submitted_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(id(), oid, subtotal + fee, status === 'awaiting_payment' ? 'submitted' : 'confirmed', 'TRX-' + oid.slice(0, 6).toUpperCase(), created, created);
+  }
+  return oid;
+}
+
+// Customer account — buyers never need one, but this shows the optional account side.
+const CUSTOMER_EMAIL = 'customer@paylo.sy';
+const CUSTOMER_PASS = 'customer1234';
+let customer = db.prepare('SELECT id FROM users WHERE email = ?').get(CUSTOMER_EMAIL);
+if (!customer) {
+  const cid = id();
+  db.prepare("INSERT INTO users (id, email, password_hash, role, name, phone) VALUES (?, ?, ?, 'customer', ?, ?)")
+    .run(cid, CUSTOMER_EMAIL, bcrypt.hashSync(CUSTOMER_PASS, 10), 'Rania Khoury', '0955111222');
+  const insA = db.prepare('INSERT INTO customer_addresses (id, user_id, label, full_name, phone, governorate, address, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+  insA.run(id(), cid, 'Home', 'Rania Khoury', '0955111222', 'Damascus', 'Mazzeh, Villat Gharbiya, Building 14, Floor 3', 1);
+  insA.run(id(), cid, 'Work', 'Rania Khoury', '0955111222', 'Damascus', 'Abu Rummaneh, Al-Jalaa St, Office 7', 0);
+  customer = { id: cid };
+}
+
+// A second live store with NO two-factor, so a seller dashboard can be opened with just a password.
+const spiceUid = upsertUser('spice@paylo.sy', SELLER_PASS, 'seller', 'Karim Aswad');
+let spice = db.prepare('SELECT id FROM sellers WHERE user_id = ?').get(spiceUid);
+if (!spice) {
+  const sid = id();
+  db.prepare(`INSERT INTO sellers (id, user_id, store_name, slug, instagram, phone, governorate, bio, about, payout_details,
+      status, kyc_status, kyc_legal_name, kyc_national_id, reviewed_at, kyc_reviewed_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', 'approved', ?, ?, datetime('now'), datetime('now'))`)
+    .run(sid, spiceUid, 'Damascus Spice House', 'spice-house', 'spicehouse.dm', '0944777888', 'Damascus',
+      'Za\'atar, sumac, seven-spice and coffee blends, ground fresh in Al-Bzouriyah.',
+      'Family spice shop since 1987. Everything is ground to order and packed the same day.',
+      'QNB Syria — IBAN SY11 1111 1111 1111 1111 1111 (demo)', 'Karim Aswad', '02030405060');
+  const insP = db.prepare(`INSERT INTO products (id, seller_id, type, title, description, price, stock, images, status)
+    VALUES (?, ?, 'physical', ?, ?, ?, ?, '[]', 'active')`);
+  insP.run(id(), sid, "Za'atar blend (250 g)", 'Wild thyme, sumac, toasted sesame. Aleppo style.', 35000, 40);
+  insP.run(id(), sid, 'Arabic coffee with cardamom (500 g)', 'Medium roast, ground fine, 20% cardamom.', 60000, 25);
+  insP.run(id(), sid, 'Seven-spice mix (200 g)', 'Allspice, pepper, cinnamon, clove, nutmeg, cumin, coriander.', 28000, 30);
+  spice = { id: sid };
+}
+
+// Orders across every commercial state, so dashboards, payouts and analytics are populated.
+const demoSeller = db.prepare("SELECT id FROM sellers WHERE slug = 'lina-handmade'").get();
+if (demoSeller && !db.prepare('SELECT 1 FROM orders WHERE seller_id = ?').get(demoSeller.id)) {
+  const p = (title) => db.prepare('SELECT id, title, price, type FROM products WHERE seller_id = ? AND title = ?').get(demoSeller.id, title);
+  const candle = p('Damascus rose scented candle'), board = p('Olive-wood serving board'), guide = p('Candle-making guide (PDF)');
+  const rania = { name: 'Rania Khoury', phone: '0955111222', email: CUSTOMER_EMAIL, governorate: 'Damascus', address: 'Mazzeh, Villat Gharbiya, Building 14, Floor 3' };
+  const sami = { name: 'Sami Haddad', phone: '0933444555', email: 'sami@example.com', governorate: 'Aleppo', address: 'Al-Aziziyah, Baron St 22' };
+  const nour = { name: 'Nour Saleh', phone: '0966222333', governorate: 'Damascus', address: 'Bab Touma, near the church, 5' };
+  const layla = { name: 'Layla Mansour', phone: '0977888999', email: 'layla@example.com', governorate: 'Homs', address: 'Al-Waer, Block 3, Apt 12' };
+  seedOrder({ sellerId: demoSeller.id, product: candle, buyer: rania, qty: 2, status: 'delivered', state: 'closed', userId: customer.id, ago: 18 });
+  seedOrder({ sellerId: demoSeller.id, product: board, buyer: sami, status: 'delivered', state: 'closed', ago: 14 });
+  seedOrder({ sellerId: demoSeller.id, product: candle, buyer: nour, status: 'handed_off', state: 'closed', ago: 6 });
+  seedOrder({ sellerId: demoSeller.id, product: guide, buyer: layla, method: 'bank_transfer', status: 'delivered', state: 'closed', ago: 5 });
+  seedOrder({ sellerId: demoSeller.id, product: board, buyer: rania, status: 'confirmed', state: 'open', userId: customer.id, ago: 1 });
+  seedOrder({ sellerId: demoSeller.id, product: candle, buyer: layla, method: 'bank_transfer', status: 'awaiting_payment', state: 'open', ago: 0 });
+  seedOrder({ sellerId: demoSeller.id, product: board, buyer: nour, status: 'refunded', state: 'returned', ago: 10 });
+}
+if (spice && !db.prepare('SELECT 1 FROM orders WHERE seller_id = ?').get(spice.id)) {
+  const sp = db.prepare('SELECT id, title, price, type FROM products WHERE seller_id = ? ORDER BY price').all(spice.id);
+  const omar = { name: 'Omar Darwish', phone: '0988111000', governorate: 'Damascus', address: 'Midan, Al-Hamra St 9' };
+  const rania = { name: 'Rania Khoury', phone: '0955111222', email: CUSTOMER_EMAIL, governorate: 'Damascus', address: 'Abu Rummaneh, Al-Jalaa St, Office 7' };
+  seedOrder({ sellerId: spice.id, product: sp[1], buyer: omar, qty: 3, status: 'delivered', state: 'closed', ago: 12 });
+  seedOrder({ sellerId: spice.id, product: sp[2], buyer: rania, status: 'delivered', state: 'closed', userId: customer.id, ago: 8 });
+  seedOrder({ sellerId: spice.id, product: sp[0], buyer: omar, qty: 2, status: 'confirmed', state: 'open', ago: 2 });
+}
+
+// Store registrations waiting in the owner's review queue.
+if (!db.prepare('SELECT 1 FROM store_registration_requests').get()) {
+  const insR = db.prepare(`INSERT INTO store_registration_requests (id, full_name, phone, email, national_id, store_name, slug,
+      instagram, governorate, bio, password_hash, status, info_request_note, submitted_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  const pw = bcrypt.hashSync('applicant1234', 10);
+  insR.run(id(), 'Hala Qassem', '0911223344', 'hala@example.com', '01122334455', 'Hala Knits', 'hala-knits', 'halaknits',
+    'Latakia', 'Hand-knitted scarves and baby blankets.', pw, 'PENDING_REVIEW', null, daysAgo(0, 9), daysAgo(0, 9));
+  insR.run(id(), 'Yousef Barakat', '0922334455', 'yousef@example.com', '02233445566', 'Barakat Leather', 'barakat-leather', null,
+    'Aleppo', 'Hand-stitched leather wallets and belts.', pw, 'PENDING_REVIEW', null, daysAgo(1, 15), daysAgo(1, 15));
+  insR.run(id(), 'Mira Haddad', '0933556677', 'mira@example.com', '03344556677', 'Mira Ceramics', 'mira-ceramics', 'miraceramics',
+    'Tartus', 'Wheel-thrown ceramics.', pw, 'MORE_INFORMATION_REQUIRED', 'Please send a photo of your workshop.', daysAgo(3, 11), daysAgo(2, 10));
+}
+
 // 2FA is on unconditionally at creation — the owner account has no code path that can
 // disable it (see app/seller/security: owner has no sellers row, so it can never reach
 // that action even if it tried the URL directly).
 const ownerUid = upsertUser(OWNER_EMAIL, OWNER_PASS, 'owner', 'Paylo Owner', OWNER_TOTP);
 db.prepare('UPDATE users SET totp_enabled = 1 WHERE id = ?').run(ownerUid);
 
-console.log('Seeded.');
-console.log(`  Admin:            ${ADMIN_EMAIL} / ${ADMIN_PASS}`);
-console.log(`  Seller (live):    demo@paylo.sy / ${SELLER_PASS}  — 2FA on, TOTP secret ${DEMO_TOTP}`);
-console.log(`                    storefront /s/lina-handmade`);
-console.log(`  Seller (pending): pending@paylo.sy / ${SELLER_PASS}`);
-console.log(`  Owner (internal): ${OWNER_EMAIL} / ${OWNER_PASS}  — 2FA on, TOTP secret ${OWNER_TOTP}, route /owner`);
+const APP = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+console.log('Seeded.\n');
+console.log('  Log in at ' + APP + '/login\n');
+console.log(`  Platform owner   ${OWNER_EMAIL} / ${OWNER_PASS}`);
+console.log(`                   2FA code: npm run totp -- ${OWNER_TOTP}   → dashboard ${APP}/owner`);
+console.log(`  Admin            ${ADMIN_EMAIL} / ${ADMIN_PASS}   → ${APP}/admin`);
+console.log(`  Store (no 2FA)   spice@paylo.sy / ${SELLER_PASS}   → ${APP}/seller`);
+console.log(`  Store (2FA on)   demo@paylo.sy / ${SELLER_PASS}`);
+console.log(`                   2FA code: npm run totp -- ${DEMO_TOTP}`);
+console.log(`  Store (pending)  pending@paylo.sy / ${SELLER_PASS}`);
+console.log(`  Customer         ${CUSTOMER_EMAIL} / ${CUSTOMER_PASS}   → ${APP}/account\n`);
+console.log('  Share links for buyers (no account needed):');
+console.log(`    ${APP}/s/spice-house`);
+console.log(`    ${APP}/s/lina-handmade`);
