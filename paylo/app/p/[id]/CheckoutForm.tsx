@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useFormState } from 'react-dom';
@@ -92,6 +93,9 @@ export function CheckoutForm({ productId, basePrice, stock, isDigital, variants,
 
       {/* Step 1 stays mounted so its values still post with the final submit. */}
       <section className={`space-y-4 ${step === 1 ? '' : 'hidden'}`}>
+        {variant?.image_path && (
+          <img src={variant.image_path} alt={variant.label} className="w-full max-h-64 object-contain rounded-xl bg-white border border-ink/10" data-testid="variant-image" />
+        )}
         {variants.length > 0 && (
           <Field label={`${option1 ?? t('choose_variant')}${option2 ? ' / ' + option2 : ''}`}>
             <select name="variant_id" className="input" value={variantId} onChange={(e) => setVariantId(e.target.value)}>

@@ -351,6 +351,41 @@ const step = (m) => console.log('\n' + m);
   await shopper.goto(BASE + '/s/spice-house');
   ok(await shopper.locator('[data-testid=collection-chips]').getByText('Empty one').count() === 0, 'empty collections are hidden from buyers');
 
+  /* ================= PHASE 2 ================= */
+  /* ---------------- 7. Per-variant images ---------------- */
+  step('7. Each variant can have its own photo');
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  const cups = db.prepare("SELECT * FROM products WHERE title = 'Ceramic espresso cups'").get();
+  const variantImg = (label) => db.prepare('SELECT image_path FROM product_variants WHERE product_id = ? AND label = ?').get(cups.id, label).image_path;
+  await demo.goto(BASE + '/seller/products/' + cups.id);
+  await demo.locator('[data-variant-row]').nth(1).locator('input[type=file]').setInputFiles({ name: 'indigo.png', mimeType: 'image/png', buffer: PNG });
+  await demo.getByRole('button', { name: 'Save', exact: true }).click();
+  await demo.waitForURL('**saved=1');
+  const indigoPath = variantImg('Small / Indigo');
+  ok(/^\/uploads\/.+\.png$/.test(indigoPath || ''), 'uploaded photo is stored on the Small / Indigo variant');
+  ok(variantImg('Small / Sand') === null, 'other variants are unaffected');
+
+  await demo.goto(BASE + '/seller/products/' + cups.id);
+  ok(await demo.locator('[data-testid=variant-thumb]').count() === 1, 'edit form shows the existing variant photo');
+  await demo.getByRole('button', { name: 'Save', exact: true }).click();
+  await demo.waitForURL('**saved=1');
+  ok(variantImg('Small / Indigo') === indigoPath, 're-saving keeps the photo');
+
+  await demo.goto(BASE + '/seller/products/' + cups.id);
+  await demo.locator('input[name=variants]').evaluate((el) => { const rows = JSON.parse(el.value); rows[0].image = '/uploads/someone-elses.png'; el.value = JSON.stringify(rows); });
+  await demo.getByRole('button', { name: 'Save', exact: true }).click();
+  await demo.waitForURL('**saved=1');
+  ok(variantImg('Small / Sand') === null, 'a forged image path is not accepted');
+
+  const cupsBuyer = await newPage();
+  await cupsBuyer.goto(BASE + '/p/' + cups.id);
+  const indigoId = db.prepare("SELECT id FROM product_variants WHERE product_id = ? AND label = 'Small / Indigo'").get(cups.id).id;
+  const sandId = db.prepare("SELECT id FROM product_variants WHERE product_id = ? AND label = 'Small / Sand'").get(cups.id).id;
+  await cupsBuyer.selectOption('select[name=variant_id]', indigoId);
+  ok(await cupsBuyer.locator('[data-testid=variant-image]').getAttribute('src') === indigoPath, 'buyer sees the Indigo photo when choosing Small / Indigo');
+  await cupsBuyer.selectOption('select[name=variant_id]', sandId);
+  ok(await cupsBuyer.locator('[data-testid=variant-image]').count() === 0, 'no variant photo shown for a variant without one');
+
   console.log(`\nALL PASSED — ${passed} assertions`);
   await browser.close();
   db.close();

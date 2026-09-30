@@ -254,5 +254,6 @@ export const en = {
   collections_none: 'No collections yet.', collection_exists: 'You already have a collection with that name.',
   collection_name_required: 'Give the collection a name.', collection_none_opt: 'No collection', all_products: 'All',
   collections_sub: 'Group products so buyers can browse your store by category. Each collection also has its own shareable link.',
+  variant_image: 'Photo',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

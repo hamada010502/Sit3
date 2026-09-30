@@ -41,7 +41,7 @@ export interface Product {
 }
 export interface ProductVariant {
   id: string; product_id: string; option1_value: string | null; option2_value: string | null;
-  label: string; price: number; stock: number; position: number;
+  label: string; price: number; stock: number; position: number; image_path: string | null;
 }
 export interface Order {
   id: string; code: string; seller_id: string; product_id: string; user_id: string | null; product_title: string; product_type: ProductType;

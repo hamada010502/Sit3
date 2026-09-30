@@ -8,7 +8,8 @@ import { Field } from '@/components/Field';
 import { SubmitButton } from '@/components/SubmitButton';
 import type { Collection, Product, ProductVariant } from '@/lib/types';
 
-interface Row { option1_value: string; option2_value: string; price: number; stock: number }
+interface Row { uid: string; option1_value: string; option2_value: string; price: number; stock: number; image: string | null }
+const uid = () => Math.random().toString(36).slice(2, 10);
 
 export function ProductForm({ product, images, variants = [], collections = [] }: { product?: Product; images: string[]; variants?: ProductVariant[]; collections?: Collection[] }) {
   const { t } = useI18n();
@@ -17,7 +18,7 @@ export function ProductForm({ product, images, variants = [], collections = [] }
   const [opt1, setOpt1] = useState(product?.option1_name ?? '');
   const [opt2, setOpt2] = useState(product?.option2_name ?? '');
   const [rows, setRows] = useState<Row[]>(
-    variants.map((v) => ({ option1_value: v.option1_value ?? '', option2_value: v.option2_value ?? '', price: v.price, stock: v.stock })),
+    variants.map((v) => ({ uid: uid(), option1_value: v.option1_value ?? '', option2_value: v.option2_value ?? '', price: v.price, stock: v.stock, image: v.image_path })),
   );
   const isDigital = type === 'digital';
   const hasOptions = opt1.trim().length > 0;
@@ -78,14 +79,14 @@ export function ProductForm({ product, images, variants = [], collections = [] }
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold text-sm">{t('variants_title')}</h3>
                 <button type="button" className="btn-secondary btn-sm"
-                  onClick={() => setRows((r) => [...r, { option1_value: '', option2_value: '', price: product?.price ?? 0, stock: 0 }])}>
+                  onClick={() => setRows((r) => [...r, { uid: uid(), option1_value: '', option2_value: '', price: product?.price ?? 0, stock: 0, image: null }])}>
                   + {t('variant_add')}
                 </button>
               </div>
               <p className="text-xs text-ink-soft mb-3">{t('variants_hint')}</p>
               <div className="space-y-2">
                 {rows.map((r, i) => (
-                  <div key={i} data-variant-row className="flex flex-wrap items-end gap-2">
+                  <div key={r.uid} data-variant-row className="flex flex-wrap items-end gap-2">
                     <div className="flex-1 min-w-[110px]"><label className="label">{opt1}</label>
                       <input type="text" className="input" value={r.option1_value} onChange={(e) => setRow(i, { option1_value: e.target.value })} required /></div>
                     {opt2.trim() && <div className="flex-1 min-w-[110px]"><label className="label">{opt2}</label>
@@ -94,6 +95,14 @@ export function ProductForm({ product, images, variants = [], collections = [] }
                       <input type="number" min={1} dir="ltr" className="input" value={r.price} onChange={(e) => setRow(i, { price: Number(e.target.value) })} /></div>
                     <div className="w-24"><label className="label">{t('stock')}</label>
                       <input type="number" min={0} dir="ltr" className="input" value={r.stock} onChange={(e) => setRow(i, { stock: Number(e.target.value) })} /></div>
+                    <div className="w-40"><label className="label">{t('variant_image')}</label>
+                      {r.image ? (
+                        <div className="flex items-center gap-2">
+                          <img src={r.image} alt="" className="h-10 w-10 rounded object-cover border border-ink/10" data-testid="variant-thumb" />
+                          <button type="button" className="btn-ghost btn-sm" onClick={() => setRow(i, { image: null })}>×</button>
+                        </div>
+                      ) : <input type="file" name={`variant_image_${r.uid}`} accept="image/jpeg,image/png,image/webp" className="text-xs w-full" />}
+                    </div>
                     <button type="button" className="btn-ghost btn-sm text-cherry" onClick={() => setRows((r) => r.filter((_, j) => j !== i))}>{t('variant_remove')}</button>
                   </div>
                 ))}

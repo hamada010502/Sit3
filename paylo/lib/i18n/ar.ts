@@ -219,4 +219,5 @@ export const ar: Dict = {
   collections_none: 'لا توجد تصنيفات بعد.', collection_exists: 'لديك تصنيف بهذا الاسم بالفعل.',
   collection_name_required: 'أدخل اسمًا للتصنيف.', collection_none_opt: 'بدون تصنيف', all_products: 'الكل',
   collections_sub: 'جمّع منتجاتك ليتصفح المشترون متجرك حسب التصنيف. لكل تصنيف رابط خاص قابل للمشاركة.',
+  variant_image: 'صورة',
 };

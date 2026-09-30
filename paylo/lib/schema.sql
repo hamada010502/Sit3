@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS product_variants (
   label TEXT NOT NULL,
   price INTEGER NOT NULL,
   stock INTEGER NOT NULL DEFAULT 0,
+  image_path TEXT,
   position INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_variants_product ON product_variants(product_id);

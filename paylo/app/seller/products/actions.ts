@@ -31,7 +31,7 @@ async function saveImages(files: File[]): Promise<string[]> {
   return out;
 }
 
-interface VariantRow { option1_value?: string; option2_value?: string; price?: number; stock?: number }
+interface VariantRow { uid?: string; option1_value?: string; option2_value?: string; price?: number; stock?: number; image?: string | null }
 
 export async function saveProductAction(productId: string | null, _prev: { error?: string } | null, formData: FormData) {
   const { seller } = requireApprovedSeller();
@@ -63,6 +63,18 @@ export async function saveProductAction(productId: string | null, _prev: { error
     if (!Number.isFinite(Number(v.stock)) || Number(v.stock) < 0) return { error: 'product_error' };
   }
 
+  // Variant images: a new upload wins; otherwise keep the old one only if it really was
+  // one of this product's variant images (never trust a posted path).
+  const priorVariantImages = new Set(productId
+    ? (db.prepare('SELECT v.image_path FROM product_variants v JOIN products p ON p.id = v.product_id WHERE v.product_id = ? AND p.seller_id = ? AND v.image_path IS NOT NULL').all(productId, seller.id) as { image_path: string }[]).map((r) => r.image_path)
+    : []);
+  const variantImages: (string | null)[] = [];
+  for (const v of variants) {
+    const f = v.uid && /^[a-z0-9]{1,16}$/.test(v.uid) ? formData.get(`variant_image_${v.uid}`) : null;
+    const uploaded = f instanceof File ? await saveUpload(f) : null;
+    variantImages.push(uploaded ?? (v.image && priorVariantImages.has(v.image) ? v.image : null));
+  }
+
   const keep = formData.getAll('keep_image').map(String);
   const uploaded = await saveImages(formData.getAll('images').filter((x): x is File => x instanceof File));
   const images = [...keep, ...uploaded].slice(0, MAX_IMAGES);
@@ -84,10 +96,10 @@ export async function saveProductAction(productId: string | null, _prev: { error
         .run(id, seller.id, type, title, description, price, effectiveStock, JSON.stringify(images), digitalNote, option1, option2, collectionId);
     }
     db.prepare('DELETE FROM product_variants WHERE product_id = ?').run(id);
-    const insV = db.prepare('INSERT INTO product_variants (id, product_id, option1_value, option2_value, label, price, stock, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    const insV = db.prepare('INSERT INTO product_variants (id, product_id, option1_value, option2_value, label, price, stock, position, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
     variants.forEach((v, i) => {
       const label = [v.option1_value, v.option2_value].filter(Boolean).join(' / ');
-      insV.run(newId(), id, v.option1_value || null, v.option2_value || null, label, Number(v.price), Number(v.stock), i);
+      insV.run(newId(), id, v.option1_value || null, v.option2_value || null, label, Number(v.price), Number(v.stock), i, variantImages[i]);
     });
     return id;
   });
