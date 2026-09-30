@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Shell } from '@/components/Shell';
 import { ProductImage } from '@/components/ProductImage';
 import { getDb } from '@/lib/db';
+import { isStoreLive } from '@/lib/store-status';
 import { visibleCollections } from '@/lib/collections';
 import { aboutSections } from '@/lib/store-page';
 import { Announcement } from '@/components/Announcement';
@@ -14,7 +15,7 @@ export default function StorePage({ params, searchParams }: { params: { slug: st
   const { t, lang } = getT();
   const db = getDb();
   const seller = db.prepare('SELECT * FROM sellers WHERE slug = ?').get(params.slug) as Seller | undefined;
-  if (!seller || seller.status !== 'approved' || !seller.visible) {
+  if (!seller || !isStoreLive(seller)) {
     return <Shell><div className="alert-info text-center py-10">{t('store_unavailable')}</div></Shell>;
   }
   const collections = visibleCollections(seller.id);

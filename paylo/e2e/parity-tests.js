@@ -33,11 +33,19 @@ const gatewayServer = http.createServer((req, res) => {
   const db = new Database(DB_PATH);
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
   const newPage = async () => (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+  const TOTP_SECRETS = { 'spice@paylo.sy': 'MFRGGZDFMZTWQ2LKNNWG23TPOBYXE43U', 'demo@paylo.sy': 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP' };
+  const totpNow = (secret) => require('child_process').execSync(`node scripts/totp.js ${secret}`).toString().slice(0, 6);
+  // Logs in and, for accounts with 2FA, completes the second factor.
   const login = async (p, email, pw) => {
     await p.goto(BASE + '/login');
     await p.fill('input[name=email]', email);
     await p.fill('input[name=password]', pw);
     await p.click('button[type=submit]');
+    if (TOTP_SECRETS[email]) {
+      await p.waitForURL('**/login/2fa');
+      await p.fill('input[name=code]', totpNow(TOTP_SECRETS[email]));
+      await p.click('button[type=submit]');
+    }
   };
   const spice = db.prepare("SELECT * FROM sellers WHERE slug = 'spice-house'").get();
 
@@ -121,10 +129,6 @@ const gatewayServer = http.createServer((req, res) => {
 
   const demo = await newPage();
   await login(demo, 'demo@paylo.sy', 'seller1234');
-  await demo.waitForURL('**/login/2fa');
-  const { execSync } = require('child_process');
-  await demo.fill('input[name=code]', execSync('node scripts/totp.js JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP').toString().slice(0, 6));
-  await demo.click('button[type=submit]');
   await demo.waitForURL('**/seller');
   await demo.goto(BASE + '/seller/returns?f=all');
   ok(await demo.getByText(spiceDelivered.code).count() === 0, "another seller never sees this seller's return");
@@ -792,6 +796,46 @@ const gatewayServer = http.createServer((req, res) => {
   await seller.waitForLoadState('networkidle');
   ok(del(d3.id).status === 'delivered', 'seller can manually retry a dead delivery once the endpoint is back');
   hookServer.close();
+
+  /* ---------------- H. 2FA hold ---------------- */
+  step('H. A live store whose seller has no 2FA is held until they turn it on');
+  const spiceUserId = db.prepare('SELECT user_id FROM sellers WHERE id = ?').get(spice.id).user_id;
+  // A fresh payout-eligible order: bought, collected and delivered by the courier.
+  const holdBuyer = await newPage();
+  await buyNow(holdBuyer, { name: 'Hold Buyer' });
+  const holdOrder = await place(holdBuyer);
+  await courier({ order_code: holdOrder.code, event: 'picked_up', courier: 'Paylo Rider' });
+  await courier({ order_code: holdOrder.code, event: 'delivered', courier: 'Paylo Rider' });
+  db.prepare("UPDATE orders SET closed_at = datetime('now', '-1 day') WHERE id = ?").run(holdOrder.id);
+  const eligibleBefore = db.prepare("SELECT count(*) c FROM orders WHERE seller_id = ? AND payout_id IS NULL AND status = 'delivered' AND payment_status IN ('collected_cod','confirmed')").get(spice.id).c;
+  db.prepare('UPDATE users SET totp_enabled = 0 WHERE id = ?').run(spiceUserId);
+  const heldBuyer = await newPage();
+  await heldBuyer.goto(BASE + '/s/spice-house');
+  ok(await heldBuyer.getByText('This store is not available').count() === 1, 'storefront is hidden');
+  await heldBuyer.goto(BASE + '/p/' + zaatar.id);
+  ok(await heldBuyer.locator('input[name=buyer_name]').count() === 0, 'product page offers no checkout');
+  await heldBuyer.goto(BASE + '/' + zCode);
+  ok(await heldBuyer.locator('input[name=buyer_name]').count() === 0, 'short link leads nowhere buyable');
+  await heldBuyer.goto(BASE + '/s/spice-house/about');
+  ok(await heldBuyer.getByText('This store is not available').count() === 1, 'About page is hidden');
+  await seller.goto(BASE + '/seller/orders');
+  ok(seller.url().includes('/seller/security?hold=1') && await seller.locator('[data-testid=tfa-hold]').count() === 1, 'seller pages redirect to Security with a hold notice');
+  await seller.goto(BASE + '/seller/security');
+  ok(seller.url().endsWith('/seller/security'), 'Security itself stays reachable so the seller can fix it');
+  ok(eligibleBefore > 0, `precondition: the store had payout-eligible orders (${eligibleBefore})`);
+  await admin.goto(BASE + '/admin/payouts');
+  await admin.getByRole('button', { name: "Generate this week's payouts" }).click();
+  await admin.waitForURL('**/admin/payouts?generated=*');
+  ok(db.prepare("SELECT count(*) c FROM orders WHERE seller_id = ? AND payout_id IS NULL AND status = 'delivered' AND payment_status IN ('collected_cod','confirmed')").get(spice.id).c === eligibleBefore, 'payout run skips the held store: its orders stay unpaid');
+  db.prepare('UPDATE users SET totp_enabled = 1 WHERE id = ?').run(spiceUserId);
+  await heldBuyer.goto(BASE + '/s/spice-house');
+  ok(await heldBuyer.getByText('This store is not available').count() === 0, 'turning 2FA back on releases the hold immediately');
+  await seller.goto(BASE + '/seller/orders');
+  ok(seller.url().endsWith('/seller/orders'), 'seller pages unlock again');
+  await admin.goto(BASE + '/admin/payouts');
+  await admin.getByRole('button', { name: "Generate this week's payouts" }).click();
+  await admin.waitForURL('**/admin/payouts?generated=*');
+  ok(!!db.prepare('SELECT payout_id FROM orders WHERE id = ?').get(holdOrder.id).payout_id, 'once 2FA is back on, the next payout run pays the held order (so the hold was the only reason it was skipped)');
 
   console.log(`\nALL PASSED — ${passed} assertions`);
   await browser.close();

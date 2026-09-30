@@ -290,5 +290,6 @@ export const en = {
   bulk_hint: 'A % change also updates every variant price. Existing orders keep the price they were placed at.',
   wh_st_delivered: 'Delivered', wh_st_failed: 'Failed — will retry', wh_st_dead: 'Gave up', wh_attempts: '{n} attempt(s)',
   wh_next_retry: 'Next retry', wh_retry_now: 'Retry now',
+  tfa_hold_note: 'Your store is on hold: buyers cannot see it or check out, and payouts are paused until you turn on two-factor authentication.',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

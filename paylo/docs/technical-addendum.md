@@ -161,6 +161,22 @@ once and stored as SHA-256 hashes; using one consumes it. Admin approval of a st
 refused while two-factor is off, and an admin can reset it for a locked-out seller — which
 is audited.
 
+### 5a. Store hold until two-factor is on
+
+Stores approved through the registration review are created at approval time, so their
+seller cannot have enabled 2FA beforehand. To keep 2FA mandatory (v2 §6) an approved store
+whose seller has 2FA off is **held** (`isStoreLive()` in `lib/store-status.ts`, the single
+definition used by the storefront, About page, product page and `checkout()`):
+
+- buyers cannot see the store or check out (every entry point, short links included);
+- `requireApprovedSeller()` sends every seller page to `/seller/security?hold=1`, which
+  stays reachable along with `/seller/pending`;
+- payout eligibility additionally requires `users.totp_enabled = 1`, so money already
+  earned waits and is paid in the first run after 2FA is turned on.
+
+Turning 2FA on releases the hold immediately; turning it off (or an admin 2FA reset)
+re-applies it.
+
 ## 6. Audit trail
 
 `audit_log` is append-only: actor type and label, entity type and id, action, JSON detail,

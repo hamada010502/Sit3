@@ -164,8 +164,9 @@ if (!customer) {
   customer = { id: cid };
 }
 
-// A second live store with NO two-factor, so a seller dashboard can be opened with just a password.
-const spiceUid = upsertUser('spice@paylo.sy', SELLER_PASS, 'seller', 'Karim Aswad');
+// A second live store. Two-factor is on: a store without it is held (lib/store-status.ts).
+const SPICE_TOTP = 'MFRGGZDFMZTWQ2LKNNWG23TPOBYXE43U';
+const spiceUid = upsertUser('spice@paylo.sy', SELLER_PASS, 'seller', 'Karim Aswad', SPICE_TOTP);
 let spice = db.prepare('SELECT id FROM sellers WHERE user_id = ?').get(spiceUid);
 if (!spice) {
   const sid = id();
@@ -258,7 +259,8 @@ console.log('  Log in at ' + APP + '/login\n');
 console.log(`  Platform owner   ${OWNER_EMAIL} / ${OWNER_PASS}`);
 console.log(`                   2FA code: npm run totp -- ${OWNER_TOTP}   → dashboard ${APP}/owner`);
 console.log(`  Admin            ${ADMIN_EMAIL} / ${ADMIN_PASS}   → ${APP}/admin`);
-console.log(`  Store (no 2FA)   spice@paylo.sy / ${SELLER_PASS}   → ${APP}/seller`);
+console.log(`  Store            spice@paylo.sy / ${SELLER_PASS}   → ${APP}/seller`);
+console.log(`                   2FA code: npm run totp -- ${SPICE_TOTP}`);
 console.log(`  Store (2FA on)   demo@paylo.sy / ${SELLER_PASS}`);
 console.log(`                   2FA code: npm run totp -- ${DEMO_TOTP}`);
 console.log(`  Store (pending)  pending@paylo.sy / ${SELLER_PASS}`);

@@ -30,13 +30,14 @@ npm run dev              # http://localhost:3000
 |---|---|---|---|
 | Platform owner | owner@paylo.sy | owner-change-me-1234 | 2FA: `npm run totp -- KRSXG5CTMVRXEZLUKN2XAZLSEBB2EWDN` · `/owner` |
 | Admin | admin@paylo.sy | admin1234 | `/admin` |
-| Store (no 2FA) | spice@paylo.sy | seller1234 | Damascus Spice House · `/seller` |
+| Store | spice@paylo.sy | seller1234 | 2FA: `npm run totp -- MFRGGZDFMZTWQ2LKNNWG23TPOBYXE43U` · Damascus Spice House |
 | Store (2FA on) | demo@paylo.sy | seller1234 | 2FA: `npm run totp -- JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP` |
 | Store (pending) | pending@paylo.sy | seller1234 | Awaiting approval |
 | Customer | customer@paylo.sy | customer1234 | Saved addresses + order history · `/account` |
 
 `npm run totp -- <secret>` prints the current 2FA code, so no authenticator app is needed
-locally. Buyer share links (no account needed): `/s/spice-house` and `/s/lina-handmade`.
+locally. Every live store needs 2FA: an approved store without it is held (hidden from buyers,
+payouts paused) until the seller turns it on. Buyer share links (no account needed): `/s/spice-house` and `/s/lina-handmade`.
 The seed also creates orders in every state and three store registrations waiting in the
 owner's review queue. The fixed TOTP secrets exist for local testing; never ship them to production.
 

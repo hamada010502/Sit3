@@ -16,6 +16,9 @@ export function requireSeller() {
 export function requireApprovedSeller() {
   const s = requireSeller();
   if (s.seller.status !== 'approved') redirect('/seller/pending');
+  // An approved store without two-factor is on hold (see lib/store-status.ts): only
+  // Security (and Pending) stay reachable until the seller turns it on.
+  if (!s.user.totp_enabled) redirect('/seller/security?hold=1');
   return s;
 }
 

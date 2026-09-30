@@ -11,7 +11,9 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
   return (
     <Shell wide>
       {!user.totp_enabled && (
-        <div className="alert-warn mb-5">{t('tfa_required_note')} <Link href="/seller/security" className="link">{t('nav_security')} →</Link></div>
+        <div className={`${approved ? 'alert-error' : 'alert-warn'} mb-5`} data-testid="tfa-hold">
+          {approved ? t('tfa_hold_note') : t('tfa_required_note')} <Link href="/seller/security" className="link">{t('nav_security')} →</Link>
+        </div>
       )}
       {approved && seller.kyc_status !== 'approved' && (
         <div className="alert-info mb-5">
@@ -19,7 +21,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
           <Link href="/seller/verification" className="link">{t('nav_kyc')} →</Link>
         </div>
       )}
-      {approved && <NewOrderWatcher />}
+      {approved && !!user.totp_enabled && <NewOrderWatcher />}
       {children}
     </Shell>
   );

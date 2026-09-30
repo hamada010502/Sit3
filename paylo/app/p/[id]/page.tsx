@@ -5,6 +5,7 @@ import { ProductImage, parseImages } from '@/components/ProductImage';
 import { getCurrentUser } from '@/lib/auth';
 import { defaultAddress } from '@/lib/customer';
 import { getAllSettings, getDb } from '@/lib/db';
+import { isStoreLive } from '@/lib/store-status';
 import { getT } from '@/lib/i18n/server';
 import { formatSYP } from '@/lib/money';
 import { enabledPaymentMethods } from '@/lib/orders';
@@ -16,7 +17,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   const db = getDb();
   const product = db.prepare('SELECT * FROM products WHERE id = ?').get(params.id) as Product | undefined;
   const seller = product ? db.prepare('SELECT * FROM sellers WHERE id = ?').get(product.seller_id) as Seller | undefined : undefined;
-  if (!product || !seller || seller.status !== 'approved' || !seller.visible || product.status === 'removed' || product.status === 'inactive') {
+  if (!product || !seller || !isStoreLive(seller) || product.status === 'removed' || product.status === 'inactive') {
     return <Shell><div className="alert-info text-center py-10">{t('product_unavailable')}</div></Shell>;
   }
   const variants = db.prepare('SELECT * FROM product_variants WHERE product_id = ? ORDER BY position').all(product.id) as ProductVariant[];

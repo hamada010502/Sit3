@@ -3,6 +3,7 @@ import { audit } from './audit';
 import { notify, appUrl } from './notify';
 import { emitWebhook } from './webhooks';
 import { computeFees } from './fees';
+import { isStoreLive } from './store-status';
 import { claimCouponUse, discountFor, findCoupon, releaseCouponUse } from './coupons';
 import { currentCutoff, isoDay, isoStamp, nextTransferDate } from './payouts-schedule';
 import { getPaymentProvider, type CardInput } from './payments';
@@ -126,7 +127,7 @@ export async function checkout(input: CheckoutInput): Promise<CheckoutResult> {
   const product = db.prepare('SELECT * FROM products WHERE id = ?').get(input.productId) as Product | undefined;
   if (!product || product.status !== 'active') return { ok: false, error: 'product_unavailable' };
   const seller = db.prepare('SELECT * FROM sellers WHERE id = ?').get(product.seller_id) as Seller | undefined;
-  if (!seller || seller.status !== 'approved' || !seller.visible) return { ok: false, error: 'product_unavailable' };
+  if (!seller || !isStoreLive(seller)) return { ok: false, error: 'product_unavailable' };
   if (!paymentMethodEnabled(input.paymentMethod)) return { ok: false, error: 'payment_method_unavailable' };
 
   let variant: ProductVariant | undefined;
@@ -658,15 +659,17 @@ export const getOrderRefunds = (orderId: string) => getDb().prepare('SELECT * FR
  *   prepaid          → payment confirmed, then Closed (or delivered, per the
  *                      `payout_eligibility` setting)
  *
- * On top of that: seller KYC approved (v2 §6), no open return, not already paid out,
- * and closed before the cutoff.
+ * On top of that: seller KYC approved and two-factor on (v2 §6), no open return, not
+ * already paid out, and closed before the cutoff.
  */
 export function payoutEligibleOrders(sellerId?: string, cutoff: Date = new Date()): Order[] {
   const onDeliveryOnly = getSetting('payout_eligibility') === 'on_delivery';
   return getDb().prepare(`
     SELECT o.* FROM orders o
       JOIN sellers s ON s.id = o.seller_id
+      JOIN users u ON u.id = s.user_id
     WHERE o.order_state = 'closed'
+      AND u.totp_enabled = 1
       AND o.payout_id IS NULL
       AND s.kyc_status = 'approved'
       AND (

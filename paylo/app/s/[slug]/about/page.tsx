@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { Shell } from '@/components/Shell';
 import { getDb } from '@/lib/db';
+import { isStoreLive } from '@/lib/store-status';
 import { getT } from '@/lib/i18n/server';
 import { aboutSections } from '@/lib/store-page';
 import type { Seller } from '@/lib/types';
@@ -10,7 +11,7 @@ import type { Seller } from '@/lib/types';
 export default function StoreAboutPage({ params }: { params: { slug: string } }) {
   const { t } = getT();
   const seller = getDb().prepare('SELECT * FROM sellers WHERE slug = ?').get(params.slug) as Seller | undefined;
-  if (!seller || seller.status !== 'approved' || !seller.visible) {
+  if (!seller || !isStoreLive(seller)) {
     return <Shell><div className="alert-info text-center py-10">{t('store_unavailable')}</div></Shell>;
   }
   const sections = aboutSections(seller);
