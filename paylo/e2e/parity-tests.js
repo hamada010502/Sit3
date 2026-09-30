@@ -84,6 +84,37 @@ const step = (m) => console.log('\n' + m);
   ok((await courier({ order_code: pickupOrder.code, event: 'delivered', courier: 'Paylo Rider' })).status === 409, 'non-courier (logistics pickup) order is refused (409)');
   ok((await courier({ order_code: 'PL-NOSUCH00', event: 'delivered', courier: 'X' })).status === 404, 'unknown order code returns 404');
 
+  /* ---------------- 3. Seller-facing returns list ---------------- */
+  step('3. Sellers see their own returns and disputes');
+  const buyer = await newPage();
+  const openReturn = async (code, reason, desc) => {
+    await buyer.goto(BASE + '/track/' + code);
+    await buyer.locator('details summary', { hasText: /Request a return|Report a problem/ }).click();
+    await buyer.selectOption('select[name=reason]', reason);
+    await buyer.fill('textarea[name=description]', desc);
+    await buyer.getByRole('button', { name: 'Submit report' }).click();
+    await buyer.waitForSelector('text=A report is open on this order');
+  };
+  const spiceDelivered = db.prepare("SELECT * FROM orders WHERE seller_id = ? AND status = 'delivered' AND payout_id IS NULL ORDER BY created_at LIMIT 1").get(spice.id);
+  await openReturn(spiceDelivered.code, 'damaged', 'Jar lid cracked in transit');
+  await seller.goto(BASE + '/seller');
+  ok(await seller.locator('[data-testid=returns-alert]').count() === 1, 'dashboard flags open returns and links to them');
+  await seller.goto(BASE + '/seller/returns');
+  const retTable = seller.locator('[data-testid=seller-returns]');
+  ok(await retTable.getByText(spiceDelivered.code).count() === 1, 'seller sees the return opened on their order');
+  ok(await retTable.getByText('The item arrived damaged').count() === 1 && await retTable.getByText('Jar lid cracked').count() === 1, 'reason and buyer description are shown');
+  ok(await seller.getByText('Open (1)').count() === 1, 'open-returns count is shown on the filter');
+
+  const demo = await newPage();
+  await login(demo, 'demo@paylo.sy', 'seller1234');
+  await demo.waitForURL('**/login/2fa');
+  const { execSync } = require('child_process');
+  await demo.fill('input[name=code]', execSync('node scripts/totp.js JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP').toString().slice(0, 6));
+  await demo.click('button[type=submit]');
+  await demo.waitForURL('**/seller');
+  await demo.goto(BASE + '/seller/returns?f=all');
+  ok(await demo.getByText(spiceDelivered.code).count() === 0, "another seller never sees this seller's return");
+
   console.log(`\nALL PASSED — ${passed} assertions`);
   await browser.close();
   db.close();

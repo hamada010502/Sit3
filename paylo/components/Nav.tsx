@@ -13,7 +13,7 @@ export function Nav() {
        ['/admin/disputes', t('nav_disputes')], ['/admin/payouts', t('nav_payouts')], ['/admin/audit', t('nav_audit')],
        ['/admin/notifications', t('nav_notifications')], ['/admin/settings', t('nav_settings')]]
     : user?.role === 'seller'
-    ? [['/seller', t('nav_dashboard')], ['/seller/products', t('nav_products')], ['/seller/orders', t('nav_orders')],
+    ? [['/seller', t('nav_dashboard')], ['/seller/products', t('nav_products')], ['/seller/orders', t('nav_orders')], ['/seller/returns', t('nav_returns')],
        ['/seller/payouts', t('nav_payouts')], ['/seller/verification', t('nav_kyc')], ['/seller/security', t('nav_security')],
        ['/seller/developers', t('nav_webhooks')], ['/seller/settings', t('nav_settings')]]
     : user?.role === 'customer'

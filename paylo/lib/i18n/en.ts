@@ -232,5 +232,8 @@ export const en = {
   payout_cutoff_note: 'Orders cleared before {cutoff} are included — {left}.',
   payout_in_next_run: 'Going out in this run', payout_days_left: '{n} days left', payout_hours_left: '{n} hours left',
   courier_autoclose_note: 'A courier collects this order. When they scan it, it is marked handed off and then delivered automatically — you only need the form below if you hand it over yourself.',
+  returns_title: 'Returns & disputes', nav_returns: 'Returns', returns_resolved: 'Resolved',
+  returns_sub: 'Returns opened by your buyers. Paylo reviews and resolves them; you can see every case and its outcome here.',
+  returns_none: 'No returns here.', returns_open_alert: '{n} open return(s) on your orders. Payout for those orders is paused until resolved.',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

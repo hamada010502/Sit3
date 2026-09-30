@@ -21,6 +21,7 @@ export default function SellerDashboard() {
   const awaitingPayment = count("status = 'awaiting_payment'");
   const today = count("date(created_at) = date('now')");
   const week = count("created_at >= datetime('now','-7 days')");
+  const openReturns = (db.prepare("SELECT count(*) c FROM disputes d JOIN orders o ON o.id = d.order_id WHERE o.seller_id = ? AND d.status IN ('open','investigating')").get(seller.id) as { c: number }).c;
   const recent = db.prepare('SELECT * FROM orders WHERE seller_id = ? ORDER BY created_at DESC LIMIT 8').all(seller.id) as Order[];
   const storeUrl = appUrl(`/s/${seller.slug}`);
 
@@ -46,6 +47,7 @@ export default function SellerDashboard() {
         </div>
       </div>
 
+      {openReturns > 0 && <Link href="/seller/returns" className="alert-warn mb-4 block" data-testid="returns-alert">{t('returns_open_alert', { n: openReturns })} →</Link>}
       <section className="card-pad mb-4 border-cherry/20 bg-cherry/5 flex flex-wrap items-center justify-between gap-4" data-testid="next-payout">
         <div>
           <div className="stat-label">{t('bal_next_payout')}</div>
