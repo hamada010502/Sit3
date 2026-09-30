@@ -231,5 +231,6 @@ export const en = {
   // parity: payouts
   payout_cutoff_note: 'Orders cleared before {cutoff} are included — {left}.',
   payout_in_next_run: 'Going out in this run', payout_days_left: '{n} days left', payout_hours_left: '{n} hours left',
+  courier_autoclose_note: 'A courier collects this order. When they scan it, it is marked handed off and then delivered automatically — you only need the form below if you hand it over yourself.',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

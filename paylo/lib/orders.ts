@@ -350,6 +350,46 @@ export async function adminSetReadyForPickup(order: Order, pickupLocation: strin
 }
 
 export async function adminSetDelivered(order: Order, note: string | null) { await markDelivered(order, 'admin', note); }
+
+/* ---------------------- partner courier auto-close ------------------- */
+
+export type CourierEvent = 'picked_up' | 'in_transit' | 'delivered';
+const COURIER_METHODS: FulfillmentMethod[] = ['platform_rider', 'yalla_go'];
+
+/**
+ * A courier-reported event (rider app / Yalla Go) moves the order through the same
+ * transitions a person would, so the seller never has to click "handed off" for a
+ * courier-collected parcel — the equivalent of Shopier's cargo-code auto-close.
+ * Idempotent: replaying an event the order has already passed is a no-op, which
+ * matters because couriers retry deliveries.
+ */
+export async function applyCourierEvent(order: Order, event: CourierEvent, courier: string, reference: string | null): Promise<'applied' | 'noop'> {
+  if (!COURIER_METHODS.includes(order.fulfillment_method)) throw new OrderError('Order is not on a courier route');
+  if (['disputed', 'refunded', 'cancelled', 'payment_failed'].includes(order.status)) throw new OrderError(`Order is ${order.status}`);
+  if (order.payment_method === 'bank_transfer' && order.payment_status !== 'confirmed') throw new OrderError('Payment is not confirmed yet');
+  const rank: Partial<Record<OrderStatus, number>> = { confirmed: 0, handed_off: 1, in_transit: 2, ready_for_pickup: 2, delivered: 3 };
+  const target = { picked_up: 1, in_transit: 2, delivered: 3 }[event];
+  const current = rank[order.status];
+  if (current === undefined) throw new OrderError(`Order is ${order.status}`);
+  if (current >= target) return 'noop';
+
+  const note = `${courier}${reference ? ' · ' + reference : ''}`;
+  if (order.status === 'confirmed') {
+    transition(order, 'handed_off', 'system', `Collected by ${note}`, { handed_off_at: nowIso(), fulfillment_ref: reference ?? order.fulfillment_ref });
+    const su = sellerEmail(order.seller_id);
+    if (su) await notify({ event: 'order.collected.seller', email: { to: su.email, subject: `Paylo — ${order.code} collected by courier`,
+      body: `The courier collected order ${order.code}. It is marked handed off automatically — no action needed.\n\n— Paylo` } });
+    // Hand-off is what closes the order (same as sellerHandOff).
+    if (target === 1) await emitWebhook('order.closed', publicOrder(getOrder(order.id)!), order.seller_id);
+  }
+  if (event === 'in_transit' && getOrder(order.id)!.status === 'handed_off') {
+    transition(getOrder(order.id)!, 'in_transit', 'system', `In transit with ${note}`);
+    await emitWebhook('order.updated', publicOrder(getOrder(order.id)!), order.seller_id);
+  }
+  if (target === 3) await markDelivered(getOrder(order.id)!, 'system', `Delivered by ${note}`);
+  audit('system', null, courier, 'order', order.id, `courier.${event}`, { reference });
+  return 'applied';
+}
 export async function buyerConfirmReceived(order: Order) {
   if (!['handed_off', 'in_transit', 'ready_for_pickup'].includes(order.status)) throw new OrderError('Cannot confirm now');
   await markDelivered(order, 'buyer', 'Buyer confirmed receipt');

@@ -36,6 +36,9 @@ export default function SellerOrderPage({ params }: { params: { id: string } }) 
       </div>
 
       {order.status === 'awaiting_payment' && <div className="alert-warn mb-6">{t('st_awaiting_payment')} — {t('pm_bank_transfer_d')}</div>}
+      {canHandOff && ['platform_rider', 'yalla_go'].includes(order.fulfillment_method) && (
+        <div className="alert-info mb-3 text-sm" data-testid="courier-autoclose">{t('courier_autoclose_note')}</div>
+      )}
       {canHandOff && <div className="mb-6"><HandOffForm orderId={order.id} pickup={order.fulfillment_method === 'logistics_pickup'} /></div>}
 
       {shipped && (

@@ -118,6 +118,20 @@ Failures never propagate: a seller's broken endpoint must not fail a buyer's che
 There is no automatic retry yet — deliveries are recorded, and a replay worker is the
 obvious next step.
 
+### Inbound courier events (auto-close)
+
+`POST /api/logistics/events` accepts events from Paylo's rider app or the Yalla Go
+integration, signed with the same `Paylo-Signature` scheme using `LOGISTICS_WEBHOOK_SECRET`
+(unset = endpoint returns 501). Body: `{ "order_code", "event", "courier", "reference" }`
+where `event` is `picked_up`, `in_transit` or `delivered`.
+
+Only `platform_rider` and `yalla_go` orders are accepted. A pickup moves a `confirmed`
+order to `handed_off` (which closes it) as actor `system`, so the seller never clicks
+"handed off" for a courier-collected parcel; `delivered` then marks it delivered and, for
+COD, records the cash as collected. Events are idempotent — a replay of a step the order
+has already passed returns `{ "result": "noop" }`. Unpaid bank-transfer, disputed,
+refunded and cancelled orders are refused with 409.
+
 ## 4. KYC flow
 
 ```
