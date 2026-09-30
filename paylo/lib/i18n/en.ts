@@ -274,5 +274,10 @@ export const en = {
   new_order_title: 'New order {code}', new_order_alerts: 'New-order alerts', desktop_alerts_enable: 'Turn on desktop alerts',
   desktop_alerts_on: 'Desktop alerts on', desktop_alerts_blocked: 'Desktop alerts blocked in browser', sale_sound_on: 'Sale sound: on',
   sale_sound_off: 'Sale sound: off', close: 'Close',
+  earnings_title: 'Commission breakdown', export_csv: 'Export CSV', earn_paid_by_buyers: 'Paid by buyers (goods)',
+  earnings_sub: 'Every order, line by line: what the buyer paid, Paylo commission, refunds and what reaches you.',
+  earn_refunds_you_bore: 'Refunds you bore', earn_net: 'Your net', earn_list_price: 'List price', earn_you_bore: 'you bore {n}',
+  earn_st_paid: 'Paid out', earn_st_in_payout: 'In payout run', earn_st_available: 'Available', earn_st_pending: 'Pending', earn_st_refunded: 'Refunded',
+  earn_footnote: 'Delivery fees are not commissioned and go to the courier, so they are not part of your net. Commission is charged on what the buyer paid for goods, after any discount code.',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

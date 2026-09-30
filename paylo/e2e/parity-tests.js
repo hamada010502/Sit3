@@ -607,6 +607,43 @@ const gatewayServer = http.createServer((req, res) => {
     ok(over <= 1, `${pth} fits a 390px screen (overflow ${over}px)`);
   }
 
+  /* ================= PHASE 4 ================= */
+  /* ---------------- 14. Commission breakdown history ---------------- */
+  step('14. Commission breakdown shows every order line by line, matching what is paid out');
+  const fmt = (n) => n.toLocaleString('en-US');
+  await seller.goto(BASE + '/seller/payouts');
+  await seller.locator('[data-testid=earnings-link]').click();
+  await seller.waitForURL('**/seller/earnings');
+  const expectNet = db.prepare("SELECT coalesce(sum(seller_net),0) s FROM orders WHERE seller_id = ? AND status NOT IN ('cancelled','payment_failed','refunded')").get(spice.id).s;
+  ok((await seller.locator('[data-testid=earnings-net]').innerText()).includes(fmt(expectNet)), `page net (${fmt(expectNet)}) equals the sum of seller_net the payout run uses`);
+  const liveCount = db.prepare("SELECT count(*) c FROM orders WHERE seller_id = ? AND status NOT IN ('cancelled','payment_failed')").get(spice.id).c;
+  ok(await seller.locator('[data-testid=earnings-table] tbody tr').count() === liveCount, `one line per order (${liveCount}); cancelled orders excluded`);
+
+  const refRow = seller.locator(`[data-testid=earnings-table] tr[data-code="${spiceDelivered.code}"]`);
+  const refText = await refRow.innerText();
+  const bore = 30000 - commissionBack;
+  ok(refText.includes('− ' + fmt(30000)) && refText.includes(`you bore ${fmt(bore)}`), `partially refunded order shows the 30,000 refund and the ${fmt(bore)} the seller bore`);
+  ok(/In payout run/.test(refText), 'shows it is already in a payout run');
+  const raceOrder = db.prepare("SELECT * FROM orders WHERE coupon_code = 'RACE1'").get();
+  const raceText = await seller.locator(`[data-testid=earnings-table] tr[data-code="${raceOrder.code}"]`).innerText();
+  ok(raceText.includes('− ' + fmt(raceOrder.discount_amount)) && raceText.includes(fmt(raceOrder.seller_net)), 'discounted order shows list price, discount and resulting net');
+
+  const month = new Date().toISOString().slice(0, 7);
+  await seller.goto(BASE + '/seller/earnings?m=' + month);
+  const monthCount = db.prepare("SELECT count(*) c FROM orders WHERE seller_id = ? AND status NOT IN ('cancelled','payment_failed') AND strftime('%Y-%m', created_at) = ?").get(spice.id, month).c;
+  ok(await seller.locator('[data-testid=earnings-table] tbody tr').count() === monthCount, `month filter shows only ${month} (${monthCount} orders)`);
+
+  db.prepare('UPDATE orders SET product_title = ? WHERE id = ?').run('=HYPERLINK("http://evil")', raceOrder.id);
+  const spiceCookies = (await seller.context().cookies()).map((c) => `${c.name}=${c.value}`).join('; ');
+  const csvRes = await fetch(BASE + '/seller/earnings/export', { headers: { cookie: spiceCookies } });
+  const csv = await csvRes.text();
+  ok(csvRes.headers.get('content-type').startsWith('text/csv') && csv.split('\r\n')[0].startsWith('date,order,product'), 'CSV export downloads with a header row');
+  ok(csv.split('\r\n').filter(Boolean).length === liveCount + 1, 'CSV has one line per order');
+  ok(csv.includes(`"'=HYPERLINK(""http://evil"")`) && !csv.includes(',"=HYPERLINK'), 'a formula in a product title is neutralised in the CSV');
+  const demoCsv = await (await fetch(BASE + '/seller/earnings/export', { headers: { cookie: demoCookies } })).text();
+  ok(!demoCsv.includes(spiceDelivered.code), "another seller's export never contains this store's orders");
+  ok((await fetch(BASE + '/seller/earnings/export')).status === 401, 'export requires a seller session');
+
   console.log(`\nALL PASSED — ${passed} assertions`);
   await browser.close();
   db.close();

@@ -239,4 +239,9 @@ export const ar: Dict = {
   new_order_title: 'طلب جديد {code}', new_order_alerts: 'تنبيهات الطلبات الجديدة', desktop_alerts_enable: 'تفعيل تنبيهات سطح المكتب',
   desktop_alerts_on: 'تنبيهات سطح المكتب مفعّلة', desktop_alerts_blocked: 'التنبيهات محظورة في المتصفح', sale_sound_on: 'صوت البيع: مفعّل',
   sale_sound_off: 'صوت البيع: متوقف', close: 'إغلاق',
+  earnings_title: 'تفصيل العمولات', export_csv: 'تصدير CSV', earn_paid_by_buyers: 'دفعه المشترون (المنتجات)',
+  earnings_sub: 'كل طلب سطرًا بسطر: ما دفعه المشتري، عمولة Paylo، المبالغ المستردة، وما يصلك.',
+  earn_refunds_you_bore: 'استردادات تحمّلتها', earn_net: 'صافي مستحقك', earn_list_price: 'السعر', earn_you_bore: 'تحمّلت {n}',
+  earn_st_paid: 'مدفوع', earn_st_in_payout: 'ضمن دفعة', earn_st_available: 'متاح', earn_st_pending: 'قيد الانتظار', earn_st_refunded: 'مسترد',
+  earn_footnote: 'رسوم التوصيل لا تخضع للعمولة وتذهب لشركة التوصيل، لذا ليست جزءًا من صافيك. تُحسب العمولة على ما دفعه المشتري للمنتجات بعد أي خصم.',
 };

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { getDb } from '@/lib/db';
 import { requireApprovedSeller } from '@/lib/guards';
 import { getT } from '@/lib/i18n/server';
@@ -13,7 +14,8 @@ export default function SellerPayoutsPage() {
   return (
     <div>
       <h1 className="section-title">{t('payouts_title')}</h1>
-      <p className="text-sm text-ink-soft mt-1 mb-6">{t('payouts_sub')}</p>
+      <p className="text-sm text-ink-soft mt-1 mb-2">{t('payouts_sub')}</p>
+      <Link href="/seller/earnings" className="link text-sm inline-block mb-6" data-testid="earnings-link">{t('earnings_title')} →</Link>
       {seller.kyc_status !== 'approved' && <div className="alert-warn mb-5">{t('kyc_blocked_note')}</div>}
       <div className="grid sm:grid-cols-4 gap-3 mb-8">
         <div className="stat"><div className="stat-label">{t('bal_available')}</div><div className="stat-value text-lg text-success">{formatSYP(bal.available, lang)}</div></div>
