@@ -37,7 +37,7 @@ export interface Seller {
 }
 export interface Product {
   id: string; seller_id: string; type: ProductType; title: string; description: string | null; price: number;
-  stock: number; images: string; digital_note: string | null; option1_name: string | null; option2_name: string | null; collection_id: string | null;
+  stock: number; images: string; digital_note: string | null; option1_name: string | null; option2_name: string | null; collection_id: string | null; short_code: number | null;
   status: ProductStatus; created_at: string; updated_at: string;
 }
 export interface ProductVariant {

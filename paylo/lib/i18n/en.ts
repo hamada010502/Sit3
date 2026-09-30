@@ -269,5 +269,6 @@ export const en = {
   about_builder_sub: 'Tell buyers who you are: build your page from sections, each with a heading, text and an optional photo.',
   about_section: 'Section', about_heading: 'Heading', about_body: 'Text', about_add_section: 'Add section',
   about_move_up: 'Move up', about_move_down: 'Move down', about_view: 'View page', about_empty: 'This store has not written an About page yet.',
+  short_link: 'Short link', short_link_hint: 'Easier to type or say out loud — opens the same checkout page.',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

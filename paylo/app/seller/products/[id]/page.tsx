@@ -34,6 +34,14 @@ export default function EditProductPage({ params, searchParams }: { params: { id
             <code className="bg-cream rounded px-2 py-1 truncate max-w-full" dir="ltr">{link}</code>
             <CopyButton text={link} />
           </div>
+          {product.short_code && (
+            <div className="card-pad mb-4 flex flex-wrap items-center gap-2 text-sm" data-testid="short-link">
+              <span className="text-ink-soft">{t('short_link')}:</span>
+              <code className="bg-cream rounded px-2 py-1" dir="ltr">{appUrl(`/${product.short_code}`)}</code>
+              <CopyButton text={appUrl(`/${product.short_code}`)} />
+              <span className="text-xs text-ink-soft w-full">{t('short_link_hint')}</span>
+            </div>
+          )}
           <ProductForm product={product} images={parseImages(product.images)} variants={variants} collections={sellerCollections(seller.id)} presets={sellerPresets(seller.id)} />
           <form action={deleteProductAction.bind(null, product.id)} className="mt-4 text-end">
             <button className="text-sm font-semibold text-cherry">{t('delete')}</button>

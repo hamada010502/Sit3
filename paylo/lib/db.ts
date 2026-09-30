@@ -35,6 +35,9 @@ function migrate(db: Database.Database) {
   addColumn(db, 'product_variants', 'image_path', 'TEXT');
   addColumn(db, 'sellers', 'announcement', 'TEXT');
   addColumn(db, 'sellers', 'about_sections', 'TEXT');
+  addColumn(db, 'products', 'short_code', 'INTEGER');
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_products_short_code ON products(short_code)');
+  backfillShortCodes(db);
 
   const defaults: Record<string, string> = {
     // Commission (Functional Spec §2.4). Percentages stay provisional until a settlement
@@ -192,6 +195,19 @@ function migrateUsersPhone(db: Database.Database) {
   const cols = db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
   if (cols.some((c) => c.name === 'phone')) return;
   db.exec('ALTER TABLE users ADD COLUMN phone TEXT;');
+}
+
+/** Random 7-digit code not yet used by any product. */
+export function newShortCode(db: Database.Database = getDb()): number {
+  for (;;) {
+    const n = 1_000_000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 9_000_000);
+    if (!db.prepare('SELECT 1 FROM products WHERE short_code = ?').get(n)) return n;
+  }
+}
+function backfillShortCodes(db: Database.Database) {
+  const rows = db.prepare('SELECT id FROM products WHERE short_code IS NULL').all() as { id: string }[];
+  const set = db.prepare('UPDATE products SET short_code = ? WHERE id = ?');
+  for (const r of rows) set.run(newShortCode(db), r.id);
 }
 
 /** Adds a plain column in place if a database predates it (no CHECK, so no rebuild). */

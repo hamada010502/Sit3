@@ -69,6 +69,8 @@ CREATE TABLE IF NOT EXISTS products (
   option1_name TEXT,
   option2_name TEXT,
   collection_id TEXT REFERENCES collections(id) ON DELETE SET NULL,
+  -- Short numeric link (/<short_code>), random so it leaks nothing about catalogue size.
+  short_code INTEGER,
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive','out_of_stock','removed')),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))

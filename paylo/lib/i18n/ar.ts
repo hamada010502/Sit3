@@ -234,4 +234,5 @@ export const ar: Dict = {
   about_builder_sub: 'عرّف المشترين بك: ابنِ صفحتك من أقسام، لكل قسم عنوان ونص وصورة اختيارية.',
   about_section: 'قسم', about_heading: 'العنوان', about_body: 'النص', about_add_section: 'إضافة قسم',
   about_move_up: 'تحريك لأعلى', about_move_down: 'تحريك لأسفل', about_view: 'عرض الصفحة', about_empty: 'لم يكتب هذا المتجر صفحة "من نحن" بعد.',
+  short_link: 'رابط مختصر', short_link_hint: 'أسهل للكتابة أو القول — يفتح صفحة الشراء نفسها.',
 };

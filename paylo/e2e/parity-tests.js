@@ -489,6 +489,33 @@ const step = (m) => console.log('\n' + m);
   ok(aboutText.includes('<b>Not bold</b>') && await store1.locator('[data-testid=about-sections] b').count() === 0, 'section text is rendered as text, never as HTML');
   ok(await store1.locator('[data-testid=about-sections] img').count() === 1, 'section photo is shown');
 
+  /* ---------------- 10. Short numeric product links ---------------- */
+  step('10. Short numeric product links sit alongside /p/<id> and /s/<slug>');
+  const codes = db.prepare('SELECT short_code FROM products').all().map((r) => r.short_code);
+  ok(codes.every((c) => Number.isInteger(c) && c >= 1000000 && c <= 9999999), `every product has a 7-digit short code (${codes.length} products, incl. backfilled seed data)`);
+  ok(new Set(codes).size === codes.length, 'short codes are unique');
+  const apronCode = db.prepare('SELECT short_code FROM products WHERE id = ?').get(apron.id).short_code;
+  ok(!!apronCode, 'a newly created product gets a short code');
+
+  await seller.goto(BASE + '/seller/products/' + zaatar.id);
+  ok((await seller.locator('[data-testid=short-link]').innerText()).includes('/' + db.prepare('SELECT short_code FROM products WHERE id = ?').get(zaatar.id).short_code), 'seller sees and can copy the short link');
+
+  const zCode = db.prepare('SELECT short_code FROM products WHERE id = ?').get(zaatar.id).short_code;
+  const hop = await fetch(BASE + '/' + zCode, { redirect: 'manual' });
+  ok([307, 308].includes(hop.status) && hop.headers.get('location').endsWith('/p/' + zaatar.id), `/${zCode} redirects to /p/${zaatar.id}`);
+  const viaShort = await newPage();
+  await viaShort.goto(BASE + '/' + zCode);
+  ok(viaShort.url().endsWith('/p/' + zaatar.id) && await viaShort.locator('input[name=buyer_name]').count() === 1, 'a buyer following the short link lands on the working checkout page');
+
+  ok((await fetch(BASE + '/1234567', { redirect: 'manual' })).status === 404, 'unknown short code is a 404');
+  ok((await fetch(BASE + '/not-a-route', { redirect: 'manual' })).status === 404, 'non-numeric unknown paths are still plain 404s');
+  ok((await fetch(BASE + '/login')).status === 200 && (await fetch(BASE + '/track')).status === 200, 'existing routes are not shadowed by the short-link route');
+
+  await seller.goto(BASE + '/seller/products/' + apron.id);
+  await seller.getByRole('button', { name: 'Delete', exact: true }).click();
+  await seller.waitForLoadState('networkidle');
+  ok((await fetch(BASE + '/' + apronCode, { redirect: 'manual' })).status === 404, "a removed product's short link stops working");
+
   console.log(`\nALL PASSED — ${passed} assertions`);
   await browser.close();
   db.close();
