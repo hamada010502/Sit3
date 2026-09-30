@@ -20,7 +20,7 @@ const defaults = {
   commission_rate: '5', commission_fixed_fee: '0', commission_vat_rate: '0',
   delivery_fee_damascus: '15000', delivery_fee_other: '25000',
   logistics_partner_name: 'Partner logistics company (TBD)', yalla_go_enabled: '1',
-  cod_enabled: '1', bank_transfer_enabled: '1', card_enabled: '0',
+  pay_cod_enabled: '1', pay_bank_transfer_enabled: '1', pay_card_enabled: '0',
   bank_name: 'QNB Syria', bank_account_name: 'Paylo Trading', bank_iban: 'SY00 0000 0000 0000 0000 0000',
   bank_note: 'Put your order code in the transfer reference.',
   payout_cutoff_day: '2', payout_cutoff_hour: '18', payout_transfer_day: '3', payout_eligibility: 'on_close',

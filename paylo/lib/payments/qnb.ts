@@ -8,6 +8,7 @@ import type { PaymentProvider, ChargeRequest, ChargeResult, RefundRequest, Refun
  */
 export const qnbProvider: PaymentProvider = {
   name: 'qnb',
+  configured: false,
   async charge(_req: ChargeRequest): Promise<ChargeResult> {
     return { ok: false, failureReason: 'provider_not_configured' };
   },

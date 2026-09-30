@@ -55,9 +55,10 @@ function migrate(db: Database.Database) {
     // Delivery
     delivery_fee_damascus: '15000', delivery_fee_other: '25000',
     logistics_partner_name: 'Partner logistics company (TBD)', yalla_go_enabled: '1',
-    // Payment methods. Card stays off until the Phase-2 bank confirmation lands (v2 §3);
-    // it additionally requires PAYMENT_CARD_ENABLED=1 in the environment.
-    cod_enabled: '1', bank_transfer_enabled: '1', card_enabled: '0',
+    // Payment methods (lib/payment-methods.ts). Bank transfer defaults ON: it needs no bank
+    // API. Card stays off until a settlement partner signs (v2 §3) and additionally needs
+    // PAYMENT_CARD_ENABLED=1 and a configured provider.
+    pay_cod_enabled: '1', pay_bank_transfer_enabled: '1', pay_card_enabled: '0',
     bank_name: '', bank_account_name: '', bank_iban: '', bank_note: '',
     // Payout calendar (v2 §4.3): cutoff Tuesday 18:00 UTC, transfer Wednesday.
     payout_cutoff_day: '2', payout_cutoff_hour: '18', payout_transfer_day: '3',
@@ -68,6 +69,11 @@ function migrate(db: Database.Database) {
     notify_email: '1', notify_sms: '1', text_channel: 'sms',
   };
   const ins = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
+  // Carry an admin's earlier choice over from the pre-rename keys (cod_enabled → pay_cod_enabled…).
+  for (const m of ['cod', 'bank_transfer', 'card']) {
+    const old = db.prepare('SELECT value FROM settings WHERE key = ?').get(`${m}_enabled`) as { value: string } | undefined;
+    if (old) { ins.run(`pay_${m}_enabled`, old.value); db.prepare('DELETE FROM settings WHERE key = ?').run(`${m}_enabled`); }
+  }
   for (const [k, v] of Object.entries(defaults)) ins.run(k, v);
 }
 

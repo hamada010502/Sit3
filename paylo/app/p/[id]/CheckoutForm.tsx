@@ -35,13 +35,18 @@ export function CheckoutForm({ productId, basePrice, stock, isDigital, variants,
   const detailsRef = useRef<HTMLElement>(null);
   // Fields live on step 1. If the server rejects one, go back there and focus it —
   // otherwise the buyer is left on step 2 with the problem hidden.
+  // Focus runs in its own effect, after step 1 is actually rendered: focusing a field that
+  // is still hidden (step 2 showing) silently does nothing.
+  const pendingFocus = useRef<string | null>(null);
   useEffect(() => {
     const bad = state?.fields ? Object.keys(state.fields).filter((k) => k !== 'payment_method' && !k.startsWith('card_')) : [];
-    if (bad.length) {
-      setStep(1);
-      requestAnimationFrame(() => (detailsRef.current?.querySelector(`[name="${bad[0]}"]`) as HTMLElement | null)?.focus());
-    }
+    if (bad.length) { pendingFocus.current = bad[0]; setStep(1); }
   }, [state]);
+  useEffect(() => {
+    if (step !== 1 || !pendingFocus.current) return;
+    (detailsRef.current?.querySelector(`[name="${pendingFocus.current}"]`) as HTMLElement | null)?.focus();
+    pendingFocus.current = null;
+  });
   // "Continue" validates step 1 first: a hidden invalid field would otherwise block
   // "Place order" with no visible reason.
   const continueToPayment = () => {

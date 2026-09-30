@@ -24,6 +24,8 @@ function brandOf(num: string) {
 
 export const mockProvider: PaymentProvider = {
   name: 'mock',
+  // Demo rail: always 'configured'. check:env and System health flag it as an error in production.
+  configured: true,
   async charge(req: ChargeRequest): Promise<ChargeResult> {
     const num = req.card.number.replace(/\s|-/g, '');
     await new Promise((r) => setTimeout(r, 400));

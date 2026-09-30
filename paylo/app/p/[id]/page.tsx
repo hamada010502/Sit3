@@ -8,7 +8,7 @@ import { getAllSettings, getDb } from '@/lib/db';
 import { isStoreLive } from '@/lib/store-status';
 import { getT } from '@/lib/i18n/server';
 import { formatSYP } from '@/lib/money';
-import { enabledPaymentMethods } from '@/lib/orders';
+import { availablePaymentMethods } from '@/lib/payment-methods';
 import type { Product, ProductVariant, Seller } from '@/lib/types';
 import { CheckoutForm } from './CheckoutForm';
 
@@ -25,7 +25,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   const images = parseImages(product.images);
   const isDigital = product.type === 'digital';
   const inStock = isDigital || (product.status === 'active' && (variants.length ? variants.some((v) => v.stock > 0) : product.stock > 0));
-  const methods = enabledPaymentMethods(isDigital);
+  const methods = availablePaymentMethods({ isDigital });
   const display = variants.length ? Math.min(...variants.map((v) => v.price)) : product.price;
 
   // Purely a convenience prefill — checkout works identically, and completes just as

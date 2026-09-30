@@ -30,6 +30,11 @@ for (const ch of ['SMS', 'WHATSAPP']) {
   if (tr === 'log') warns.push(`${ch}_TRANSPORT=log — messages are recorded, not sent`);
   else if (!v(`${ch}_HTTP_URL`) || !v(`${ch}_HTTP_TOKEN`)) errors.push(`${ch}_TRANSPORT=${tr} but ${ch}_HTTP_URL / ${ch}_HTTP_TOKEN missing`);
 }
+if (v('PAYMENT_CARD_ENABLED') === '1') {
+  const prov = (v('PAYMENT_PROVIDER') || 'mock').toLowerCase();
+  if (prov === 'mock') errors.push('PAYMENT_CARD_ENABLED=1 with PAYMENT_PROVIDER=mock — card payments would not move real money');
+  else if (prov === 'qnb') errors.push('PAYMENT_PROVIDER=qnb is a placeholder adapter (not configured) — card checkout stays hidden');
+}
 const et = (v('EMAIL_TRANSPORT') || 'log').toLowerCase();
 if (et === 'log') warns.push('EMAIL_TRANSPORT=log — emails are recorded, not sent');
 else if (!v('SMTP_HOST')) errors.push('EMAIL_TRANSPORT=smtp but SMTP_HOST missing');

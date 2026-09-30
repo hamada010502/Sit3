@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 BUILD=1
 if [ "${1:-}" = "--no-build" ]; then BUILD=0; shift; fi
 SUITES=("$@")
-[ ${#SUITES[@]} -eq 0 ] && SUITES=(smoke registration-tests account-checkout-tests parity-tests sprint-tests)
+[ ${#SUITES[@]} -eq 0 ] && SUITES=(smoke registration-tests account-checkout-tests parity-tests sprint-tests phase-tests)
 
 export LOGISTICS_WEBHOOK_SECRET="${LOGISTICS_WEBHOOK_SECRET:-dev-logistics-secret}"
 export WEBHOOK_RETRY_SECRET="${WEBHOOK_RETRY_SECRET:-dev-retry-secret}"

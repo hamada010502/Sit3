@@ -2,6 +2,7 @@ import { getAllSettings } from '@/lib/db';
 import { requireAdmin } from '@/lib/guards';
 import { getT } from '@/lib/i18n/server';
 import { AdminSettingsForm } from './SettingsForm';
+import { PaymentMethodsStatus } from '@/components/PaymentMethodsStatus';
 
 export default function AdminSettingsPage() {
   requireAdmin();
@@ -10,6 +11,7 @@ export default function AdminSettingsPage() {
   return (
     <div className="max-w-3xl">
       <h1 className="section-title mb-6">{t('a_settings_title')}</h1>
+      <PaymentMethodsStatus t={t} />
       <AdminSettingsForm s={getAllSettings()} cardEnvEnabled={cardEnv} />
       <div className="alert-info mt-6 text-xs" dir="ltr">
         <strong>Card rail:</strong> {cardEnv ? 'enabled in env' : 'disabled (PAYMENT_CARD_ENABLED=0)'} ·{' '}

@@ -85,6 +85,47 @@ due but nobody is processing them. Dead-letter deliveries are listed there too.
   is logged with *Removed = Yes*. Any other failure (network, 5xx, 401/403) is logged and
   the subscription kept.
 
+## 3a. Payment methods
+
+Which methods buyers see is decided in one place, `availablePaymentMethods()` in
+`lib/payment-methods.ts`. The checkout page lists exactly those, and `checkout()` rejects
+anything else server-side with `payment_method_unavailable` (translated), even if a
+client posts it anyway.
+
+| Method | Admin setting | Default | Also needs |
+|---|---|---|---|
+| Cash on delivery | `pay_cod_enabled` | on | — (never offered for digital products) |
+| Bank transfer | `pay_bank_transfer_enabled` | **on** | Paylo's bank details in Admin → Settings |
+| Card | `pay_card_enabled` | off | `PAYMENT_CARD_ENABLED=1` **and** a provider that reports `configured: true` |
+
+- **Toggles affect new checkouts only.** An order keeps the method it was placed with, so
+  turning bank transfer off never strands a buyer who has already been sent the details:
+  their receipt upload and the admin confirm/reject flow keep working.
+- **Why bank transfer defaults on:** it needs no bank API. The buyer transfers to Paylo's
+  account, uploads a receipt on the tracking page, and an admin confirms or rejects it
+  (Admin → Operations → Bank transfers to confirm). It works the day the app goes live.
+- **Sellers cannot re-enable a method.** There are no seller-level payment settings; the
+  platform toggle is final.
+- Current state is shown, without secrets, on Admin → Settings ("Payment methods buyers
+  can use now") and on Admin → Operations → System health.
+
+### Enabling card payments
+
+All card traffic goes through `lib/payments/provider.ts`; `PAYMENT_PROVIDER` picks the
+adapter (`mock` for development, `qnb` is a placeholder with `configured: false`). No
+Syrian bank API is wired in, on purpose: there are no real credentials or spec yet.
+
+1. **Provider:** implement `charge()` and `refund()` in the bank's adapter
+   (e.g. `lib/payments/qnb.ts`) against its real API, read its credentials from new env
+   vars, and set `configured: true` only when those are present.
+2. **Env:** add the provider's credentials and `PAYMENT_PROVIDER=<adapter>`.
+3. **Env:** `PAYMENT_CARD_ENABLED=1`.
+4. **Admin:** Admin → Settings → tick *Card*.
+5. **Check:** `npm run check:env` must pass (it errors on `PAYMENT_CARD_ENABLED=1` with the
+   `mock` or unconfigured `qnb` adapter), and System health must show *Payment: card — On*.
+
+Until step 1 exists, steps 2–5 keep card hidden — nothing half-enabled reaches buyers.
+
 ## 4. Backups (SQLite)
 
 The database runs in WAL mode, so **do not copy the `.db` file with `cp` while the app is

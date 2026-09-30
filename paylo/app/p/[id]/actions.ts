@@ -1,4 +1,5 @@
 'use server';
+import { isPaymentMethodAvailable } from '@/lib/payment-methods';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { checkout } from '@/lib/orders';
@@ -21,6 +22,9 @@ export async function checkoutAction(productId: string, _prev: CheckoutState | n
   const variantId = f('variant_id') || null;
   const paymentMethod = f('payment_method') as PaymentMethod;
   if (!['cod', 'bank_transfer', 'card'].includes(paymentMethod)) fields.payment_method = 'required';
+  // A method Paylo has switched off is refused before anything else (checkout() checks again).
+  const pType = (getDb().prepare('SELECT type FROM products WHERE id = ?').get(productId) as { type: string } | undefined)?.type;
+  if (!fields.payment_method && !isPaymentMethodAvailable(paymentMethod, { isDigital: pType === 'digital' })) return { error: 'payment_method_unavailable' };
 
   let card;
   if (paymentMethod === 'card') {

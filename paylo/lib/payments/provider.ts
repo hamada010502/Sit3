@@ -41,6 +41,8 @@ export interface RefundResult { ok: boolean; providerRef?: string; failureReason
 
 export interface PaymentProvider {
   readonly name: string;
+  /** false until the adapter has real credentials/contract — card checkout stays hidden. */
+  readonly configured: boolean;
   charge(req: ChargeRequest): Promise<ChargeResult>;
   refund(req: RefundRequest): Promise<RefundResult>;
 }

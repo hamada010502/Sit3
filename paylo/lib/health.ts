@@ -1,10 +1,13 @@
 import { getDb, getSetting } from './db';
+import { getPaymentProvider } from './payments';
+import { ALL_METHODS, paymentMethodStatus } from './payment-methods';
 
 export type CheckLevel = 'ok' | 'warn' | 'error';
 export interface ConfigCheck { name: string; level: CheckLevel; note: HealthNote }
 export type HealthNote =
   | 'hc_ok' | 'hc_default_secret' | 'hc_missing' | 'hc_localhost' | 'hc_vapid_stored' | 'hc_vapid_half'
-  | 'hc_retry_off' | 'hc_http_missing' | 'hc_log_transport' | 'hc_worker_never' | 'hc_worker_stale';
+  | 'hc_retry_off' | 'hc_http_missing' | 'hc_log_transport' | 'hc_worker_never' | 'hc_worker_stale'
+  | 'hc_pay_on' | 'hc_pay_off' | 'hc_pay_none' | 'hc_card_mock_prod' | 'hc_card_blocked';
 
 const env = (k: string) => (process.env[k] || '').trim();
 
@@ -36,6 +39,18 @@ export function configChecks(): ConfigCheck[] {
     if (ch === 'EMAIL') { add(T, env('SMTP_HOST') ? 'ok' : 'error', env('SMTP_HOST') ? 'hc_ok' : 'hc_http_missing'); continue; }
     const complete = env(`${ch}_HTTP_URL`) && env(`${ch}_HTTP_TOKEN`);
     add(`${T} (${ch}_HTTP_URL / ${ch}_HTTP_TOKEN)`, complete ? 'ok' : 'error', complete ? 'hc_ok' : 'hc_http_missing');
+  }
+
+  // Payment methods: state only, never provider credentials.
+  const live = ALL_METHODS.filter((m) => !paymentMethodStatus(m).block);
+  if (live.length === 0) add('Payment methods', 'error', 'hc_pay_none');
+  for (const m of ALL_METHODS) {
+    const st = paymentMethodStatus(m);
+    if (m === 'card' && st.adminOn && st.block) { add('Payment: card', 'error', 'hc_card_blocked'); continue; }
+    if (m === 'card' && !st.block && getPaymentProvider().name === 'mock' && process.env.NODE_ENV === 'production' && !/localhost|127\.0\.0\.1/.test(env('APP_URL'))) {
+      add('Payment: card', 'error', 'hc_card_mock_prod'); continue;
+    }
+    add(`Payment: ${m}`, st.block ? 'warn' : 'ok', st.block ? 'hc_pay_off' : 'hc_pay_on');
   }
 
   const last = getSetting('webhook_worker_last_run');

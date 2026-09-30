@@ -33,9 +33,10 @@ export function AdminSettingsForm({ s, cardEnvEnabled }: { s: Record<string, str
 
       <div className="card-pad space-y-4">
         <h2 className="font-bold">{t('payment_methods')}</h2>
-        <Check name="cod_enabled" label={t('cod_enabled')} />
-        <Check name="bank_transfer_enabled" label={t('bank_transfer_enabled')} />
-        <Check name="card_enabled" label={t('card_enabled')} disabled={!cardEnvEnabled} hint={t('card_gate_note')} />
+        <p className="text-xs text-ink-soft">{t('pay_toggle_note')}</p>
+        <Check name="pay_cod_enabled" label={t('cod_enabled')} />
+        <Check name="pay_bank_transfer_enabled" label={t('bank_transfer_enabled')} hint={t('pay_bank_default_note')} />
+        <Check name="pay_card_enabled" label={t('card_enabled')} disabled={!cardEnvEnabled} hint={t('card_gate_note')} />
         <div className="grid sm:grid-cols-2 gap-4 pt-2">
           <Field label={t('bank_name')}><input name="bank_name" className="input" defaultValue={s.bank_name} /></Field>
           <Field label={t('bank_account_name')}><input name="bank_account_name" className="input" defaultValue={s.bank_account_name} /></Field>

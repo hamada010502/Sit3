@@ -4,6 +4,7 @@ import { notify, appUrl } from './notify';
 import { emitWebhook } from './webhooks';
 import { computeFees } from './fees';
 import { isStoreLive } from './store-status';
+import { isPaymentMethodAvailable } from './payment-methods';
 import { pushToSeller } from './push';
 import { makeT } from './i18n';
 import {
@@ -137,7 +138,7 @@ export async function checkout(input: CheckoutInput): Promise<CheckoutResult> {
   if (!product || product.status !== 'active') return { ok: false, error: 'product_unavailable' };
   const seller = db.prepare('SELECT * FROM sellers WHERE id = ?').get(product.seller_id) as Seller | undefined;
   if (!seller || !isStoreLive(seller)) return { ok: false, error: 'product_unavailable' };
-  if (!paymentMethodEnabled(input.paymentMethod)) return { ok: false, error: 'payment_method_unavailable' };
+  if (!isPaymentMethodAvailable(input.paymentMethod, { isDigital: product.type === 'digital' })) return { ok: false, error: 'payment_method_unavailable' };
 
   let variant: ProductVariant | undefined;
   if (input.variantId) {
@@ -735,16 +736,6 @@ export function reopenPayout(payoutId: string) {
 }
 
 /* ------------------------------ helpers ------------------------------ */
-
-export function paymentMethodEnabled(m: PaymentMethod): boolean {
-  if (m === 'card') return getSetting('card_enabled') === '1' && (process.env.PAYMENT_CARD_ENABLED || '0') === '1';
-  if (m === 'cod') return getSetting('cod_enabled') !== '0';
-  return getSetting('bank_transfer_enabled') !== '0';
-}
-export function enabledPaymentMethods(isDigital: boolean): PaymentMethod[] {
-  const all: PaymentMethod[] = ['cod', 'bank_transfer', 'card'];
-  return all.filter((m) => paymentMethodEnabled(m) && !(isDigital && m === 'cod'));
-}
 
 /** Shape sent to webhooks and the public API — never includes card or internal fields. */
 export function publicOrder(o: Order) {
