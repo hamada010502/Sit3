@@ -11,7 +11,7 @@ import { investigateAction, resolveAction } from './actions';
 
 type Row = Dispute & { order: Order; store_name: string };
 
-export default function AdminDisputesPage({ searchParams }: { searchParams: { all?: string } }) {
+export default function AdminDisputesPage({ searchParams }: { searchParams: { all?: string; err?: string } }) {
   requireAdmin();
   const { t, lang } = getT();
   const db = getDb();
@@ -26,6 +26,7 @@ export default function AdminDisputesPage({ searchParams }: { searchParams: { al
         <h1 className="section-title">{t('a_disputes_title')}</h1>
         <Link href={showAll ? '/admin/disputes' : '/admin/disputes?all=1'} className="btn-secondary btn-sm">{showAll ? t('ds_open') : t('all')}</Link>
       </div>
+      {searchParams.err && <div className="alert-error mb-4" data-testid="dispute-error">{searchParams.err}</div>}
       {rows.length === 0 && <div className="card-pad text-center text-ink-soft">{t('none')}</div>}
       <div className="space-y-4">
         {rows.map((d) => {
@@ -58,9 +59,12 @@ export default function AdminDisputesPage({ searchParams }: { searchParams: { al
                       <label className="label">{t('resolve')}</label>
                       <select name="resolution" className="input">
                         <option value="refund">{t('a_resolve_refund')}</option>
+                        {d.order.payment_status !== 'pending' && <option value="partial_refund">{t('a_resolve_partial')}</option>}
                         {!neverLeft && <option value="found">{t('a_resolve_found')}</option>}
                         <option value="dismiss">{t('a_resolve_dismiss')}</option>
                       </select>
+                      <label className="label">{t('refund_amount')}</label>
+                      <input name="amount" className="input" inputMode="numeric" dir="ltr" placeholder={t('refund_amount_hint', { max: d.order.subtotal - d.order.refunded_amount - 1 })} />
                       <label className="label">{t('liability')}</label>
                       <select name="liability" className="input" defaultValue={defaultLiability}>{liabilities.map((l) => <option key={l} value={l}>{t(`li_${l}` as const)}</option>)}</select>
                       <p className="text-xs text-ink-soft">{t('liability_hint')}</p>

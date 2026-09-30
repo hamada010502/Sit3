@@ -200,4 +200,9 @@ export const ar: Dict = {
   returns_title: 'المرتجعات والنزاعات', nav_returns: 'المرتجعات', returns_resolved: 'محلولة',
   returns_sub: 'طلبات الإرجاع التي فتحها مشتروك. يراجعها Paylo ويحلّها، ويمكنك متابعة كل حالة ونتيجتها هنا.',
   returns_none: 'لا توجد مرتجعات هنا.', returns_open_alert: 'لديك {n} طلب إرجاع مفتوح. الدفع لهذه الطلبات متوقف حتى الحل.',
+  a_resolve_partial: 'استرداد جزئي — يستمر الطلب', refund_amount: 'مبلغ الاسترداد (ل.س)',
+  refund_amount_hint: 'للاسترداد الجزئي فقط — حتى {max}', partial_refund: 'استرداد جزئي',
+  refunds_title: 'المبالغ المستردة', refunded_so_far: 'المسترد حتى الآن', refund_liability_note: 'المسؤولية: {l}',
+  seller_net_after: 'مستحقك من هذا الطلب',
+  partial_refund_note: 'تم استرداد {amount} لك من هذا الطلب.',
 };

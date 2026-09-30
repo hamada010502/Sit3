@@ -9,7 +9,7 @@ import {
   DAMASCUS, STATE_OF_STATUS,
   type AddressChangeRequest, type BankTransfer, type Dispute, type FulfillmentMethod, type Liability,
   type Order, type OrderEvent, type OrderState, type OrderStatus, type Payment, type PaymentMethod,
-  type Payout, type Product, type ProductVariant, type Seller,
+  type Payout, type Product, type ProductVariant, type Refund, type Seller,
 } from './types';
 
 export type Actor = 'buyer' | 'seller' | 'admin' | 'system' | 'api';
@@ -497,13 +497,21 @@ export function adminInvestigate(dispute: Dispute, note: string | null) {
  *   found              → delivery resumes from where it stopped.
  *   dismissed          → order returns to its pre-dispute status, no refund.
  */
-export async function adminResolveDispute(dispute: Dispute, resolution: 'refund' | 'found' | 'dismiss', liability: Liability, note: string | null) {
+export async function adminResolveDispute(dispute: Dispute, resolution: 'refund' | 'partial_refund' | 'found' | 'dismiss', liability: Liability, note: string | null, amount = 0) {
   const db = getDb();
   const order = getOrder(dispute.order_id)!;
   if (order.status !== 'disputed') throw new OrderError('Order is not in dispute');
   const back = (order.pre_dispute_status ?? 'confirmed') as OrderStatus;
+  let refunded = 0;
   if (resolution === 'refund') {
-    await refundOrder(order, 'admin', `Return resolved: refund (liability: ${liability})`);
+    refunded = order.total - order.refunded_amount;
+    await refundOrder(order, 'admin', `Return resolved: refund (liability: ${liability})`, liability, dispute.id);
+    db.prepare("UPDATE disputes SET status = 'resolved_refund', liability = ?, admin_note = ?, resolved_at = ? WHERE id = ?").run(liability, note, nowIso(), dispute.id);
+  } else if (resolution === 'partial_refund') {
+    // Refund part of it, then the order carries on from where the dispute froze it.
+    await partialRefund(order, amount, liability, 'admin', `Return resolved: partial refund (liability: ${liability})`, dispute.id);
+    refunded = Math.floor(amount);
+    transition(getOrder(order.id)!, back, 'admin', `Partial refund of ${refunded} SYP, order continues`, { pre_dispute_status: null, pre_dispute_state: null });
     db.prepare("UPDATE disputes SET status = 'resolved_refund', liability = ?, admin_note = ?, resolved_at = ? WHERE id = ?").run(liability, note, nowIso(), dispute.id);
   } else {
     const status = resolution === 'found' ? 'resolved_found' : 'resolved_dismissed';
@@ -511,9 +519,9 @@ export async function adminResolveDispute(dispute: Dispute, resolution: 'refund'
       { pre_dispute_status: null, pre_dispute_state: null });
     db.prepare("UPDATE disputes SET status = ?, liability = 'none', admin_note = ?, resolved_at = ? WHERE id = ?").run(status, note, nowIso(), dispute.id);
   }
-  audit('admin', null, 'admin', 'dispute', dispute.id, 'resolved:' + resolution, { liability, note });
+  audit('admin', null, 'admin', 'dispute', dispute.id, 'resolved:' + resolution, { liability, note, amount: refunded || undefined });
   const fresh = getOrder(order.id)!;
-  const outcome = resolution === 'refund' ? 'a full refund has been issued' : resolution === 'found' ? 'the shipment was located and delivery continues' : 'no refund will be issued';
+  const outcome = resolution === 'refund' ? 'a full refund has been issued' : resolution === 'partial_refund' ? `a partial refund of ${refunded} SYP has been issued` : resolution === 'found' ? 'the shipment was located and delivery continues' : 'no refund will be issued';
   await notify({ event: 'refund.updated', email: fresh.buyer_email ? { to: fresh.buyer_email,
     subject: `Paylo — your return request for ${fresh.code}`,
     body: `Hi ${fresh.buyer_name},\n\nYour return request on order ${fresh.code} is resolved: ${outcome}.${note ? '\n\nNote: ' + note : ''}\n\n— Paylo` } : undefined,
@@ -521,22 +529,32 @@ export async function adminResolveDispute(dispute: Dispute, resolution: 'refund'
   await emitWebhook('refund.updated', { order: publicOrder(fresh), dispute: db.prepare('SELECT * FROM disputes WHERE id = ?').get(dispute.id) }, fresh.seller_id);
 }
 
-export async function refundOrder(order: Order, actor: Actor, note: string) {
-  if (order.payout_id) throw new OrderError('Order already paid out to the seller; settle this refund manually');
+/** Moves money back to the buyer through whatever they paid with. Card goes through the
+ * provider; cash and bank transfer are reversed by Paylo operations outside the app. */
+async function reverseCapturedPayment(order: Order, captured: Payment | undefined, amount: number, note: string) {
+  if (!captured || amount <= 0) return;
   const db = getDb();
-  const captured = db.prepare("SELECT * FROM payments WHERE order_id = ? AND status = 'captured' ORDER BY created_at DESC LIMIT 1").get(order.id) as Payment | undefined;
-
-  if (captured && captured.method === 'card') {
+  if (captured.method === 'card') {
     const provider = getPaymentProvider();
-    const r = await provider.refund({ providerRef: captured.provider_ref || '', amount: captured.amount, reason: note });
+    const r = await provider.refund({ providerRef: captured.provider_ref || '', amount, reason: note });
     if (!r.ok) throw new OrderError('Refund failed at provider: ' + (r.failureReason || 'unknown'));
     db.prepare("INSERT INTO payments (id, order_id, method, provider, provider_ref, amount, status, card_last4, card_brand, raw) VALUES (?, ?, 'card', ?, ?, ?, 'refunded', ?, ?, ?)")
-      .run(newId(), order.id, provider.name, r.providerRef ?? null, -captured.amount, captured.card_last4, captured.card_brand, r.raw ? JSON.stringify(r.raw) : null);
-  } else if (captured) {
-    // Cash and bank transfers are reversed by Paylo operations, outside the app.
+      .run(newId(), order.id, provider.name, r.providerRef ?? null, -amount, captured.card_last4, captured.card_brand, r.raw ? JSON.stringify(r.raw) : null);
+  } else {
     db.prepare("INSERT INTO payments (id, order_id, method, provider, amount, status) VALUES (?, ?, ?, 'manual', ?, 'refunded')")
-      .run(newId(), order.id, captured.method, -captured.amount);
+      .run(newId(), order.id, captured.method, -amount);
   }
+}
+const capturedPayment = (orderId: string) =>
+  getDb().prepare("SELECT * FROM payments WHERE order_id = ? AND status = 'captured' AND amount > 0 ORDER BY created_at DESC LIMIT 1").get(orderId) as Payment | undefined;
+
+export async function refundOrder(order: Order, actor: Actor, note: string, liability: Liability = 'none', disputeId: string | null = null) {
+  if (order.payout_id) throw new OrderError('Order already paid out to the seller; settle this refund manually');
+  const db = getDb();
+  const captured = capturedPayment(order.id);
+  // After any partial refunds, only what is left goes back.
+  const remaining = order.total - order.refunded_amount;
+  await reverseCapturedPayment(order, captured, captured ? Math.min(remaining, captured.amount) : 0, note);
 
   db.transaction(() => {
     if (captured) db.prepare("UPDATE payments SET status = 'refunded' WHERE id = ?").run(captured.id);
@@ -544,15 +562,72 @@ export async function refundOrder(order: Order, actor: Actor, note: string) {
     const neverShipped = (order.pre_dispute_status ?? order.status) === 'confirmed' || (order.pre_dispute_status ?? order.status) === 'awaiting_payment';
     if (neverShipped && order.product_type !== 'digital') releaseStock(order.product_id, order.variant_id, order.quantity);
     transition(order, 'refunded', actor, note, { refunded_at: nowIso(), pre_dispute_status: null, pre_dispute_state: null });
+    if (remaining > 0) {
+      db.prepare('INSERT INTO refunds (id, order_id, dispute_id, kind, amount, liability, actor, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(newId(), order.id, disputeId, 'full', remaining, liability, actor, note);
+    }
   })();
-  audit(actor, null, actor, 'order', order.id, 'refunded', note);
+  audit(actor, null, actor, 'order', order.id, 'refunded', { note, amount: remaining, liability });
   const fresh = getOrder(order.id)!;
   const how = captured?.method === 'card' ? `to your card ending ${captured.card_last4 ?? '••••'}` : 'by the method you paid with';
   await notify({ event: 'refund.issued', email: fresh.buyer_email ? { to: fresh.buyer_email,
     subject: `Paylo — refund for order ${fresh.code}`,
-    body: `Hi ${fresh.buyer_name},\n\n${fresh.total} SYP will be refunded ${how}.\n\n— Paylo` } : undefined,
+    body: `Hi ${fresh.buyer_name},\n\n${remaining} SYP will be refunded ${how}.\n\n— Paylo` } : undefined,
     sms: { to: fresh.buyer_phone, body: `Paylo: refund issued for order ${fresh.code}.` } });
 }
+
+/**
+ * Partial refund of goods value; the order stays live and still pays out.
+ *
+ * Who bears it decides whether the seller's payout moves:
+ *   seller                     → seller_net drops by the refund, less the proportional
+ *                                commission (and commission VAT) Paylo gives back — the
+ *                                seller never pays commission on money they refunded.
+ *   logistics / platform / none → the buyer is refunded, seller_net is untouched; Paylo
+ *                                absorbs it (logistics losses are recovered off-app).
+ * The delivery fee is never commissioned and is not part of a partial refund.
+ */
+export async function partialRefund(order: Order, amount: number, liability: Liability, actor: Actor, note: string, disputeId: string | null = null): Promise<Refund> {
+  if (order.payout_id) throw new OrderError('Order already paid out to the seller; settle this refund manually');
+  if (['refunded', 'cancelled', 'payment_failed', 'awaiting_payment'].includes(order.status)) throw new OrderError(`Cannot refund an order that is ${order.status}`);
+  if (!['confirmed', 'collected_cod'].includes(order.payment_status)) throw new OrderError('No money has been collected on this order yet');
+  const amt = Math.floor(amount);
+  const goodsLeft = order.subtotal - order.refunded_amount;
+  if (!Number.isFinite(amt) || amt <= 0) throw new OrderError('Refund amount must be a positive number');
+  if (amt >= goodsLeft) throw new OrderError(`A partial refund must be less than the ${goodsLeft} SYP of goods value left — use a full refund instead`);
+
+  const db = getDb();
+  const captured = capturedPayment(order.id);
+  // Commission comes back in proportion to the goods value refunded, on the order's
+  // frozen commission — only when the seller carries the loss.
+  const commissionBack = liability === 'seller' ? Math.round((order.commission_amount * amt) / order.subtotal) : 0;
+  const vatBack = liability === 'seller' ? Math.round((order.commission_vat * amt) / order.subtotal) : 0;
+  const netDelta = liability === 'seller' ? -(amt - commissionBack - vatBack) : 0;
+
+  await reverseCapturedPayment(order, captured, amt, note);
+  const id = newId();
+  db.transaction(() => {
+    db.prepare('INSERT INTO refunds (id, order_id, dispute_id, kind, amount, liability, commission_refunded, seller_net_delta, actor, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(id, order.id, disputeId, 'partial', amt, liability, commissionBack + vatBack, netDelta, actor, note);
+    db.prepare('UPDATE orders SET refunded_amount = refunded_amount + ?, commission_amount = commission_amount - ?, commission_vat = commission_vat - ?, seller_net = seller_net + ?, updated_at = ? WHERE id = ?')
+      .run(amt, commissionBack, vatBack, netDelta, nowIso(), order.id);
+    db.prepare('INSERT INTO order_events (order_id, from_status, to_status, from_state, to_state, actor, note) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(order.id, order.status, order.status, order.order_state, order.order_state, actor, `Partial refund ${amt} SYP (liability: ${liability})`);
+  })();
+  audit(actor, null, actor, 'order', order.id, 'refund.partial', { amount: amt, liability, seller_net_delta: netDelta, note });
+  const fresh = getOrder(order.id)!;
+  const how = captured?.method === 'card' ? `to your card ending ${captured.card_last4 ?? '••••'}` : 'by the method you paid with';
+  await notify({ event: 'refund.issued', email: fresh.buyer_email ? { to: fresh.buyer_email,
+    subject: `Paylo — partial refund for order ${fresh.code}`,
+    body: `Hi ${fresh.buyer_name},\n\n${amt} SYP of order ${fresh.code} will be refunded ${how}.\n\n— Paylo` } : undefined,
+    sms: { to: fresh.buyer_phone, body: `Paylo: ${amt} SYP refunded on order ${fresh.code}.` } });
+  const su = sellerEmail(order.seller_id);
+  if (su) await notify({ event: 'refund.partial.seller', email: { to: su.email, subject: `Paylo — partial refund on ${fresh.code}`,
+    body: `A partial refund of ${amt} SYP was issued on order ${fresh.code}. ${liability === 'seller' ? `Your payout for this order is reduced by ${-netDelta} SYP (commission on the refunded amount is returned to you).` : 'Your payout for this order is unchanged.'}\n\n— Paylo` } });
+  return db.prepare('SELECT * FROM refunds WHERE id = ?').get(id) as Refund;
+}
+
+export const getOrderRefunds = (orderId: string) => getDb().prepare('SELECT * FROM refunds WHERE order_id = ? ORDER BY created_at ASC').all(orderId) as Refund[];
 
 /* ------------------------------ payouts ------------------------------ */
 
@@ -614,13 +689,16 @@ export function generatePayouts(cutoff: Date = new Date()): number {
   db.transaction(() => {
     for (const [sellerId, orders] of bySeller) {
       const id = newId();
-      const gross = orders.reduce((s, o) => s + o.subtotal, 0);
+      // Pay out seller_net, not subtotal − commission: a seller-liable partial refund
+      // lowers seller_net but not subtotal, so the difference is exactly that refund.
+      const amount = orders.reduce((s, o) => s + o.seller_net, 0);
       const commission = orders.reduce((s, o) => s + o.commission_amount + o.commission_vat, 0);
+      const gross = amount + commission;
       db.prepare('INSERT INTO payouts (id, seller_id, period_label, cutoff_at, order_count, gross, commission, amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-        .run(id, sellerId, label, isoStamp(cutoff), orders.length, gross, commission, gross - commission);
+        .run(id, sellerId, label, isoStamp(cutoff), orders.length, gross, commission, amount);
       const upd = db.prepare('UPDATE orders SET payout_id = ?, updated_at = ? WHERE id = ? AND payout_id IS NULL');
       for (const o of orders) upd.run(id, nowIso(), o.id);
-      audit('admin', null, 'admin', 'payout', id, 'generated', { seller: sellerId, orders: orders.length, amount: gross - commission });
+      audit('admin', null, 'admin', 'payout', id, 'generated', { seller: sellerId, orders: orders.length, amount });
       count++;
     }
   })();

@@ -235,5 +235,10 @@ export const en = {
   returns_title: 'Returns & disputes', nav_returns: 'Returns', returns_resolved: 'Resolved',
   returns_sub: 'Returns opened by your buyers. Paylo reviews and resolves them; you can see every case and its outcome here.',
   returns_none: 'No returns here.', returns_open_alert: '{n} open return(s) on your orders. Payout for those orders is paused until resolved.',
+  a_resolve_partial: 'Partial refund — order continues', refund_amount: 'Refund amount (SYP)',
+  refund_amount_hint: 'Only for a partial refund — up to {max}', partial_refund: 'Partial refund',
+  refunds_title: 'Refunds', refunded_so_far: 'Refunded so far', refund_liability_note: 'Liability: {l}',
+  seller_net_after: 'Your payout for this order',
+  partial_refund_note: '{amount} has been refunded to you on this order.',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

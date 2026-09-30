@@ -171,10 +171,26 @@ delivered with cash not yet recorded, failed payments, pending address changes, 
 waiting, failed payouts. Each queue links straight to the record that resolves it, and the
 page states plainly when nothing needs attention.
 
+## 7a. Partial refunds
+
+A partial refund returns part of the goods value while the order stays live and still
+pays out. It is issued from a dispute ("Partial refund — order continues", after which the
+order returns to its pre-dispute status) or from the admin order page. Every refund,
+partial or full, is a row in `refunds` with its liability and its effect on the seller.
+
+| Liability | Buyer refunded | Seller payout |
+|---|---|---|
+| seller | yes | `seller_net` drops by the refund **minus** the proportional commission (and VAT) returned |
+| logistics / platform / none | yes | unchanged — Paylo absorbs it; logistics losses are recovered off-app |
+
+Limits: payment must already be collected, the amount must be below the goods value still
+unrefunded (the uncommissioned delivery fee is never part of it), and paid-out orders are
+settled manually. A later full refund returns only what is left. Payouts pay
+`sum(seller_net)`, so a seller-liable reduction reaches the actual transfer.
+
 ## 8. Known gaps
 
 - **No webhook retry.** Failures are recorded, not replayed.
-- **No partial refunds.** The functional spec mentions them; only full refunds exist.
 - **Cash reconciliation is a single click,** not a courier manifest.
 - **Single-item orders.** The link-based model implies one product per order; a cart would
   need an `order_items` table.

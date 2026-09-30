@@ -74,6 +74,7 @@ export default function TrackPage({ params, searchParams }: { params: { code: st
         <div className="alert-info mb-6"><strong>{t('pickup_ready_note')}</strong><div className="mt-1 whitespace-pre-line">{order.pickup_location}</div></div>
       )}
       {order.status === 'refunded' && <div className="alert-success mb-6">{t('refund_note')}</div>}
+      {order.status !== 'refunded' && order.refunded_amount > 0 && <div className="alert-success mb-6">{t('partial_refund_note', { amount: formatSYP(order.refunded_amount, lang) })}</div>}
       {openD && <div className="alert-error mb-6">{t('dispute_open_note')} <DisputeStatusBadge status={openD.status} t={t} /></div>}
       {addressReq && (
         <div className={`mb-6 ${addressReq.status === 'pending' ? 'alert-warn' : addressReq.status === 'approved' ? 'alert-success' : 'alert-error'}`}>

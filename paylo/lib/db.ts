@@ -28,6 +28,7 @@ function migrate(db: Database.Database) {
   migrateUsersRoleCustomer(db);
   migrateOrdersUserId(db);
   migrateUsersPhone(db);
+  addColumn(db, 'orders', 'refunded_amount', 'INTEGER NOT NULL DEFAULT 0');
 
   const defaults: Record<string, string> = {
     // Commission (Functional Spec §2.4). Percentages stay provisional until a settlement
@@ -185,6 +186,12 @@ function migrateUsersPhone(db: Database.Database) {
   const cols = db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
   if (cols.some((c) => c.name === 'phone')) return;
   db.exec('ALTER TABLE users ADD COLUMN phone TEXT;');
+}
+
+/** Adds a plain column in place if a database predates it (no CHECK, so no rebuild). */
+function addColumn(db: Database.Database, table: string, column: string, decl: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${decl};`);
 }
 
 export function getSetting(key: string): string {

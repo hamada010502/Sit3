@@ -124,6 +124,9 @@ CREATE TABLE IF NOT EXISTS orders (
   pre_dispute_status TEXT,
   pre_dispute_state TEXT,
   payout_id TEXT,
+  -- Running total of partial refunds (goods value). A full refund still moves the order
+  -- to status 'refunded'; this column is only non-zero for orders that stay live.
+  refunded_amount INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   paid_at TEXT,
   closed_at TEXT,
@@ -367,3 +370,21 @@ CREATE TABLE IF NOT EXISTS order_claims (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_order_claims_order ON order_claims(order_id);
+
+-- Refund ledger. One row per refund, partial or full, with who bears the loss.
+-- seller_net_delta is what the refund took out of the seller's payout (0 unless the
+-- seller is liable), so payout maths can be audited row by row.
+CREATE TABLE IF NOT EXISTS refunds (
+  id TEXT PRIMARY KEY,
+  order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  dispute_id TEXT REFERENCES disputes(id),
+  kind TEXT NOT NULL CHECK (kind IN ('partial','full')),
+  amount INTEGER NOT NULL CHECK (amount > 0),
+  liability TEXT NOT NULL CHECK (liability IN ('seller','logistics','platform','none')),
+  commission_refunded INTEGER NOT NULL DEFAULT 0,
+  seller_net_delta INTEGER NOT NULL DEFAULT 0,
+  actor TEXT NOT NULL,
+  note TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_refunds_order ON refunds(order_id);

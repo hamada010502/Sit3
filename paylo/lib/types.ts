@@ -52,7 +52,7 @@ export interface Order {
   payment_method: PaymentMethod; payment_status: PaymentStatus;
   fulfillment_method: FulfillmentMethod; fulfillment_ref: string | null; tracking_number: string | null;
   pickup_location: string | null; order_state: OrderState; status: OrderStatus;
-  pre_dispute_status: OrderStatus | null; pre_dispute_state: OrderState | null; payout_id: string | null;
+  pre_dispute_status: OrderStatus | null; pre_dispute_state: OrderState | null; payout_id: string | null; refunded_amount: number;
   created_at: string; paid_at: string | null; closed_at: string | null; handed_off_at: string | null;
   delivered_at: string | null; cancelled_at: string | null; returned_at: string | null; refunded_at: string | null;
   updated_at: string;
@@ -89,6 +89,10 @@ export interface StoreRegistrationRequest {
   password_hash: string; status: RegistrationStatus; admin_notes: string | null; info_request_note: string | null;
   duplicate_check: string; created_seller_id: string | null;
   submitted_at: string; reviewed_at: string | null; reviewed_by: string | null; updated_at: string;
+}
+export interface Refund {
+  id: string; order_id: string; dispute_id: string | null; kind: 'partial' | 'full'; amount: number; liability: Liability;
+  commission_refunded: number; seller_net_delta: number; actor: string; note: string | null; created_at: string;
 }
 export interface CustomerAddress {
   id: string; user_id: string; label: string | null; full_name: string; phone: string;

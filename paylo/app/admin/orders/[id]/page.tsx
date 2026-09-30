@@ -9,14 +9,14 @@ import { getDb, getSetting } from '@/lib/db';
 import { requireAdmin } from '@/lib/guards';
 import { getT } from '@/lib/i18n/server';
 import { formatSYP } from '@/lib/money';
-import { getAddressRequest, getBankTransfer, getOrder, getOrderDisputes, getOrderEvents, getOrderPayments } from '@/lib/orders';
+import { getAddressRequest, getBankTransfer, getOrder, getOrderDisputes, getOrderEvents, getOrderPayments, getOrderRefunds } from '@/lib/orders';
 import { DAMASCUS, type Payout, type Seller } from '@/lib/types';
 import {
-  cancelAction, codCollectedAction, refundAction, reviewAddressAction, reviewTransferAction,
+  cancelAction, codCollectedAction, partialRefundAction, refundAction, reviewAddressAction, reviewTransferAction,
   setDeliveredAction, setFulfillmentAction, setInTransitAction, setReadyAction,
 } from './actions';
 
-export default function AdminOrderPage({ params }: { params: { id: string } }) {
+export default function AdminOrderPage({ params, searchParams }: { params: { id: string }; searchParams: { err?: string } }) {
   requireAdmin();
   const { t, lang } = getT();
   const order = getOrder(params.id);
@@ -25,6 +25,7 @@ export default function AdminOrderPage({ params }: { params: { id: string } }) {
   const seller = db.prepare('SELECT * FROM sellers WHERE id = ?').get(order.seller_id) as Seller;
   const events = getOrderEvents(order.id);
   const payments = getOrderPayments(order.id);
+  const refunds = getOrderRefunds(order.id);
   const disputes = getOrderDisputes(order.id);
   const transfer = getBankTransfer(order.id);
   const addressReq = getAddressRequest(order.id);
@@ -138,6 +139,26 @@ export default function AdminOrderPage({ params }: { params: { id: string } }) {
               <span dir="ltr" className="text-xs text-ink-soft">{formatSYP(p.amount, lang)} · {p.provider}:{p.provider_ref ?? '—'}</span>
             </div>
           ))}
+          {refunds.length > 0 && (
+            <div className="mt-3 rounded-lg bg-cream p-3 text-sm space-y-1" data-testid="refund-ledger">
+              <div className="font-semibold">{t('refunds_title')} · {t('refunded_so_far')}: {formatSYP(refunds.reduce((a, r) => a + r.amount, 0), lang)}</div>
+              {refunds.map((r) => (
+                <div key={r.id} className="flex flex-wrap justify-between gap-2 text-xs">
+                  <span>{r.kind === 'partial' ? t('partial_refund') : t('st_refunded')} · {t('refund_liability_note', { l: t(`li_${r.liability}` as const) })}{r.seller_net_delta ? ` · ${t('seller')} ${formatSYP(r.seller_net_delta, lang)}` : ''}</span>
+                  <span dir="ltr">{formatSYP(r.amount, lang)} · {r.created_at}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {searchParams.err && <div className="alert-error mt-3" data-testid="order-error">{searchParams.err}</div>}
+          {refundable && (
+            <form action={partialRefundAction.bind(null, order.id)} className="mt-3 grid sm:grid-cols-4 gap-2" data-testid="partial-refund-form">
+              <input name="amount" className="input" inputMode="numeric" dir="ltr" placeholder={t('refund_amount_hint', { max: order.subtotal - order.refunded_amount - 1 })} />
+              <select name="liability" className="input" defaultValue="platform">{(['seller', 'logistics', 'platform', 'none'] as const).map((l) => <option key={l} value={l}>{t(`li_${l}` as const)}</option>)}</select>
+              <input name="note" className="input" placeholder={t('note')} />
+              <SubmitButton className="btn-secondary">{t('partial_refund')}</SubmitButton>
+            </form>
+          )}
           <div className="mt-3 flex flex-wrap gap-2">
             {refundable && (
               <form action={refundAction.bind(null, order.id)} className="flex gap-2 flex-1">

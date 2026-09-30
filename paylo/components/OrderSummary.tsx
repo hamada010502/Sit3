@@ -15,6 +15,7 @@ export function OrderSummary({ order, t, lang, showNet = true, admin = false }: 
         <Row k={t('subtotal')} v={formatSYP(order.subtotal, lang)} />
         <Row k={t('delivery_fee')} v={formatSYP(order.delivery_fee, lang)} />
         <Row k={t('total')} v={formatSYP(order.total, lang)} bold />
+        {order.refunded_amount > 0 && <Row k={t('refunded_so_far')} v={<span className="text-cherry" data-testid="refunded-amount">− {formatSYP(order.refunded_amount, lang)}</span>} />}
         {showNet && <>
           <Row k={`${t('commission')} (${order.commission_rate}%${order.commission_fixed ? ' + ' + formatSYP(order.commission_fixed, lang) : ''})`} v={'− ' + formatSYP(commissionTotal, lang)} />
           <Row k={t(admin ? 'seller_net_admin' : 'seller_net')} v={formatSYP(order.seller_net, lang)} bold />
