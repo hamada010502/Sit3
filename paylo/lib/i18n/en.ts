@@ -261,5 +261,13 @@ export const en = {
   variation_name_required: 'Give the option list a name.', variation_values_min: 'Add at least two values.',
   variations_sub: 'Define option lists once (Size, Colour…) and apply them to any product. Applying a list fills in the product’s variants; changing a list later never touches existing products.',
   variation_apply: 'Apply', variation_pick: 'Use a saved option list',
+  store_announcement: 'Announcement bar', store_announcement_ph: 'e.g. Eid orders ship until Thursday',
+  store_announcement_hint: 'Shown at the top of your store and every product page. Up to 160 characters; leave empty to hide.',
+  store_logo: 'Logo', store_banner: 'Banner', remove: 'Remove',
+  store_about_builder_hint: 'Short version. For a full About page with sections and photos, use the page builder.',
+  about_builder_open: 'Open the About page builder', about_builder_title: 'About page',
+  about_builder_sub: 'Tell buyers who you are: build your page from sections, each with a heading, text and an optional photo.',
+  about_section: 'Section', about_heading: 'Heading', about_body: 'Text', about_add_section: 'Add section',
+  about_move_up: 'Move up', about_move_down: 'Move down', about_view: 'View page', about_empty: 'This store has not written an About page yet.',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

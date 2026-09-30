@@ -33,6 +33,8 @@ function migrate(db: Database.Database) {
   addColumn(db, 'orders', 'coupon_code', 'TEXT');
   addColumn(db, 'products', 'collection_id', 'TEXT REFERENCES collections(id) ON DELETE SET NULL');
   addColumn(db, 'product_variants', 'image_path', 'TEXT');
+  addColumn(db, 'sellers', 'announcement', 'TEXT');
+  addColumn(db, 'sellers', 'about_sections', 'TEXT');
 
   const defaults: Record<string, string> = {
     // Commission (Functional Spec §2.4). Percentages stay provisional until a settlement

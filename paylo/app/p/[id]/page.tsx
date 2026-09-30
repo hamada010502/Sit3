@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Shell } from '@/components/Shell';
+import { Announcement } from '@/components/Announcement';
 import { ProductImage, parseImages } from '@/components/ProductImage';
 import { getCurrentUser } from '@/lib/auth';
 import { defaultAddress } from '@/lib/customer';
@@ -36,6 +37,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
 
   return (
     <Shell wide>
+      <Announcement text={seller.announcement} />
       <div className="grid lg:grid-cols-5 gap-8">
         <div className="lg:col-span-2">
           <ProductImage images={product.images} alt={product.title} className="w-full aspect-square rounded-2xl bg-white" />

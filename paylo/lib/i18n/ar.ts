@@ -226,4 +226,12 @@ export const ar: Dict = {
   variation_name_required: 'أدخل اسمًا لقائمة الخيارات.', variation_values_min: 'أضف قيمتين على الأقل.',
   variations_sub: 'عرّف قوائم الخيارات مرة واحدة (المقاس، اللون…) وطبّقها على أي منتج. تطبيق القائمة يملأ خيارات المنتج؛ وتعديلها لاحقًا لا يغيّر المنتجات الحالية.',
   variation_apply: 'تطبيق', variation_pick: 'استخدم قائمة خيارات محفوظة',
+  store_announcement: 'شريط الإعلان', store_announcement_ph: 'مثال: طلبات العيد تُشحن حتى الخميس',
+  store_announcement_hint: 'يظهر أعلى متجرك وكل صفحة منتج. حتى 160 حرفًا؛ اتركه فارغًا لإخفائه.',
+  store_logo: 'الشعار', store_banner: 'صورة الغلاف', remove: 'إزالة',
+  store_about_builder_hint: 'نسخة مختصرة. لصفحة "من نحن" كاملة بأقسام وصور استخدم منشئ الصفحة.',
+  about_builder_open: 'افتح منشئ صفحة "من نحن"', about_builder_title: 'صفحة من نحن',
+  about_builder_sub: 'عرّف المشترين بك: ابنِ صفحتك من أقسام، لكل قسم عنوان ونص وصورة اختيارية.',
+  about_section: 'قسم', about_heading: 'العنوان', about_body: 'النص', about_add_section: 'إضافة قسم',
+  about_move_up: 'تحريك لأعلى', about_move_down: 'تحريك لأسفل', about_view: 'عرض الصفحة', about_empty: 'لم يكتب هذا المتجر صفحة "من نحن" بعد.',
 };

@@ -30,6 +30,7 @@ export interface User {
 export interface Seller {
   id: string; user_id: string; store_name: string; slug: string; instagram: string | null; phone: string;
   governorate: string; bio: string | null; about: string | null; logo_path: string | null; banner_path: string | null;
+  announcement: string | null; about_sections: string | null;
   visible: number; payout_details: string | null; status: SellerStatus; review_note: string | null;
   kyc_status: KycStatus; kyc_legal_name: string | null; kyc_national_id: string | null; kyc_doc_path: string | null;
   kyc_note: string | null; kyc_reviewed_at: string | null; created_at: string; reviewed_at: string | null;
@@ -91,6 +92,7 @@ export interface StoreRegistrationRequest {
   duplicate_check: string; created_seller_id: string | null;
   submitted_at: string; reviewed_at: string | null; reviewed_by: string | null; updated_at: string;
 }
+export interface AboutSection { heading: string; body: string; image: string | null }
 export interface VariationPreset { id: string; seller_id: string; name: string; values: string[] }
 export interface Collection { id: string; seller_id: string; name: string; slug: string; position: number; created_at: string }
 export interface Coupon {

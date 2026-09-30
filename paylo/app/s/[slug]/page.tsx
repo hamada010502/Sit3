@@ -4,6 +4,8 @@ import { Shell } from '@/components/Shell';
 import { ProductImage } from '@/components/ProductImage';
 import { getDb } from '@/lib/db';
 import { visibleCollections } from '@/lib/collections';
+import { aboutSections } from '@/lib/store-page';
+import { Announcement } from '@/components/Announcement';
 import { getT } from '@/lib/i18n/server';
 import { formatSYP } from '@/lib/money';
 import type { Product, Seller } from '@/lib/types';
@@ -25,6 +27,7 @@ export default function StorePage({ params, searchParams }: { params: { slug: st
 
   return (
     <Shell wide>
+      <Announcement text={seller.announcement} />
       {seller.banner_path && <img src={seller.banner_path} alt="" className="w-full h-40 sm:h-56 object-cover rounded-2xl mb-4" />}
       <div className="card-pad mb-8 flex flex-col sm:flex-row sm:items-center gap-4">
         {seller.logo_path
@@ -34,7 +37,10 @@ export default function StorePage({ params, searchParams }: { params: { slug: st
           <p className="text-xs uppercase tracking-wide text-ink-soft">{t('store_by')}</p>
           <h1 className="text-2xl font-bold">{seller.store_name}</h1>
           {seller.bio && <p className="text-sm text-ink-soft mt-1">{seller.bio}</p>}
-          {seller.instagram && <a href={`https://instagram.com/${seller.instagram}`} target="_blank" rel="noreferrer" className="link text-sm" dir="ltr">@{seller.instagram}</a>}
+          <div className="flex flex-wrap gap-3 items-center">
+            {seller.instagram && <a href={`https://instagram.com/${seller.instagram}`} target="_blank" rel="noreferrer" className="link text-sm" dir="ltr">@{seller.instagram}</a>}
+            {aboutSections(seller).length > 0 && <Link href={`/s/${seller.slug}/about`} className="link text-sm" data-testid="about-link">{t('store_about')} →</Link>}
+          </div>
         </div>
       </div>
 
@@ -66,7 +72,7 @@ export default function StorePage({ params, searchParams }: { params: { slug: st
           })}
         </div>
       )}
-      {seller.about && (
+      {seller.about && !seller.about_sections && (
         <div className="card-pad mt-8">
           <h2 className="font-bold mb-2">{t('store_about')}</h2>
           <p className="text-sm text-ink-soft whitespace-pre-line leading-relaxed">{seller.about}</p>

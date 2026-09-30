@@ -1,4 +1,6 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
+import Link from 'next/link';
 import { useFormState } from 'react-dom';
 import { saveSettingsAction } from './actions';
 import { useI18n } from '@/lib/i18n/client';
@@ -24,10 +26,28 @@ export function SettingsForm({ seller }: { seller: Seller }) {
         <select name="governorate" className="input" defaultValue={seller.governorate}>{GOVERNORATES.map((g) => <option key={g} value={g}>{g}</option>)}</select>
       </Field>
       <Field label={t('bio')}><textarea name="bio" className="input" rows={2} defaultValue={seller.bio ?? ''} /></Field>
-      <Field label={t('store_about')}><textarea name="about" className="input" rows={4} defaultValue={seller.about ?? ''} /></Field>
+      <Field label={t('store_announcement')} hint={t('store_announcement_hint')}>
+        <input name="announcement" className="input" maxLength={160} defaultValue={seller.announcement ?? ''} placeholder={t('store_announcement_ph')} />
+      </Field>
+      <Field label={t('store_about')} hint={t('store_about_builder_hint')}>
+        <textarea name="about" className="input" rows={3} defaultValue={seller.about ?? ''} />
+      </Field>
+      <Link href="/seller/settings/about" className="link text-sm inline-block">{t('about_builder_open')} →</Link>
       <div className="grid sm:grid-cols-2 gap-4">
-        <Field label="Logo"><input name="logo" type="file" accept="image/jpeg,image/png,image/webp" className="input" /></Field>
-        <Field label="Banner"><input name="banner" type="file" accept="image/jpeg,image/png,image/webp" className="input" /></Field>
+        {(['logo', 'banner'] as const).map((k) => {
+          const cur = k === 'logo' ? seller.logo_path : seller.banner_path;
+          return (
+            <Field key={k} label={t(k === 'logo' ? 'store_logo' : 'store_banner')}>
+              {cur && (
+                <div className="flex items-center gap-3 mb-2">
+                  <img src={cur} alt="" className={k === 'logo' ? 'h-12 w-12 rounded-full object-cover' : 'h-12 w-28 rounded object-cover'} data-testid={`${k}-preview`} />
+                  <label className="flex items-center gap-1 text-xs"><input type="checkbox" name={`remove_${k}`} className="accent-cherry" />{t('remove')}</label>
+                </div>
+              )}
+              <input name={k} type="file" accept="image/jpeg,image/png,image/webp" className="input" />
+            </Field>
+          );
+        })}
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="visible" defaultChecked={!!seller.visible} className="accent-cherry h-4 w-4" />

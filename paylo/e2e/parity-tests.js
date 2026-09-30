@@ -427,6 +427,68 @@ const step = (m) => console.log('\n' + m);
   await demo.goto(BASE + '/seller/products/new');
   ok(await demo.locator('[data-testid=preset-picker]').count() === 0, "another store never sees this store's option lists");
 
+  /* ---------------- 9. Richer store settings ---------------- */
+  step('9. Announcement bar, logo/banner management and About page builder');
+  const saveSettings = async (fn) => {
+    await seller.goto(BASE + '/seller/settings');
+    await fn();
+    await seller.getByRole('button', { name: 'Save', exact: true }).click();
+    await seller.waitForSelector('text=Saved');
+  };
+  await saveSettings(async () => {
+    await seller.fill('input[name=announcement]', 'Free cardamom sample with every order this week');
+    await seller.locator('input[name=logo]').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: PNG });
+  });
+  const store1 = await newPage();
+  await store1.goto(BASE + '/s/spice-house');
+  ok(/Free cardamom sample/.test(await store1.locator('[data-testid=store-announcement]').innerText()), 'announcement shows on the storefront');
+  await store1.goto(BASE + '/p/' + zaatar.id);
+  ok(await store1.locator('[data-testid=store-announcement]').count() === 1, 'announcement also shows on product pages');
+  const logoPath = db.prepare('SELECT logo_path FROM sellers WHERE id = ?').get(spice.id).logo_path;
+  ok(/^\/uploads\//.test(logoPath || ''), 'logo uploaded');
+  await seller.goto(BASE + '/seller/settings');
+  ok(await seller.locator('[data-testid=logo-preview]').count() === 1, 'settings shows a preview of the current logo');
+
+  await saveSettings(async () => { await seller.fill('textarea[name=bio]', 'Freshly ground spices'); });
+  ok(db.prepare('SELECT logo_path FROM sellers WHERE id = ?').get(spice.id).logo_path === logoPath, 'saving other settings keeps the logo');
+  await saveSettings(async () => {
+    await seller.locator('input[name=remove_logo]').check();
+    await seller.fill('input[name=announcement]', '');
+  });
+  const after9 = db.prepare('SELECT logo_path, announcement FROM sellers WHERE id = ?').get(spice.id);
+  ok(after9.logo_path === null, 'logo can be removed');
+  await store1.goto(BASE + '/s/spice-house');
+  ok(after9.announcement === null && await store1.locator('[data-testid=store-announcement]').count() === 0, 'clearing the announcement hides the bar');
+
+  await seller.goto(BASE + '/seller/settings/about');
+  ok(await seller.locator('[data-about-row]').count() === 1 && /Family spice shop/.test(await seller.locator('[data-about-row] textarea').first().inputValue()),
+    "the store's existing plain About text is imported as the first section");
+  const addSection = async (heading, body) => {
+    await seller.getByRole('button', { name: /Add section/ }).click();
+    const row = seller.locator('[data-about-row]').last();
+    await row.getByLabel('Heading').fill(heading);
+    await row.getByLabel('Text').fill(body);
+    return row;
+  };
+  await addSection('Our shop', 'Family business since 1987. <b>Not bold</b>');
+  const second = await addSection('Our grinder', 'Stone-ground to order.');
+  await second.locator('input[type=file]').setInputFiles({ name: 'grinder.png', mimeType: 'image/png', buffer: PNG });
+  await second.getByRole('button', { name: 'Move up' }).click();
+  await seller.locator('input[name=sections]').evaluate((el) => { const r = JSON.parse(el.value); r[2].image = '/uploads/not-mine.png'; el.value = JSON.stringify(r); });
+  await seller.getByRole('button', { name: 'Save', exact: true }).click();
+  await seller.waitForSelector('text=Saved');
+  const saved = JSON.parse(db.prepare('SELECT about_sections s FROM sellers WHERE id = ?').get(spice.id).s);
+  ok(saved.length === 3 && /Family spice shop/.test(saved[0].body) && saved[1].heading === 'Our grinder' && saved[2].heading === 'Our shop', 'sections saved in the reordered order');
+  ok(/^\/uploads\//.test(saved[1].image || '') && saved[2].image === null, 'section photo stored; a forged photo path is dropped');
+
+  await store1.goto(BASE + '/s/spice-house');
+  await store1.locator('[data-testid=about-link]').click();
+  await store1.waitForURL('**/s/spice-house/about');
+  const aboutText = await store1.locator('[data-testid=about-sections]').innerText();
+  ok(aboutText.indexOf('Our grinder') < aboutText.indexOf('Our shop'), 'public About page renders sections in order');
+  ok(aboutText.includes('<b>Not bold</b>') && await store1.locator('[data-testid=about-sections] b').count() === 0, 'section text is rendered as text, never as HTML');
+  ok(await store1.locator('[data-testid=about-sections] img').count() === 1, 'section photo is shown');
+
   console.log(`\nALL PASSED — ${passed} assertions`);
   await browser.close();
   db.close();

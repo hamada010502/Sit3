@@ -221,6 +221,17 @@ if (demoSeller && !db.prepare('SELECT 1 FROM collections WHERE seller_id = ?').g
   set.run(kitchen, demoSeller.id, 'Olive-wood serving board');
 }
 
+// Store page content for the demo store: announcement bar and a built About page.
+if (demoSeller) {
+  db.prepare("UPDATE sellers SET announcement = COALESCE(announcement, ?), about_sections = COALESCE(about_sections, ?) WHERE id = ?").run(
+    'Eid orders placed by Thursday arrive before the holiday.',
+    JSON.stringify([
+      { heading: 'Made in Old Damascus', body: 'Every candle is hand-poured in a small studio off Straight Street, in batches of twelve.', image: null },
+      { heading: 'How we ship', body: 'Orders leave the studio the next working day. Damascus deliveries go with our own rider; other governorates are collected from our logistics partner.', image: null },
+    ]),
+    demoSeller.id);
+}
+
 // Store registrations waiting in the owner's review queue.
 if (!db.prepare('SELECT 1 FROM store_registration_requests').get()) {
   const insR = db.prepare(`INSERT INTO store_registration_requests (id, full_name, phone, email, national_id, store_name, slug,

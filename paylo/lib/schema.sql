@@ -38,6 +38,9 @@ CREATE TABLE IF NOT EXISTS sellers (
   about TEXT,
   logo_path TEXT,
   banner_path TEXT,
+  announcement TEXT,
+  -- About page builder: JSON array of { heading, body, image } sections, rendered as text.
+  about_sections TEXT,
   visible INTEGER NOT NULL DEFAULT 1,
   payout_details TEXT,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','suspended')),

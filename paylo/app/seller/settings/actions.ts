@@ -16,6 +16,7 @@ export async function saveSettingsAction(_prev: { error?: string; ok?: boolean }
   const about = String(formData.get('about') || '').trim() || null;
   const payoutDetails = String(formData.get('payout_details') || '').trim() || null;
   const visible = formData.get('visible') ? 1 : 0;
+  const announcement = String(formData.get('announcement') || '').trim().slice(0, 160) || null;
   if (!storeName || !phone || !(GOVERNORATES as readonly string[]).includes(governorate)) return { error: 'apply_error_generic' };
 
   const logo = formData.get('logo');
@@ -23,10 +24,13 @@ export async function saveSettingsAction(_prev: { error?: string; ok?: boolean }
   const logoPath = logo instanceof File ? await saveUpload(logo) : null;
   const bannerPath = banner instanceof File ? await saveUpload(banner) : null;
 
+  // New upload wins; otherwise "remove" clears it; otherwise keep what is there.
+  const logoVal = logoPath ?? (formData.get('remove_logo') ? null : seller.logo_path);
+  const bannerVal = bannerPath ?? (formData.get('remove_banner') ? null : seller.banner_path);
   getDb().prepare(`UPDATE sellers SET store_name = ?, instagram = ?, phone = ?, governorate = ?, bio = ?, about = ?,
-      payout_details = ?, visible = ?, logo_path = COALESCE(?, logo_path), banner_path = COALESCE(?, banner_path) WHERE id = ?`)
-    .run(storeName, instagram, phone, governorate, bio, about, payoutDetails, visible, logoPath, bannerPath, seller.id);
-  audit('seller', seller.id, storeName, 'seller', seller.id, 'settings.updated', { visible });
+      payout_details = ?, visible = ?, announcement = ?, logo_path = ?, banner_path = ? WHERE id = ?`)
+    .run(storeName, instagram, phone, governorate, bio, about, payoutDetails, visible, announcement, logoVal, bannerVal, seller.id);
+  audit('seller', seller.id, storeName, 'seller', seller.id, 'settings.updated', { visible, announcement: !!announcement });
   revalidatePath('/seller/settings');
   revalidatePath(`/s/${seller.slug}`);
   return { ok: true };
