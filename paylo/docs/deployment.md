@@ -126,6 +126,23 @@ Syrian bank API is wired in, on purpose: there are no real credentials or spec y
 
 Until step 1 exists, steps 2–5 keep card hidden — nothing half-enabled reaches buyers.
 
+### Unblock day = config only
+
+When a settlement partner signs, turning card payments on is **configuration, not a code
+release to checkout**: the provider adapter is the only code that changes (one file under
+`lib/payments/`), then env vars, `PAYMENT_CARD_ENABLED=1`, the admin toggle and
+`check:env`. Checkout, orders, fees, refunds and payouts already handle `card` today and are
+covered by tests with the mock adapter. Cash on delivery and bank transfer keep working
+throughout, so the launch never waits on the bank.
+
+### Cash on delivery: when the money counts as collected
+
+Marking a COD order *delivered* currently also records its cash as collected
+(`markDelivered()` → `markCodCollected()`), which makes it payable. Admin → Operations lists
+any delivered COD order whose cash is still not recorded, with a one-click confirm. See the
+open decision in the technical addendum if payouts should instead wait for the courier's
+cash handover.
+
 ## 4. Backups (SQLite)
 
 The database runs in WAL mode, so **do not copy the `.db` file with `cp` while the app is

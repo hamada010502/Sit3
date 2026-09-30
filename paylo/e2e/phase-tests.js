@@ -205,6 +205,28 @@ const step = (m) => console.log('\n' + m);
     await sCtx.close();
   }
 
+  if (ONLY.includes('3')) {
+    step('3.1 Ops queue: delivered COD orders whose cash is not recorded, with one-click confirm');
+    // Delivery currently auto-records COD cash (see addendum §8a), so this state is set up
+    // directly: a delivered COD order whose cash Paylo has not recorded.
+    const cod = db.prepare("SELECT * FROM orders WHERE payment_method = 'cod' AND status = 'delivered' LIMIT 1").get();
+    db.prepare("UPDATE orders SET payment_status = 'pending' WHERE id = ?").run(cod.id);
+    await admin.goto(BASE + '/admin/ops');
+    const q = admin.locator('[data-testid=ops-cod-queue]');
+    ok(await q.locator(`tr[data-code="${cod.code}"]`).count() === 1, 'the order is listed in the COD queue');
+    await q.locator(`tr[data-code="${cod.code}"] input[name=note]`).fill('Rider handover #7');
+    await q.locator(`tr[data-code="${cod.code}"]`).getByRole('button', { name: 'Confirm' }).click();
+    await admin.waitForFunction((c) => !document.querySelector(`[data-testid=ops-cod-queue] tr[data-code="${c}"]`), cod.code);
+    ok(db.prepare('SELECT payment_status FROM orders WHERE id = ?').get(cod.id).payment_status === 'collected_cod', 'one click records the cash (same markCodCollected action as the order page)');
+    ok(!!db.prepare("SELECT 1 FROM audit_log WHERE entity_id = ? AND action = 'cod.collected'").get(cod.id), 'the confirmation is in the audit log');
+    ok(await admin.locator(`[data-testid=ops-cod-queue] tr[data-code="${cod.code}"]`).count() === 0, 'and the order leaves the queue');
+
+    step('3.x System health still accurate after all phases');
+    const levels = await admin.locator('[data-testid=ops-health] tr').evaluateAll((trs) => Object.fromEntries(trs.map((tr) => [tr.dataset.check, tr.dataset.level])));
+    ok(levels['Payment: cod'] === 'ok' && levels['Payment: bank_transfer'] === 'ok' && levels['Payment: card'] === 'warn', 'payment rows: COD on, bank transfer on, card off (not an error while untouched)');
+    ok(levels['WEBHOOK_RETRY_SECRET'] === 'ok' && levels['SESSION_SECRET'] !== undefined, 'the earlier config checks are all still listed');
+  }
+
   console.log(`\nALL PASSED — ${passed} assertions`);
   await browser.close(); db.close();
   process.exit(0);

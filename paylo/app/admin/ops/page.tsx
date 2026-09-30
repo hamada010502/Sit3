@@ -6,6 +6,8 @@ import { requireAdmin } from '@/lib/guards';
 import { getT } from '@/lib/i18n/server';
 import { configChecks, deliveryStats, workerLastRun } from '@/lib/health';
 import { formatSYP } from '@/lib/money';
+import { SubmitButton } from '@/components/SubmitButton';
+import { codCollectedAction } from '../orders/[id]/actions';
 import type { Order, Payout, Seller } from '@/lib/types';
 
 /**
@@ -26,7 +28,7 @@ export default function AdminOpsPage() {
   const stuckTransit = q<Order>(
     `SELECT * FROM orders WHERE status IN ('handed_off','in_transit','ready_for_pickup') AND coalesce(handed_off_at, created_at) <= datetime('now','-7 days') ORDER BY handed_off_at ASC`);
   const codUncollected = q<Order>(
-    `SELECT * FROM orders WHERE payment_method = 'cod' AND status = 'delivered' AND payment_status != 'collected_cod' ORDER BY delivered_at ASC`);
+    `SELECT * FROM orders WHERE payment_method = 'cod' AND status = 'delivered' AND payment_status NOT IN ('collected_cod','refunded') ORDER BY delivered_at ASC`);
   const failedPayments = q<Order>(`SELECT * FROM orders WHERE status = 'payment_failed' ORDER BY created_at DESC LIMIT 25`);
   const addressReqs = q<Order & { req_id: string }>(
     `SELECT o.*, a.id req_id FROM orders o JOIN address_change_requests a ON a.order_id = o.id WHERE a.status = 'pending' ORDER BY a.created_at ASC`);
@@ -147,7 +149,28 @@ export default function AdminOpsPage() {
       <OrderQueue title={t('ops_awaiting_transfer')} rows={awaitingTransfer} />
       <OrderQueue title={t('ops_unfulfilled')} rows={unfulfilled} stamp={(o) => `${age(o.created_at)} ${t('days_open')}`} />
       <OrderQueue title={t('ops_stuck_transit')} rows={stuckTransit} stamp={(o) => `${age(o.handed_off_at)} ${t('days_open')}`} />
-      <OrderQueue title={t('ops_cod_uncollected')} rows={codUncollected} stamp={(o) => `${age(o.delivered_at)} ${t('days_open')}`} />
+      {codUncollected.length > 0 && (
+        <div className="card overflow-x-auto" data-testid="ops-cod-queue">
+          <h2 className="font-bold px-5 pt-5">{t('ops_cod_uncollected')} <span className="text-ink-soft font-normal">({codUncollected.length})</span></h2>
+          <p className="px-5 pb-2 text-xs text-ink-soft">{t('ops_cod_uncollected_d')}</p>
+          <table className="table">
+            <thead><tr><th>{t('order')}</th><th>{t('buyer')}</th><th>{t('total')}</th><th>{t('date')}</th><th>{t('mark_cod_collected')}</th></tr></thead>
+            <tbody>{codUncollected.map((o) => (
+              <tr key={o.id} data-code={o.code}>
+                <td><Link href={`/admin/orders/${o.id}`} className="tap-inline font-mono font-semibold text-cherry" dir="ltr">{o.code}</Link></td>
+                <td>{o.buyer_name}<div className="text-xs text-ink-soft">{o.governorate}</div></td>
+                <td className="whitespace-nowrap">{formatSYP(o.total, lang)}</td>
+                <td className="text-xs text-ink-soft whitespace-nowrap">{age(o.delivered_at)} {t('days_open')}</td>
+                <td>
+                  <form action={codCollectedAction.bind(null, o.id)} className="flex gap-2 min-w-[14rem]">
+                    <input name="note" className="input" placeholder={t('reference')} aria-label={t('reference')} />
+                    <SubmitButton className="btn-primary btn-sm shrink-0">{t('confirm')}</SubmitButton>
+                  </form>
+                </td>
+              </tr>))}</tbody>
+          </table>
+        </div>
+      )}
       <OrderQueue title={t('ops_address_requests')} rows={addressReqs} />
       <OrderQueue title={t('ops_failed_payments')} rows={failedPayments} />
 

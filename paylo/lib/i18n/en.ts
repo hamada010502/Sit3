@@ -508,5 +508,6 @@ export const en = {
   set_group_payout: "Payouts",
   set_group_payout_d: "Where Paylo sends your weekly payouts.",
   set_preview_store: "Preview your store",
+  ops_cod_uncollected_d: "Delivered cash-on-delivery orders whose cash Paylo has not recorded. Confirm once the courier has handed it over — that is what makes the order payable.",
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

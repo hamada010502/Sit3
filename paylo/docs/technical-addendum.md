@@ -302,9 +302,10 @@ remains in `lib/orders.ts`, `lib/registration.ts`, `lib/customer.ts` or the admi
 actions.
 
 - **Buyers and registration applicants: Arabic.** They have no account setting to read.
-- **Sellers: the language of their most recently registered push device**
-  (`push_subscriptions.lang`, captured from the UI language at subscribe time), otherwise
-  Arabic. This is a proxy: a seller who never enables push always gets Arabic.
+- **Sellers: `sellers.preferred_lang`** (Settings → Notifications → "Language of my emails
+  and texts", default Arabic). It is independent of the AR/EN switch used to browse the
+  dashboard. On upgrade, sellers whose latest push device was English were set to English,
+  so nobody's messages changed language silently.
 - Amounts use `formatSYP` in the message language (Arabic digits and «ل.س» in Arabic).
 - Web Push already used per-device language (§7d).
 
@@ -329,17 +330,32 @@ needed, this is the shape that keeps every existing rule intact. Nothing below e
 - **Migration:** backfill one `order_items` row per existing order from its product columns,
   then keep the old columns as read-only history.
 
-## 8. Known gaps
+## 8. Known gaps (intentional)
 
-- **No explicit language preference.** Seller language is inferred from their latest push
-  device, and buyers always get Arabic. A per-user setting would replace the inference.
+- **Single-item orders.** One product link → one order, by design. A cart would need an
+  `order_items` table; the shape is sketched in §7i and nothing of it is built.
+- **SQLite.** Correct for a pilot (v2 §7.1). Writes are serialised; the concrete trigger for
+  moving to PostgreSQL is in `docs/deployment.md` §5.
+- **Cash reconciliation is a single click per order,** from Admin → Operations ("Delivered,
+  cash not recorded") or the order page — not a courier cash manifest.
+- **No native app.** The PWA (§7d) covers install and push; see §9.
+- **Buyers always get Arabic messages.** Buyers have no account setting to read; sellers
+  choose their own language (`sellers.preferred_lang`, §7h).
 
+## 8a. Open decision: when is COD cash "collected"?
 
-- **Cash reconciliation is a single click,** not a courier manifest.
-- **Single-item orders.** The link-based model implies one product per order; a cart would
-  need an `order_items` table.
-- **SQLite.** Correct for a pilot, and v2 §7.1 explicitly defers PostgreSQL until scale
-  demands it. Writes are serialised, so plan the migration before high concurrency.
+`markCodCollected()` is documented as "the rider or logistics partner has handed the
+collected cash to Paylo", and it is what makes a COD order payable. But `markDelivered()`
+calls it automatically, so a COD order becomes payable the moment it is marked delivered —
+before anyone confirms the cash reached Paylo. Two options:
+
+1. **Keep as is:** delivery = cash collected (the courier is trusted to remit). Faster
+   payouts; the Operations queue for uncollected cash stays mostly empty.
+2. **Strict:** delivery no longer implies collection; COD orders wait in Operations until an
+   admin confirms the cash handover, and only then enter a payout run. Safer money, but
+   payouts depend on that daily admin step.
+
+Not changed pending a decision, because it moves the moment sellers get paid.
 
 ## 9. Roadmap (not built)
 
