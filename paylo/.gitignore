@@ -7,3 +7,4 @@ data/uploads/
 e2e/shots/
 next-env.d.ts
 node_modules
+*.zip
