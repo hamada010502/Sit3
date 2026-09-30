@@ -11,7 +11,9 @@ import { getT } from '@/lib/i18n/server';
 import { getOrder, getOrderEvents } from '@/lib/orders';
 import type { Payout } from '@/lib/types';
 import { HandOffForm } from './HandOffForm';
-import { sellerCancelAction, sellerRefundAction, updateTrackingAction } from './actions';
+import { HandedOffCard } from './HandedOffCard';
+import { appUrl } from '@/lib/notify';
+import { sellerCancelAction, sellerRefundAction } from './actions';
 
 export default function SellerOrderPage({ params }: { params: { id: string } }) {
   const { seller } = requireApprovedSeller();
@@ -41,14 +43,8 @@ export default function SellerOrderPage({ params }: { params: { id: string } }) 
       )}
       {canHandOff && <div className="mb-6"><HandOffForm orderId={order.id} pickup={order.fulfillment_method === 'logistics_pickup'} /></div>}
 
-      {shipped && (
-        <form action={updateTrackingAction.bind(null, order.id)} className="card-pad mb-6 flex flex-col sm:flex-row sm:items-end gap-3">
-          <div className="flex-1">
-            <label className="label">{t('tracking_number')}</label>
-            <input name="tracking" className="input" dir="ltr" defaultValue={order.tracking_number ?? ''} placeholder={t('tracking_number_hint')} />
-          </div>
-          <SubmitButton className="btn-secondary shrink-0">{t('save')}</SubmitButton>
-        </form>
+      {(shipped || order.status === 'delivered') && order.handed_off_at && (
+        <div className="mb-6"><HandedOffCard order={order} trackUrl={appUrl('/track/' + order.code)} t={t} /></div>
       )}
 
       <div className="mb-6"><OrderSummary order={order} t={t} lang={lang} /></div>

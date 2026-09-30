@@ -1,4 +1,5 @@
 import { SubmitButton } from '@/components/SubmitButton';
+import { EmptyState } from '@/components/EmptyState';
 import { sellerCoupons } from '@/lib/coupons';
 import { requireApprovedSeller } from '@/lib/guards';
 import { getT } from '@/lib/i18n/server';
@@ -17,7 +18,7 @@ export default function SellerCouponsPage() {
         <p className="mt-1 text-sm text-ink-soft">{t('coupons_sub')}</p>
       </div>
       <CouponForm />
-      {coupons.length === 0 ? <div className="card-pad text-center text-ink-soft">{t('coupons_none')}</div> : (
+      {coupons.length === 0 ? <EmptyState icon="tag" title={t('coupons_none')} body={t('empty_coupons_body')} /> : (
         <div className="card overflow-x-auto"><table className="table" data-testid="coupon-list">
           <thead><tr><th>{t('coupon_code')}</th><th>{t('coupon_value')}</th><th>{t('coupon_min_subtotal')}</th><th>{t('coupon_uses')}</th><th>{t('coupon_expires')}</th><th>{t('coupon_active')}</th><th></th></tr></thead>
           <tbody>{coupons.map((c) => (

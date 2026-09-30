@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { EmptyState } from '@/components/EmptyState';
 import { CopyButton } from '@/components/CopyButton';
 import { ProductImage } from '@/components/ProductImage';
 import { ProductStatusBadge } from '@/components/StatusBadge';
@@ -25,7 +26,7 @@ export default function ProductsPage() {
         <h1 className="section-title">{t('products_title')}</h1>
         <Link href="/seller/products/new" className="btn-primary">+ {t('products_new')}</Link>
       </div>
-      {products.length === 0 ? <div className="card-pad text-center text-ink-soft">{t('products_empty')}</div> : (
+      {products.length === 0 ? <EmptyState icon="box" title={t('products_empty')} body={t('empty_products_body')} action={{ href: '/seller/products/new', label: t('products_new') }} /> : (
         <div className="space-y-3">
           <BulkBar />
           {products.map((p) => {

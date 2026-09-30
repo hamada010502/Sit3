@@ -245,6 +245,109 @@ function decryptPush(sub, body) {
   await phone.goto(BASE + '/seller/settings');
   ok(await phone.getByText('الإشعارات', { exact: true }).count() >= 1 && await phone.getByText('صوت البيع').count() >= 1, 'notification settings are translated to Arabic');
 
+  /* ================= SPRINT B ================= */
+  step('B5. Empty states: every list says what it is for and what to do next');
+  // A brand-new live store (2FA on, so not held) with nothing in it yet.
+  const EMPTY_TOTP = 'ONSWG4TFORTGK3LQOR4Q';
+  const eUid = 'u-empty', eSid = 's-empty';
+  db.prepare("INSERT INTO users (id, email, password_hash, role, name, totp_secret, totp_enabled) VALUES (?, 'empty@paylo.sy', (SELECT password_hash FROM users WHERE email = 'spice@paylo.sy'), 'seller', 'New Seller', ?, 1)").run(eUid, EMPTY_TOTP);
+  db.prepare("INSERT INTO sellers (id, user_id, store_name, slug, phone, governorate, status, kyc_status) VALUES (?, ?, 'Brand New Shop', 'brand-new-shop', '0999000111', 'Damascus', 'approved', 'approved')").run(eSid, eUid);
+  TOTP['empty@paylo.sy'] = EMPTY_TOTP;
+  const fresh = await (await ctx()).newPage();
+  await login(fresh, 'empty@paylo.sy');
+  await fresh.waitForURL('**/seller');
+  const emptyCases = [
+    ['/seller/products', 'No products yet.', 'New product', '/seller/products/new'],
+    ['/seller/collections', 'No collections yet.', null],
+    ['/seller/coupons', 'No discount codes yet.', null],
+    ['/seller/variations', 'No option lists yet.', null],
+    ['/seller/returns', 'No open returns', null],
+    ['/seller/returns?f=all', 'No returns here.', null],
+    ['/seller/orders', 'No orders yet', 'Open my store', '/s/brand-new-shop'],
+    ['/seller/orders?state=closed', 'Nothing under “Closed”', 'See all orders', '/seller/orders'],
+  ];
+  for (const [p, title, cta, href] of emptyCases) {
+    await fresh.goto(BASE + p);
+    const es = fresh.locator('[data-testid=empty-state]');
+    const txt = (await es.count()) ? await es.innerText() : '';
+    const link = cta ? await es.getByRole('link', { name: cta }).getAttribute('href').catch(() => null) : null;
+    ok(txt.includes(title) && txt.split('\n').length >= 2 && (!cta || link === href), `${p}: "${title}" with guidance${cta ? ` and a "${cta}" action` : ''}`);
+  }
+  await fresh.context().addCookies([{ name: 'paylo_lang', value: 'ar', url: BASE }]);
+  await fresh.goto(BASE + '/seller/products');
+  ok(/أضف منتجك الأول/.test(await fresh.locator('[data-testid=empty-state]').innerText()), 'empty states are translated (Arabic)');
+
+  step('B6. Hand-off: clear success state with the tracking number up front');
+  const hoOrder = await buy(buyer, 'Handoff Buyer');
+  await seller.goto(BASE + '/seller/orders/' + hoOrder.id);
+  const hoForm = seller.locator('[data-testid=handoff-form]');
+  await hoForm.getByLabel('Rider name or shipment reference').fill('Rider Sami');
+  await hoForm.getByLabel(/Tracking number/).fill('TRK-SPRINT-1');
+  await hoForm.getByRole('button', { name: 'Mark as handed off' }).click();
+  const done = seller.locator('[data-testid=handoff-done]');
+  await done.waitFor();
+  ok(await seller.locator('[data-testid=handoff-form]').count() === 0, 'the form is replaced by a success card');
+  const doneText = await done.innerText();
+  ok(/Handed off/.test(doneText) && /Rider Sami/.test(doneText) && /buyer has been notified/.test(doneText), 'success card says it is handed off, by whom, and that the buyer was told');
+  ok(await done.locator('[data-testid=tracking-number]').innerText() === 'TRK-SPRINT-1', 'tracking number is shown prominently');
+  ok(doneText.includes('/track/' + hoOrder.code), "buyer's tracking link is right there to copy");
+  await done.locator('input[name=tracking]').fill('TRK-SPRINT-2');
+  await done.getByRole('button', { name: 'Update' }).click();
+  await seller.waitForFunction(() => document.querySelector('[data-testid=tracking-number]')?.textContent === 'TRK-SPRINT-2');
+  ok(true, 'tracking number can be corrected in place');
+  await buyer.goto(BASE + '/track/' + hoOrder.code);
+  ok(await buyer.getByText('TRK-SPRINT-2').count() === 1, 'the buyer sees the updated tracking number');
+
+  step('B7. Commission breakdown (built earlier) is present and populated');
+  await seller.goto(BASE + '/seller/earnings');
+  ok(await seller.locator('[data-testid=earnings-table] tbody tr').count() >= 1 && await seller.locator('[data-testid=earnings-csv]').count() === 1, 'per-order breakdown with CSV export is live');
+
+  step('B8. Product photos: drag-drop, multiple, reorder, cover first');
+  const colorPng = async (c) => { const pg = await browser.newPage({ viewport: { width: 6, height: 6 } }); await pg.setContent(`<body style="margin:0;background:${c}"></body>`); const b = await pg.screenshot(); await pg.close(); return b; };
+  const [RED, GREEN, BLUE] = [await colorPng('#f00'), await colorPng('#0f0'), await colorPng('#00f')];
+  const uploadDir = path.join(process.cwd(), 'data', 'uploads');
+  const bytesOf = (src) => fs.readFileSync(path.join(uploadDir, path.basename(src)));
+  const dropFiles = async (p, files) => p.evaluate(async (fs2) => {
+    const dt = new DataTransfer();
+    for (const f of fs2) dt.items.add(new File([Uint8Array.from(atob(f.b64), (c) => c.charCodeAt(0))], f.name, { type: 'image/png' }));
+    const el = document.querySelector('[data-testid=image-drop]');
+    el.dispatchEvent(new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    el.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+  }, files.map(([name, buf]) => ({ name, b64: buf.toString('base64') })));
+
+  await seller.goto(BASE + '/seller/products/new');
+  await seller.fill('input[name=title]', 'Photo test jar');
+  await seller.fill('input[name=price]', '20000');
+  await seller.fill('input[name=stock]', '3');
+  await dropFiles(seller, [['red.png', RED], ['green.png', GREEN]]);
+  await seller.locator('[data-testid=image-picker]').setInputFiles({ name: 'blue.png', mimeType: 'image/png', buffer: BLUE });
+  const tiles = seller.locator('[data-image-item]');
+  ok(await tiles.count() === 3, 'two photos dropped + one picked = three, in that order');
+  await tiles.nth(2).getByRole('button', { name: 'Move earlier' }).click();
+  await tiles.nth(1).getByRole('button', { name: 'Move earlier' }).click();     // blue is now first
+  await tiles.nth(2).getByRole('button', { name: 'Remove' }).click();            // drop green (now last)
+  ok(await tiles.count() === 2 && await tiles.nth(0).getByText('Cover').count() === 1, 'reordered with ‹ ›, removed one; first is marked Cover');
+  await seller.getByRole('button', { name: 'Save', exact: true }).click();
+  await seller.waitForURL('**saved=1');
+  const jar = db.prepare("SELECT * FROM products WHERE seller_id = ? AND title = 'Photo test jar'").get(spice.id);
+  let imgs = JSON.parse(jar.images);
+  ok(imgs.length === 2 && bytesOf(imgs[0]).equals(BLUE) && bytesOf(imgs[1]).equals(RED), 'saved in the chosen order: blue (cover), red — green removed');
+
+  await seller.goto(BASE + '/seller/products/' + jar.id);
+  ok(await tiles.count() === 2, 'edit form shows the saved photos in order');
+  await tiles.nth(1).dragTo(tiles.nth(0));                                        // mouse drag: red to the front
+  await seller.locator('input[name=image_order]').evaluate((el) => { const o = JSON.parse(el.value); o.push('/uploads/another-stores-photo.png'); el.value = JSON.stringify(o); });
+  await seller.getByRole('button', { name: 'Save', exact: true }).click();
+  await seller.waitForURL('**saved=1');
+  imgs = JSON.parse(db.prepare('SELECT images FROM products WHERE id = ?').get(jar.id).images);
+  ok(imgs.length === 2 && bytesOf(imgs[0]).equals(RED) && bytesOf(imgs[1]).equals(BLUE), 'drag-and-drop reorder saved (red is now the cover)');
+  ok(!imgs.includes('/uploads/another-stores-photo.png'), "a forged path to someone else's photo is ignored");
+
+  await seller.goto(BASE + '/seller/products/new');
+  await dropFiles(seller, [1, 2, 3, 4, 5, 6].map((n) => [`p${n}.png`, RED]));
+  ok(await tiles.count() === 5 && await seller.getByText('Up to 5 photos').count() === 1, 'more than 5 → capped at 5 with a clear message');
+  ok(await seller.locator('[data-testid=image-drop]').count() === 0, 'drop zone hides once the 5-photo limit is reached');
+
   step('A1b. Offline: with the server unreachable, navigation shows the Paylo offline page');
   execSync('pkill -f "next-serve[r]" || true');
   await new Promise((r) => setTimeout(r, 1000));

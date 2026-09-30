@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { EmptyState } from '@/components/EmptyState';
 import { SubmitButton } from '@/components/SubmitButton';
 import { sellerCollections } from '@/lib/collections';
 import { getDb } from '@/lib/db';
@@ -22,7 +23,7 @@ export default function SellerCollectionsPage() {
         <p className="mt-1 text-sm text-ink-soft">{t('collections_sub')}</p>
       </div>
       <CollectionForm />
-      {cols.length === 0 ? <div className="card-pad text-center text-ink-soft">{t('collections_none')}</div> : (
+      {cols.length === 0 ? <EmptyState icon="folder" title={t('collections_none')} body={t('empty_collections_body')} /> : (
         <div className="card divide-y divide-ink/8" data-testid="collection-list">
           {cols.map((c) => (
             <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">

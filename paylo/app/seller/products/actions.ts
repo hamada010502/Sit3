@@ -75,9 +75,33 @@ export async function saveProductAction(productId: string | null, _prev: { error
     variantImages.push(uploaded ?? (v.image && priorVariantImages.has(v.image) ? v.image : null));
   }
 
-  const keep = formData.getAll('keep_image').map(String);
-  const uploaded = await saveImages(formData.getAll('images').filter((x): x is File => x instanceof File));
-  const images = [...keep, ...uploaded].slice(0, MAX_IMAGES);
+  // Images, in the order the seller arranged them (first = cover). A kept image must already
+  // belong to this product — never trust a posted path (it could be another store's upload).
+  const current: string[] = productId
+    ? JSON.parse((db.prepare('SELECT images FROM products WHERE id = ? AND seller_id = ?').get(productId, seller.id) as { images: string } | undefined)?.images || '[]')
+    : [];
+  const newFiles = formData.getAll('images').filter((x): x is File => x instanceof File && x.size > 0);
+  let images: string[];
+  let order: unknown;
+  try { order = JSON.parse(String(formData.get('image_order') ?? 'null')); } catch { order = null; }
+  if (Array.isArray(order)) {
+    images = [];
+    const used = new Set<number>();
+    for (const tok of order.slice(0, MAX_IMAGES)) {
+      if (typeof tok !== 'string') continue;
+      const m = /^new:(\d+)$/.exec(tok);
+      if (m) { const n = Number(m[1]); const f = newFiles[n]; used.add(n); const p = f ? await saveUpload(f) : null; if (p) images.push(p); }
+      else if (current.includes(tok) && !images.includes(tok)) images.push(tok);
+    }
+    // Files posted without an order token (e.g. a plain file input) go after, never dropped.
+    for (let n = 0; n < newFiles.length && images.length < MAX_IMAGES; n++) {
+      if (!used.has(n)) { const p = await saveUpload(newFiles[n]); if (p) images.push(p); }
+    }
+  } else {
+    // No-JS fallback: keep ticked images (validated), then append uploads.
+    const keep = formData.getAll('keep_image').map(String).filter((p) => current.includes(p));
+    images = [...keep, ...(await saveImages(newFiles))].slice(0, MAX_IMAGES);
+  }
   // With variants, the product's own stock mirrors the sum so storefront availability stays truthful.
   const effectiveStock = variants.length ? variants.reduce((s, v) => s + Number(v.stock), 0) : stock;
 

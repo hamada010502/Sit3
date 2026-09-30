@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { EmptyState } from '@/components/EmptyState';
 import { AutoRefresh } from '@/components/AutoRefresh';
 import { DisputeStatusBadge, OrderStatusBadge } from '@/components/StatusBadge';
 import { getDb } from '@/lib/db';
@@ -39,7 +40,9 @@ export default function SellerReturnsPage({ searchParams }: { searchParams: { f?
           </Link>
         ))}
       </div>
-      {rows.length === 0 ? <div className="card-pad text-center text-ink-soft">{t('returns_none')}</div> : (
+      {rows.length === 0 ? (f === 'open'
+        ? <EmptyState icon="return" title={t('empty_returns_open')} body={t('empty_returns_open_body')} />
+        : <EmptyState icon="return" title={t('returns_none')} body={t('empty_returns_body')} />) : (
         <div className="card overflow-x-auto"><table className="table" data-testid="seller-returns">
           <thead><tr><th>{t('order')}</th><th>{t('product')}</th><th>{t('buyer')}</th><th>{t('dispute_reason')}</th><th>{t('status')}</th><th>{t('liability')}</th><th>{t('date')}</th></tr></thead>
           <tbody>{rows.map((d) => {

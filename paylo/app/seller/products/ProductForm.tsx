@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useFormState } from 'react-dom';
 import { saveProductAction } from './actions';
+import { ImageManager } from './ImageManager';
 import { useI18n } from '@/lib/i18n/client';
 import { Field } from '@/components/Field';
 import { SubmitButton } from '@/components/SubmitButton';
@@ -144,23 +145,9 @@ export function ProductForm({ product, images, variants = [], collections = [], 
         </div>
       )}
 
-      <div className="card-pad space-y-4">
-        {images.length > 0 && (
-          <div>
-            <label className="label">{t('existing_images')}</label>
-            <div className="flex flex-wrap gap-3">
-              {images.map((src) => (
-                <label key={src} className="relative cursor-pointer">
-                  <img src={src} alt="" className="h-20 w-20 object-cover rounded-lg border border-ink/10" />
-                  <input type="checkbox" name="keep_image" value={src} defaultChecked className="absolute top-1 start-1 h-4 w-4 accent-cherry" />
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-        <Field label={t('add_images')} hint={t('images_hint')}>
-          <input name="images" type="file" multiple accept="image/jpeg,image/png,image/webp" className="input" />
-        </Field>
+      <div className="card-pad space-y-3">
+        <h2 className="font-bold">{t('images_title')}</h2>
+        <ImageManager initial={images} />
       </div>
 
       <SubmitButton className="btn-primary">{t('save')}</SubmitButton>

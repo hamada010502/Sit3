@@ -300,5 +300,18 @@ export const en = {
   notif_sound: 'Sale sound', notif_sound_hint: 'A short chime when an order arrives while Paylo is open.',
   notif_email: 'Email for each new order', notif_email_hint: 'Sent to your account email.',
   notif_text: 'Text message for each new order', notif_text_hint: 'Sent to your store phone number.', notif_text_none: 'Off',
+  empty_products_body: "Add your first product and you'll get a link to share on Instagram or WhatsApp — buyers check out straight from it.",
+  empty_collections_body: 'Group products (Coffee, Gift sets…) so buyers can browse by category. Add your first one above.',
+  empty_coupons_body: 'Run a sale with a code like EID20 for 20% off. Create your first code above — it only applies to your store.',
+  empty_variations_body: 'Save option lists like Size or Colour once, then apply them to any product in one click. Add one above.',
+  empty_returns_open: 'No open returns', empty_returns_open_body: 'Nothing needs your attention. If a buyer reports a problem it will show up here.',
+  empty_returns_body: 'No buyer has opened a return on your orders.',
+  empty_orders: 'No orders yet', empty_orders_cta: 'Open my store', empty_orders_all: 'See all orders',
+  empty_orders_filtered: 'Nothing under “{state}”', empty_orders_filtered_body: 'Try another filter, or see all your orders.',
+  hand_off_buyer_told: 'The buyer has been notified and can follow it on their tracking page.', tracking_none_yet: 'No tracking number yet — add one when the courier gives it to you.',
+  tracking_update: 'Update', tracking_add: 'Add tracking number', buyer_tracking_link: 'Buyer tracking link', optional: 'optional',
+  images_title: 'Photos', images_drop: 'Drop photos here or tap to choose', images_cover: 'Cover', images_order: 'Photo order',
+  images_move_earlier: 'Move earlier', images_move_later: 'Move later', images_too_many: 'Up to {n} photos — extra ones were not added.',
+  images_bad_file: 'Some files were skipped: use JPG, PNG or WebP under 4 MB.', images_reorder_hint: 'Drag to reorder, or use ‹ ›. The first photo is the cover buyers see.',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

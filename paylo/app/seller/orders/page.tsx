@@ -1,4 +1,5 @@
 import { AutoRefresh } from '@/components/AutoRefresh';
+import { EmptyState } from '@/components/EmptyState';
 import { OrdersTable } from '@/components/OrdersTable';
 import { StatusFilter } from '@/components/StatusFilter';
 import { getDb } from '@/lib/db';
@@ -20,7 +21,10 @@ export default function SellerOrdersPage({ searchParams }: { searchParams: { sta
       <AutoRefresh seconds={10} />
       <h1 className="section-title mb-4">{t('orders_title')}</h1>
       <StatusFilter current={state} t={t} base="/seller/orders" />
-      <OrdersTable orders={orders} t={t} lang={lang} base="/seller/orders" />
+      {orders.length > 0 ? <OrdersTable orders={orders} t={t} lang={lang} base="/seller/orders" />
+        : state === 'all'
+          ? <EmptyState icon="receipt" title={t('empty_orders')} body={t('dash_empty')} action={{ href: `/s/${seller.slug}`, label: t('empty_orders_cta') }} />
+          : <EmptyState icon="receipt" title={t('empty_orders_filtered', { state: t(`os_${state}` as 'os_open') })} body={t('empty_orders_filtered_body')} action={{ href: '/seller/orders', label: t('empty_orders_all') }} />}
     </div>
   );
 }
