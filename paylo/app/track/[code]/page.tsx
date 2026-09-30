@@ -20,7 +20,7 @@ export default function TrackPage({ params, searchParams }: { params: { code: st
 
   const db = getDb();
   const settings = getAllSettings();
-  const seller = db.prepare('SELECT store_name, slug FROM sellers WHERE id = ?').get(order.seller_id) as Pick<Seller, 'store_name' | 'slug'>;
+  const seller = db.prepare('SELECT store_name, slug, thank_you_message FROM sellers WHERE id = ?').get(order.seller_id) as Pick<Seller, 'store_name' | 'slug' | 'thank_you_message'>;
   const events = getOrderEvents(order.id);
   const disputes = getOrderDisputes(order.id);
   const transfer = getBankTransfer(order.id);
@@ -40,6 +40,12 @@ export default function TrackPage({ params, searchParams }: { params: { code: st
     <Shell>
       <AutoRefresh seconds={5} />
       {searchParams.new && <div className="alert-success mb-4">{t('tracking_hint')}</div>}
+      {searchParams.new && seller.thank_you_message && (
+        <div className="card-pad mb-4 border-success/30" data-testid="thank-you">
+          <p className="text-xs uppercase tracking-wide text-ink-soft mb-1">{t('thank_you_from', { store: seller.store_name })}</p>
+          <p className="whitespace-pre-line leading-relaxed">{seller.thank_you_message}</p>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>

@@ -246,6 +246,7 @@ async function notifyOrderPlaced(order: Order, seller: Seller, awaitingPayment: 
     email: order.buyer_email ? { to: order.buyer_email, subject: `Paylo — order ${order.code} received`,
       body: `Hi ${order.buyer_name},\n\nYour order ${order.code} from ${seller.store_name} has been received.\n` +
         (awaitingPayment ? `We are waiting for your bank transfer. Upload the receipt on your tracking page to speed it up.\n` : `You will pay the courier on delivery.\n`) +
+        (seller.thank_you_message ? `\nA note from ${seller.store_name}:\n${seller.thank_you_message}\n` : '') +
         `\nTrack it: ${track}\n\n— Paylo` } : undefined,
     sms: { to: order.buyer_phone, body: `Paylo: order ${order.code} received. Track it at ${track}` },
   });

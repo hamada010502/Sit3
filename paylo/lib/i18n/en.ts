@@ -279,5 +279,8 @@ export const en = {
   earn_refunds_you_bore: 'Refunds you bore', earn_net: 'Your net', earn_list_price: 'List price', earn_you_bore: 'you bore {n}',
   earn_st_paid: 'Paid out', earn_st_in_payout: 'In payout run', earn_st_available: 'Available', earn_st_pending: 'Pending', earn_st_refunded: 'Refunded',
   earn_footnote: 'Delivery fees are not commissioned and go to the courier, so they are not part of your net. Commission is charged on what the buyer paid for goods, after any discount code.',
+  thank_you_label: 'Message after purchase', thank_you_from: 'A note from {store}',
+  thank_you_hint: 'Shown to the buyer right after they order, and added to their confirmation email. Up to 500 characters.',
+  thank_you_ph: 'Thank you! Every order is packed by hand — expect it within 2 days.',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

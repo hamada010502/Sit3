@@ -35,6 +35,7 @@ function migrate(db: Database.Database) {
   addColumn(db, 'product_variants', 'image_path', 'TEXT');
   addColumn(db, 'sellers', 'announcement', 'TEXT');
   addColumn(db, 'sellers', 'about_sections', 'TEXT');
+  addColumn(db, 'sellers', 'thank_you_message', 'TEXT');
   addColumn(db, 'products', 'short_code', 'INTEGER');
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_products_short_code ON products(short_code)');
   backfillShortCodes(db);

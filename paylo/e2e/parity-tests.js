@@ -644,6 +644,32 @@ const gatewayServer = http.createServer((req, res) => {
   ok(!demoCsv.includes(spiceDelivered.code), "another seller's export never contains this store's orders");
   ok((await fetch(BASE + '/seller/earnings/export')).status === 401, 'export requires a seller session');
 
+  /* ---------------- 15. Custom post-purchase message ---------------- */
+  step('15. Each seller can set a message buyers see right after purchase');
+  const thanks = 'Shukran! Ground fresh the morning it ships.\n<i>Keep sealed</i> after opening.';
+  await saveSettings(async () => { await seller.fill('textarea[name=thank_you_message]', thanks); });
+  ok(db.prepare('SELECT thank_you_message m FROM sellers WHERE id = ?').get(spice.id).m === thanks, 'message saved from store settings');
+
+  const tyBuyer = await newPage();
+  await tyBuyer.goto(BASE + '/p/' + zaatar.id);
+  await tyBuyer.fill('input[name=buyer_name]', 'Thank You Buyer');
+  await tyBuyer.fill('input[name=buyer_phone]', '0912345111');
+  await tyBuyer.fill('input[name=buyer_email]', 'ty-buyer@example.com');
+  await tyBuyer.fill('textarea[name=address]', 'Mezzeh, Damascus');
+  await tyBuyer.click('button:has-text("Continue")');
+  const tyOrder = await place(tyBuyer);
+  const tyBox = tyBuyer.locator('[data-testid=thank-you]');
+  ok(await tyBox.count() === 1 && (await tyBox.innerText()).includes('Ground fresh the morning it ships'), 'confirmation page shows the seller’s message');
+  ok((await tyBox.innerText()).includes('<i>Keep sealed</i>') && await tyBox.locator('i').count() === 0, 'message renders as text, never HTML');
+  const tyMail = db.prepare("SELECT body FROM notifications WHERE channel = 'email' AND recipient = 'ty-buyer@example.com' AND event = 'order.placed'").get();
+  ok(tyMail && tyMail.body.includes('A note from Damascus Spice House') && tyMail.body.includes('Ground fresh the morning it ships'), 'message is included in the confirmation email');
+
+  await tyBuyer.goto(BASE + '/track/' + tyOrder.code);
+  ok(await tyBuyer.locator('[data-testid=thank-you]').count() === 0, 'shown only right after purchase, not on later visits to tracking');
+  const linaOrder = db.prepare("SELECT code FROM orders WHERE seller_id = (SELECT id FROM sellers WHERE slug = 'lina-handmade') LIMIT 1").get();
+  await tyBuyer.goto(BASE + '/track/' + linaOrder.code + '?new=1');
+  ok(await tyBuyer.locator('[data-testid=thank-you]').count() === 0, "another store's orders never show this store's message");
+
   console.log(`\nALL PASSED — ${passed} assertions`);
   await browser.close();
   db.close();

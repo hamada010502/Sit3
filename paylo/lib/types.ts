@@ -30,7 +30,7 @@ export interface User {
 export interface Seller {
   id: string; user_id: string; store_name: string; slug: string; instagram: string | null; phone: string;
   governorate: string; bio: string | null; about: string | null; logo_path: string | null; banner_path: string | null;
-  announcement: string | null; about_sections: string | null;
+  announcement: string | null; about_sections: string | null; thank_you_message: string | null;
   visible: number; payout_details: string | null; status: SellerStatus; review_note: string | null;
   kyc_status: KycStatus; kyc_legal_name: string | null; kyc_national_id: string | null; kyc_doc_path: string | null;
   kyc_note: string | null; kyc_reviewed_at: string | null; created_at: string; reviewed_at: string | null;

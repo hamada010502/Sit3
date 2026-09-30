@@ -29,6 +29,9 @@ export function SettingsForm({ seller }: { seller: Seller }) {
       <Field label={t('store_announcement')} hint={t('store_announcement_hint')}>
         <input name="announcement" className="input" maxLength={160} defaultValue={seller.announcement ?? ''} placeholder={t('store_announcement_ph')} />
       </Field>
+      <Field label={t('thank_you_label')} hint={t('thank_you_hint')}>
+        <textarea name="thank_you_message" className="input" rows={3} maxLength={500} defaultValue={seller.thank_you_message ?? ''} placeholder={t('thank_you_ph')} />
+      </Field>
       <Field label={t('store_about')} hint={t('store_about_builder_hint')}>
         <textarea name="about" className="input" rows={3} defaultValue={seller.about ?? ''} />
       </Field>

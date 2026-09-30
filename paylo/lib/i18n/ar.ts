@@ -244,4 +244,7 @@ export const ar: Dict = {
   earn_refunds_you_bore: 'استردادات تحمّلتها', earn_net: 'صافي مستحقك', earn_list_price: 'السعر', earn_you_bore: 'تحمّلت {n}',
   earn_st_paid: 'مدفوع', earn_st_in_payout: 'ضمن دفعة', earn_st_available: 'متاح', earn_st_pending: 'قيد الانتظار', earn_st_refunded: 'مسترد',
   earn_footnote: 'رسوم التوصيل لا تخضع للعمولة وتذهب لشركة التوصيل، لذا ليست جزءًا من صافيك. تُحسب العمولة على ما دفعه المشتري للمنتجات بعد أي خصم.',
+  thank_you_label: 'رسالة بعد الشراء', thank_you_from: 'رسالة من {store}',
+  thank_you_hint: 'تظهر للمشتري فور إتمام الطلب، وتُضاف إلى بريد التأكيد. حتى 500 حرف.',
+  thank_you_ph: 'شكرًا لك! كل طلب يُغلَّف يدويًا — توقّع وصوله خلال يومين.',
 };
