@@ -6,15 +6,18 @@ import { formatSYP } from './money';
  * Every email / SMS / WhatsApp text Paylo sends, in Arabic or English. Strings live in
  * lib/i18n (keys nt_*), so the two languages stay in sync through the Dict type.
  *
- * Language: buyers get Arabic (no account, no stored preference). Sellers get the language
- * of their most recently registered push device — the only place Paylo records a seller's
- * chosen language — and Arabic otherwise.
+ * Language: buyers get Arabic (no account, no stored preference). Sellers get their
+ * preferred_lang setting (default Arabic).
  */
 export const buyerLang = (): Lang => 'ar';
 
+/**
+ * The seller's explicit choice (Settings → Notifications → "Language of my messages"),
+ * default Arabic. The dashboard's AR/EN browsing switch is independent of this.
+ */
 export function sellerLang(sellerId: string): Lang {
-  const r = getDb().prepare('SELECT lang FROM push_subscriptions WHERE seller_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1').get(sellerId) as { lang: string } | undefined;
-  return r?.lang === 'en' ? 'en' : 'ar';
+  const r = getDb().prepare('SELECT preferred_lang FROM sellers WHERE id = ?').get(sellerId) as { preferred_lang: string } | undefined;
+  return r?.preferred_lang === 'en' ? 'en' : 'ar';
 }
 
 export interface Mail { subject: string; body: string }

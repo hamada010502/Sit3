@@ -14,14 +14,13 @@ export function HandedOffCard({ order, trackUrl, t }: { order: Order; trackUrl: 
           <h2 className="font-bold text-lg">{t('hand_off_done')}</h2>
           <p className="text-sm text-ink-soft">
             {order.handed_off_at && <span dir="ltr">{order.handed_off_at} UTC</span>}
-            {order.fulfillment_ref && <> · {order.fulfillment_ref}</>}
           </p>
           <p className="text-sm text-ink-soft mt-1">{t('hand_off_buyer_told')}</p>
         </div>
       </div>
 
       <div className="rounded-xl bg-white border border-ink/10 p-4">
-        <div className="stat-label">{t('tracking_number')}</div>
+        <div className="stat-label">{t('tracking_cargo_number')}</div>
         {order.tracking_number ? (
           <div className="mt-1 flex flex-wrap items-center gap-3">
             <span className="text-2xl font-extrabold font-mono tracking-wide break-all" dir="ltr" data-testid="tracking-number">{order.tracking_number}</span>

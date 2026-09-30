@@ -630,7 +630,7 @@ const gatewayServer = http.createServer((req, res) => {
   const refRow = seller.locator(`[data-testid=earnings-table] tr[data-code="${spiceDelivered.code}"]`);
   const refText = await refRow.innerText();
   const bore = 30000 - commissionBack;
-  ok(refText.includes('− ' + fmt(30000)) && refText.includes(`you bore ${fmt(bore)}`), `partially refunded order shows the 30,000 refund and the ${fmt(bore)} the seller bore`);
+  ok(refText.includes('− ' + fmt(30000)) && refText.includes('− ' + fmt(bore)), `partially refunded order shows the 30,000 refund and the ${fmt(bore)} the seller bore`);
   ok(/In payout run/.test(refText), 'shows it is already in a payout run');
   const raceOrder = db.prepare("SELECT * FROM orders WHERE coupon_code = 'RACE1'").get();
   const raceText = await seller.locator(`[data-testid=earnings-table] tr[data-code="${raceOrder.code}"]`).innerText();

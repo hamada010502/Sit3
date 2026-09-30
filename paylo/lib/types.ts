@@ -32,6 +32,8 @@ export interface Seller {
   governorate: string; bio: string | null; about: string | null; logo_path: string | null; banner_path: string | null;
   announcement: string | null; about_sections: string | null; thank_you_message: string | null;
   notify_push: number; notify_sound: number; notify_email_orders: number; notify_text: 'none' | 'sms' | 'whatsapp';
+  preferred_lang: 'ar' | 'en';
+  onboarding_dismissed: number; onboarding_link_copied: number;
   visible: number; payout_details: string | null; status: SellerStatus; review_note: string | null;
   kyc_status: KycStatus; kyc_legal_name: string | null; kyc_national_id: string | null; kyc_doc_path: string | null;
   kyc_note: string | null; kyc_reviewed_at: string | null; created_at: string; reviewed_at: string | null;

@@ -10,9 +10,10 @@ export async function saveNotifyPrefsAction(_prev: { ok?: boolean } | null, form
   const { user, seller } = requireApprovedSeller();
   const text = ['sms', 'whatsapp'].includes(String(formData.get('notify_text'))) ? String(formData.get('notify_text')) : 'none';
   const on = (k: string) => (formData.get(k) ? 1 : 0);
-  getDb().prepare('UPDATE sellers SET notify_push = ?, notify_sound = ?, notify_email_orders = ?, notify_text = ? WHERE id = ?')
-    .run(on('notify_push'), on('notify_sound'), on('notify_email_orders'), text, seller.id);
-  audit('seller', user.id, seller.store_name, 'seller', seller.id, 'notifications.updated', { push: on('notify_push'), sound: on('notify_sound'), email: on('notify_email_orders'), text });
+  const lang = formData.get('preferred_lang') === 'en' ? 'en' : 'ar';
+  getDb().prepare('UPDATE sellers SET notify_push = ?, notify_sound = ?, notify_email_orders = ?, notify_text = ?, preferred_lang = ? WHERE id = ?')
+    .run(on('notify_push'), on('notify_sound'), on('notify_email_orders'), text, lang, seller.id);
+  audit('seller', user.id, seller.store_name, 'seller', seller.id, 'notifications.updated', { push: on('notify_push'), sound: on('notify_sound'), email: on('notify_email_orders'), text, lang });
   revalidatePath('/seller', 'layout');
   return { ok: true };
 }

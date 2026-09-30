@@ -214,7 +214,6 @@ const upload = (name) => ({ name, mimeType: 'image/png', buffer: PNG });
   step('9. Seller hands off — the order closes');
   await seller.goto(BASE + '/seller/orders?state=open');
   await seller.locator('tr', { hasText: code }).getByRole('link', { name: 'View', exact: true }).click();
-  await seller.fill('input[name=ref]', 'RIDER-1');
   await seller.fill('input[name=tracking]', 'TRK-99');
   await seller.getByRole('button', { name: 'Mark as handed off' }).click();
   await seller.waitForSelector('span.badge:has-text("Closed")');
@@ -283,6 +282,7 @@ const upload = (name) => ({ name, mimeType: 'image/png', buffer: PNG });
 
   step('13. Return request refunded with liability recorded');
   await seller.reload();
+  await seller.fill('input[name=tracking]', 'TRK-SMOKE-2');
   await seller.getByRole('button', { name: 'Mark as handed off' }).click();
   await seller.waitForSelector('span.badge:has-text("Closed")');
   await buyer.goto(BASE + '/track/' + code2);

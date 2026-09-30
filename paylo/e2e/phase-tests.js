@@ -120,6 +120,91 @@ const step = (m) => console.log('\n' + m);
     ok(envRun({ PAYMENT_CARD_ENABLED: '1', PAYMENT_PROVIDER: 'qnb' }) === 1, 'check:env fails when card is enabled on the unconfigured qnb placeholder');
   }
 
+  if (ONLY.includes('2')) {
+    const sCtx = await ctx(); const seller = await sCtx.newPage();
+    await login(seller, 'spice@paylo.sy'); await seller.waitForURL('**/seller');
+    const cookie = (await sCtx.cookies()).map((c) => `${c.name}=${c.value}`).join('; ');
+
+    step('2.1 Seller message language is an explicit setting (default Arabic)');
+    ok(db.prepare('SELECT preferred_lang FROM sellers WHERE id = ?').get(spice.id).preferred_lang === 'ar', 'preferred_lang column exists and defaults to Arabic');
+    await seller.goto(BASE + '/seller/settings');
+    ok(await seller.locator('[data-testid=preferred-lang]').inputValue() === 'ar', 'settings show the current choice');
+
+    step('2.2 Payouts page before any payout run: empty state');
+    await seller.goto(BASE + '/seller/payouts');
+    ok(await seller.getByText('No payouts yet.').count() === 1 && await seller.locator('[data-testid=payouts-table]').count() === 0, 'EmptyState explains when payouts start');
+
+    step('2.2 Earnings: full breakdown, and the CSV has exactly the page columns');
+    await seller.goto(BASE + '/seller/earnings');
+    const pageCols = await seller.locator('[data-testid=earnings-table] thead th').evaluateAll((ths) => ths.map((th) => th.getAttribute('data-col')));
+    const csv = await (await fetch(BASE + '/seller/earnings/export', { headers: { cookie } })).text();
+    const csvCols = csv.split('\r\n')[0].split(',');
+    ok(JSON.stringify(pageCols) === JSON.stringify(csvCols), `page and CSV share the same ${csvCols.length} columns in the same order`);
+    for (const c of ['paid', 'commission', 'commission_vat', 'net', 'delivery_fee_platform_held', 'order', 'date', 'order_state']) ok(csvCols.includes(c), `column present: ${c}`);
+    const csvRows = csv.split('\r\n').filter(Boolean).slice(1).map((l) => l.match(/"((?:[^"]|"")*)"/g).map((x) => x.slice(1, -1).replace(/""/g, '"')));
+    ok(csvRows.length === await seller.locator('[data-testid=earnings-table] tbody tr').count(), 'CSV has one line per page row');
+    const idx = (k) => csvCols.indexOf(k);
+    const recon = csvRows.every((r) => r[idx('payout_status')] === 'refunded' || Number(r[idx('paid')]) - Number(r[idx('commission')]) - Number(r[idx('commission_vat')]) - Number(r[idx('refund_borne_by_seller')]) === Number(r[idx('net')]));
+    ok(recon, 'every line reconciles: goods paid − commission − VAT − refunds you bore = net');
+    const o1 = db.prepare("SELECT * FROM orders WHERE seller_id = ? AND delivery_fee > 0 AND status NOT IN ('cancelled','payment_failed') LIMIT 1").get(spice.id);
+    const line = csvRows.find((r) => r[idx('order')] === o1.code);
+    ok(Number(line[idx('delivery_fee_platform_held')]) === o1.delivery_fee && Number(line[idx('net')]) === o1.seller_net, 'delivery fee is its own column and never inside the net');
+    ok((await seller.locator('[data-testid=earnings-delivery]').innerText()).includes('Never commissioned'), 'page calls the delivery fee out as platform-held, not commissioned');
+
+    step('2.2 After a payout run: per-period breakdown adds up to the amount paid');
+    const aCtx2 = await ctx(); const adm = await aCtx2.newPage();
+    await login(adm, 'admin@paylo.sy', 'admin1234'); await adm.waitForURL('**/admin**');
+    await adm.goto(BASE + '/admin/payouts');
+    await adm.getByRole('button', { name: /Generate this week/ }).click();
+    await adm.waitForLoadState('networkidle');
+    const payout = db.prepare('SELECT * FROM payouts WHERE seller_id = ? ORDER BY created_at DESC LIMIT 1').get(spice.id);
+    ok(!!payout, 'a payout run was created for the store');
+    await seller.goto(BASE + '/seller/payouts');
+    const prow = seller.locator(`[data-payout="${payout.id}"]`);
+    const cells = await prow.locator('td').allInnerTexts();
+    const num = (x) => Number((x || '').replace(/[^\d]/g, '')) || 0;
+    ok(num(cells[2]) - num(cells[3]) - num(cells[4]) - num(cells[5]) === payout.amount && num(cells[6]) === payout.amount, `gross − commission − VAT − refunds = ${payout.amount} (the amount paid)`);
+    ok(num(cells[7]) === db.prepare('SELECT sum(delivery_fee) s FROM orders WHERE payout_id = ?').get(payout.id).s, 'delivery fees held for the period are shown separately');
+    await aCtx2.close();
+
+    step('2.4 First-run checklist for a new store');
+    const bcrypt = require('bcryptjs');
+    db.prepare("INSERT INTO users (id, email, password_hash, role, name, totp_secret, totp_enabled) VALUES ('u-newbie', 'newbie@paylo.sy', ?, 'seller', 'New Seller', ?, 1)").run(bcrypt.hashSync('seller1234', 10), TOTP['newbie@paylo.sy']);
+    db.prepare("INSERT INTO sellers (id, user_id, store_name, slug, phone, governorate, status) VALUES ('s-newbie', 'u-newbie', 'Newbie Shop', 'newbie-shop', '0933000222', 'Damascus', 'approved')").run();
+    const nCtx = await ctx({ permissions: ['clipboard-read', 'clipboard-write'] }); const nb = await nCtx.newPage();
+    await login(nb, 'newbie@paylo.sy'); await nb.waitForURL('**/seller');
+    const stepState = (k) => nb.locator(`[data-testid=onboarding] [data-step=${k}]`).getAttribute('data-done');
+    ok(await nb.locator('[data-testid=onboarding] [data-step]').evaluateAll((els) => els.map((e) => e.getAttribute('data-step')).join()) === 'ob_product,ob_copy_link,ob_notifications,ob_kyc', 'steps: first product, copy store link, enable alerts, verify identity');
+    await nb.locator('[data-step=ob_copy_link] button').click();
+    await nb.waitForFunction(() => document.querySelector('[data-step=ob_copy_link]')?.getAttribute('data-done') === '1');
+    for (let i = 0; i < 20 && !db.prepare("SELECT onboarding_link_copied c FROM sellers WHERE id = 's-newbie'").get().c; i++) await new Promise((r) => setTimeout(r, 150));
+    await nb.reload();
+    ok(await stepState('ob_copy_link') === '1', 'copying the store link ticks that step, and it stays ticked after reload');
+    await nb.locator('[data-step=ob_product] a').click(); await nb.waitForURL('**/seller/products/new');
+    db.prepare("INSERT INTO products (id, seller_id, title, price, stock, status) VALUES ('p-newbie', 's-newbie', 'First thing', 10000, 3, 'active')").run();
+    await nb.goto(BASE + '/seller');
+    ok(await stepState('ob_product') === '1', 'adding the first product ticks that step');
+    await nb.locator('[data-testid=onboarding-dismiss]').click();
+    await nb.waitForFunction(() => !document.querySelector('[data-testid=onboarding]'));
+    await nb.reload();
+    ok(await nb.locator('[data-testid=onboarding]').count() === 0, 'Hide dismisses it for good');
+    await nCtx.close();
+
+    step('2.6 Store settings are one coherent area');
+    await seller.goto(BASE + '/seller/settings');
+    ok(await seller.locator('[data-testid=store-settings-form] fieldset[data-group]').evaluateAll((f) => f.map((x) => x.dataset.group).join()) === 'store-details,storefront,after-purchase,payout', 'grouped: store details, storefront (logo, banner, announcement, About), after purchase, payouts');
+    ok(await seller.locator('#storefront input[name=announcement]').count() === 1 && await seller.locator('#storefront input[name=logo]').count() === 1 && await seller.locator('#after-purchase textarea[name=thank_you_message]').count() === 1, 'each field sits in its group; one Save for all');
+
+    step('2.2/2.6 Phone width, Arabic');
+    await sCtx.addCookies([{ name: 'paylo_lang', value: 'ar', url: BASE }]);
+    await seller.setViewportSize({ width: 390, height: 844 });
+    for (const pth of ['/seller/earnings', '/seller/payouts', '/seller/settings', '/seller']) {
+      await seller.goto(BASE + pth);
+      ok(await seller.evaluate(() => document.documentElement.dir === 'rtl' && document.documentElement.scrollWidth <= window.innerWidth + 1), `${pth}: RTL, no horizontal page overflow at 390px`);
+    }
+    await sCtx.close();
+  }
+
   console.log(`\nALL PASSED — ${passed} assertions`);
   await browser.close(); db.close();
   process.exit(0);

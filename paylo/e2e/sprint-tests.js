@@ -281,14 +281,21 @@ function decryptPush(sub, body) {
   const hoOrder = await buy(buyer, 'Handoff Buyer');
   await seller.goto(BASE + '/seller/orders/' + hoOrder.id);
   const hoForm = seller.locator('[data-testid=handoff-form]');
-  await hoForm.getByLabel('Rider name or shipment reference').fill('Rider Sami');
-  await hoForm.getByLabel(/Tracking number/).fill('TRK-SPRINT-1');
+  ok(await hoForm.locator('input:not([type=hidden])').count() === 1 && await hoForm.locator('input[name=tracking][required]').count() === 1, 'one field only: the tracking / cargo number, and it is required');
+  await hoForm.getByRole('button', { name: 'Mark as handed off' }).click();
+  ok(await hoForm.locator('input[name=tracking]:invalid').count() === 1 && db.prepare('SELECT status FROM orders WHERE id = ?').get(hoOrder.id).status === 'confirmed', 'empty → the browser blocks it and the order stays open');
+  await hoForm.locator('input[name=tracking]').evaluate((el) => el.removeAttribute('required'));
+  await hoForm.getByRole('button', { name: 'Mark as handed off' }).click();
+  await hoForm.getByText('Enter the tracking / cargo number').waitFor();
+  ok(db.prepare('SELECT status FROM orders WHERE id = ?').get(hoOrder.id).status === 'confirmed', 'empty with the browser check removed → the server refuses with a clear message');
+  await hoForm.getByLabel('Tracking / cargo number').fill('TRK-SPRINT-1');
   await hoForm.getByRole('button', { name: 'Mark as handed off' }).click();
   const done = seller.locator('[data-testid=handoff-done]');
   await done.waitFor();
   ok(await seller.locator('[data-testid=handoff-form]').count() === 0, 'the form is replaced by a success card');
   const doneText = await done.innerText();
-  ok(/Handed off/.test(doneText) && /Rider Sami/.test(doneText) && /buyer has been notified/.test(doneText), 'success card says it is handed off, by whom, and that the buyer was told');
+  ok(/Handed off/.test(doneText) && /buyer has been notified/.test(doneText), 'success card says it is handed off and that the buyer was told');
+  ok(db.prepare('SELECT order_state, tracking_number FROM orders WHERE id = ?').get(hoOrder.id).order_state === 'closed', 'hand-off closes the order');
   ok(await done.locator('[data-testid=tracking-number]').innerText() === 'TRK-SPRINT-1', 'tracking number is shown prominently');
   ok(doneText.includes('/track/' + hoOrder.code), "buyer's tracking link is right there to copy");
   await done.locator('input[name=tracking]').fill('TRK-SPRINT-2');
@@ -465,7 +472,8 @@ function decryptPush(sub, body) {
   await login(newSeller, 'fresh@paylo.sy'); await newSeller.waitForURL('**/seller');
   const stepDone = async (k) => newSeller.locator(`[data-testid=onboarding] [data-step=${k}]`).getAttribute('data-done');
   ok(await newSeller.locator('[data-testid=onboarding]').count() === 1, 'checklist shown to a seller with no orders');
-  ok(await stepDone('ob_2fa') === '1' && await stepDone('ob_kyc') === '0' && await stepDone('ob_product') === '0', '2FA done; identity and first product still to do');
+  ok(await stepDone('ob_product') === '0' && await stepDone('ob_copy_link') === '0' && await stepDone('ob_notifications') === '0' && await stepDone('ob_kyc') === '0', 'four steps: product, copy link, alerts, identity — none done yet');
+  ok(await newSeller.locator('[data-step=ob_notifications] a').getAttribute('href') === '/seller/settings#notifications' && await newSeller.locator('[data-step=ob_kyc] a').getAttribute('href') === '/seller/verification', 'each step links to where it is done');
   await newSeller.locator('[data-step=ob_product] a').click(); await newSeller.waitForURL('**/seller/products/new');
   ok(true, '"Start" on the product step opens the new-product form');
   db.prepare("INSERT INTO products (id, seller_id, title, price, stock, status) VALUES ('p-fresh', 's-fresh', 'First thing', 10000, 3, 'active')").run();
@@ -502,17 +510,23 @@ function decryptPush(sub, body) {
   ok(await nAdmin.getByText(`بايلو — استلمنا طلبك ${lOrder.code}`).count() >= 1 && await nAdmin.getByText('ستدفع للمندوب عند الاستلام.', { exact: false }).count() >= 1, 'Admin → Notifications shows the Arabic subject and body');
   await nCtx.close();
 
-  step('L3. Seller emails follow the language of their latest push device');
+  step('L3. Seller emails follow the seller’s language setting (default Arabic), not the device');
   const sMail = (code) => db.prepare("SELECT subject, body FROM notifications WHERE channel = 'email' AND recipient = 'spice@paylo.sy' AND event = 'order.placed.seller' AND subject LIKE ?").get(`%${code}%`);
-  // The newest device so far is the Arabic one from P10.
-  ok(sMail(lOrder.code)?.subject === `بايلو — طلب جديد ${lOrder.code}`, 'latest device Arabic → seller new-order email in Arabic');
+  ok(sMail(lOrder.code)?.subject === `بايلو — طلب جديد ${lOrder.code}`, 'default setting → seller new-order email in Arabic');
   const subEn = makeSubscription('device-en-latest');
   await fetch(BASE + '/api/push/subscribe', { method: 'POST', headers: { cookie: (await cookieHeader(seller)) + '; paylo_lang=en', 'content-type': 'application/json' }, body: JSON.stringify(subEn.json) });
+  const e0Ctx = await ctx(); const stillAr = await buy(await e0Ctx.newPage(), 'Device Is Not Preference'); await e0Ctx.close();
+  ok(sMail(stillAr.code)?.subject === `بايلو — طلب جديد ${stillAr.code}`, 'an English push device alone does not override the Arabic setting');
+  await seller.goto(BASE + '/seller/settings');
+  await seller.locator('[data-testid=preferred-lang]').selectOption('en');
+  await seller.locator('form:has([data-testid=preferred-lang]) button[type=submit]').click();
+  await seller.waitForFunction(() => document.querySelector('[data-testid=preferred-lang]')?.closest('form')?.querySelector('.alert-success'));
   const eCtx = await ctx(); const enOrder = await buy(await eCtx.newPage(), 'English Seller Check'); await eCtx.close();
   const enMail = sMail(enOrder.code);
-  ok(enMail?.subject === `Paylo — new order ${enOrder.code}` && enMail.body.includes('New order') && enMail.body.endsWith('— Paylo') && !/[؀-ۿ]{3,}/.test(enMail.body.replace(/Za'atar.*?\)/, '')), 'seller with an English push device gets the new-order email in English, not Arabic');
+  ok(enMail?.subject === `Paylo — new order ${enOrder.code}` && enMail.body.includes('New order') && enMail.body.endsWith('— Paylo'), 'seller who chose English gets the new-order email in English');
+  ok(db.prepare("SELECT body FROM notifications WHERE event = 'order.placed' AND channel != 'email' AND body LIKE ?").get(`%${enOrder.code}%`).body.startsWith('بايلو:'), '…while the buyer of that same order still gets Arabic');
   const lina = db.prepare("SELECT * FROM sellers WHERE slug = 'lina-handmade'").get();
-  ok(db.prepare('SELECT count(*) c FROM push_subscriptions WHERE seller_id = ?').get(lina.id).c === 0, 'a seller with no push device…');
+  ok(db.prepare('SELECT count(*) c FROM push_subscriptions WHERE seller_id = ?').get(lina.id).c === 0, 'another seller who never touched the setting…');
   db.prepare('UPDATE sellers SET notify_email_orders = 1 WHERE id = ?').run(lina.id);
   const linaProduct = db.prepare("SELECT id FROM products WHERE seller_id = ? AND status = 'active' AND type = 'physical' AND stock > 0 AND id NOT IN (SELECT product_id FROM product_variants) LIMIT 1").get(lina.id);
   const liCtx = await ctx(); const li = await liCtx.newPage();
@@ -523,7 +537,7 @@ function decryptPush(sub, body) {
   await li.waitForURL('**/track/**', { timeout: 15000 });
   const liCode = decodeURIComponent(new URL(li.url()).pathname.split('/').pop()); await liCtx.close();
   const linaMail = db.prepare("SELECT subject FROM notifications WHERE event = 'order.placed.seller' AND channel = 'email' AND subject LIKE ?").get(`%${liCode}%`);
-  ok(linaMail?.subject === `بايلو — طلب جديد ${liCode}`, '…falls back to Arabic');
+  ok(linaMail?.subject === `بايلو — طلب جديد ${liCode}`, '…gets Arabic (the default)');
 
 
   step('A1b. Offline: with the server unreachable, navigation shows the Paylo offline page');

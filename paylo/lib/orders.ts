@@ -336,6 +336,7 @@ async function autoDeliverDigital(order: Order) {
 export async function sellerHandOff(order: Order, sellerId: string, ref: string, tracking: string) {
   if (order.seller_id !== sellerId) throw new OrderError('Not your order');
   if (order.payment_method === 'bank_transfer' && order.payment_status !== 'confirmed') throw new OrderError('Payment is not confirmed yet');
+  if (!tracking.trim()) throw new OrderError('tracking_required');
   transition(order, 'handed_off', 'seller', ref || null, { handed_off_at: nowIso(), fulfillment_ref: ref || null, tracking_number: tracking || null });
   const fresh = getOrder(order.id)!;
   const m = buyerShipped(buyerLang(), { name: fresh.buyer_name, code: fresh.code, viaPickupPartner: fresh.fulfillment_method === 'logistics_pickup', tracking: tracking || null, track: appUrl('/track/' + fresh.code) });

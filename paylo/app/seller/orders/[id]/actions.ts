@@ -18,7 +18,9 @@ async function own(orderId: string, fn: (o: import('@/lib/types').Order, sellerI
 }
 
 export async function handOffAction(orderId: string, _prev: { error?: string } | null, formData: FormData) {
-  return own(orderId, (o, sellerId) => sellerHandOff(o, sellerId, String(formData.get('ref') || '').trim(), String(formData.get('tracking') || '').trim()));
+  const tracking = String(formData.get('tracking') || '').trim().slice(0, 80);
+  if (!tracking) return { error: 'tracking_required' };
+  return own(orderId, (o, sellerId) => sellerHandOff(o, sellerId, tracking, tracking));
 }
 export async function updateTrackingAction(orderId: string, formData: FormData): Promise<void> {
   await own(orderId, (o) => {

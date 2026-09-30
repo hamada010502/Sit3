@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { AutoRefresh } from '@/components/AutoRefresh';
+import { OnboardingChecklist, type ChecklistStep } from './onboarding/Checklist';
+import { subscriptionCount } from '@/lib/push';
 import { CopyButton } from '@/components/CopyButton';
 import { OrderStateBadge, OrderStatusBadge } from '@/components/StatusBadge';
 import { getDb } from '@/lib/db';
@@ -28,6 +30,14 @@ export default function SellerDashboard() {
   const storeUrl = appUrl(`/s/${seller.slug}`);
   const totalOrders = count('1 = 1');
   const productCount = (db.prepare("SELECT count(*) c FROM products WHERE seller_id = ? AND status != 'removed'").get(seller.id) as { c: number }).c;
+  // First-run checklist: while the store has no products or no orders yet.
+  const steps: ChecklistStep[] = [
+    { key: 'ob_product', done: productCount > 0, href: '/seller/products/new' },
+    { key: 'ob_copy_link', done: !!seller.onboarding_link_copied },
+    { key: 'ob_notifications', done: subscriptionCount(seller.id) > 0, href: '/seller/settings#notifications' },
+    { key: 'ob_kyc', done: seller.kyc_status === 'approved', href: '/seller/verification', note: seller.kyc_status === 'submitted' ? t('ob_kyc_waiting') : undefined },
+  ];
+  const showChecklist = (productCount === 0 || totalOrders === 0) && !seller.onboarding_dismissed && steps.some((s) => !s.done);
 
   // Payout calendar is UTC (lib/payouts-schedule.ts), so dates render in UTC too.
   const cutoff = nextCutoff();
@@ -51,29 +61,7 @@ export default function SellerDashboard() {
         </div>
       </div>
 
-      {totalOrders === 0 && (
-        <section className="card-pad mb-4" data-testid="onboarding">
-          <h2 className="font-bold text-lg">{t('ob_title')}</h2>
-          <p className="text-sm text-ink-soft mb-3">{t('ob_sub')}</p>
-          <ol className="space-y-2">
-            {([
-              ['ob_2fa', true, '/seller/security', null],
-              ['ob_kyc', seller.kyc_status === 'approved', '/seller/verification', seller.kyc_status === 'submitted' ? t('ob_kyc_waiting') : null],
-              ['ob_product', productCount > 0, '/seller/products/new', null],
-              ['ob_share', false, null, null],
-              ['ob_sale', false, null, null],
-            ] as const).map(([key, done, href, note], i) => (
-              <li key={key} data-step={key} data-done={done ? '1' : '0'} className="flex flex-wrap items-center gap-3">
-                <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${done ? 'bg-success text-white' : 'bg-ink/8 text-ink'}`}>{done ? '✓' : i + 1}</span>
-                <span className={`flex-1 min-w-0 ${done ? 'text-ink-soft line-through' : 'font-medium'}`}>{t(key)}</span>
-                {done ? <span className="text-xs text-success font-semibold">{t('ob_done')}</span>
-                  : note ? <span className="text-xs text-ink-soft">{note}</span>
-                  : key === 'ob_share' ? <CopyButton text={storeUrl} />
-                  : href ? <Link href={href} className="btn-primary btn-sm">{t('ob_do')}</Link> : null}
-              </li>))}
-          </ol>
-        </section>
-      )}
+      {showChecklist && <OnboardingChecklist storeUrl={storeUrl} steps={steps} />}
       {openReturns > 0 && <Link href="/seller/returns" className="alert-warn mb-4 block" data-testid="returns-alert">{t('returns_open_alert', { n: openReturns })} →</Link>}
       <section className="card-pad mb-4 border-cherry/20 bg-cherry/5 flex flex-wrap items-center justify-between gap-4" data-testid="next-payout">
         <div>

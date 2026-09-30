@@ -308,6 +308,27 @@ actions.
 - Amounts use `formatSYP` in the message language (Arabic digits and «ل.س» in Arabic).
 - Web Push already used per-device language (§7d).
 
+## 7i. Design note: a future `order_items` table (not built)
+
+Orders are single-item on purpose (one product link → one order). If a cart is ever
+needed, this is the shape that keeps every existing rule intact. Nothing below exists yet.
+
+- **Table:** `order_items(id, order_id → orders, product_id, variant_id, title, variant_label,
+  unit_price, quantity, line_subtotal, stock_reserved INTEGER)`. Title, label and price are
+  copied at placement, like `orders.product_title` / `unit_price` today.
+- **Order header keeps the money:** `orders.subtotal` becomes the sum of line subtotals;
+  discount, delivery fee, commission, commission VAT and `seller_net` stay on the order and
+  are still frozen at placement by `lib/fees.ts`. Payout eligibility and the ledger read
+  only order-level columns, so they would not change.
+- **One seller per order:** a multi-store cart splits into one order per seller at checkout,
+  so seller scoping, hand-off, returns and payouts keep working per order.
+- **Stock:** reserved per line inside the same checkout transaction; cancellation releases
+  every line.
+- **State machine:** unchanged — state lives on the order, never on a line. Partial returns
+  of a single line would reuse the partial-refund path (amount ≤ that line's subtotal).
+- **Migration:** backfill one `order_items` row per existing order from its product columns,
+  then keep the old columns as read-only history.
+
 ## 8. Known gaps
 
 - **No explicit language preference.** Seller language is inferred from their latest push

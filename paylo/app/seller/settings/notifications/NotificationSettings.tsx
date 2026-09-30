@@ -7,7 +7,7 @@ import { useI18n } from '@/lib/i18n/client';
 import { SubmitButton } from '@/components/SubmitButton';
 import type { Seller } from '@/lib/types';
 
-type Prefs = Pick<Seller, 'notify_push' | 'notify_sound' | 'notify_email_orders' | 'notify_text'>;
+type Prefs = Pick<Seller, 'notify_push' | 'notify_sound' | 'notify_email_orders' | 'notify_text' | 'preferred_lang'>;
 
 export function NotificationSettings({ prefs, devices }: { prefs: Prefs; devices: number }) {
   const { t } = useI18n();
@@ -71,6 +71,13 @@ export function NotificationSettings({ prefs, devices }: { prefs: Prefs; devices
           <span className="text-xs text-ink-soft block mb-2">{t('notif_text_hint')}</span>
           <select name="notify_text" className="input" defaultValue={prefs.notify_text}>
             <option value="none">{t('notif_text_none')}</option><option value="sms">SMS</option><option value="whatsapp">WhatsApp</option>
+          </select>
+        </label>
+        <label className="block py-3">
+          <strong className="block text-sm">{t('notif_lang')}</strong>
+          <span className="text-xs text-ink-soft block mb-2">{t('notif_lang_hint')}</span>
+          <select name="preferred_lang" className="input" defaultValue={prefs.preferred_lang} data-testid="preferred-lang">
+            <option value="ar">العربية</option><option value="en">English</option>
           </select>
         </label>
         <div className="pt-3"><SubmitButton className="btn-primary">{t('save')}</SubmitButton></div>

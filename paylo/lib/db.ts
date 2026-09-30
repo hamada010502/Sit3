@@ -40,6 +40,14 @@ function migrate(db: Database.Database) {
   addColumn(db, 'sellers', 'notify_sound', 'INTEGER NOT NULL DEFAULT 0');
   addColumn(db, 'sellers', 'notify_email_orders', 'INTEGER NOT NULL DEFAULT 1');
   addColumn(db, 'sellers', 'notify_text', "TEXT NOT NULL DEFAULT 'none'");
+  addColumn(db, 'sellers', 'onboarding_dismissed', 'INTEGER NOT NULL DEFAULT 0');
+  addColumn(db, 'sellers', 'onboarding_link_copied', 'INTEGER NOT NULL DEFAULT 0');
+  // Language of emails/SMS to the seller. Stores that already received English through
+  // their latest push device keep English, so nobody's messages switch language on upgrade.
+  if (addColumn(db, 'sellers', 'preferred_lang', "TEXT NOT NULL DEFAULT 'ar'") && hasTable(db, 'push_subscriptions')) {
+    db.exec(`UPDATE sellers SET preferred_lang = 'en' WHERE (SELECT lang FROM push_subscriptions p WHERE p.seller_id = sellers.id
+      ORDER BY created_at DESC, rowid DESC LIMIT 1) = 'en'`);
+  }
   addColumn(db, 'webhook_deliveries', 'last_attempt_at', 'TEXT');
   addColumn(db, 'webhook_deliveries', 'next_attempt_at', 'TEXT');
   db.exec("CREATE INDEX IF NOT EXISTS idx_deliveries_due ON webhook_deliveries(status, next_attempt_at)");
@@ -226,10 +234,13 @@ function backfillShortCodes(db: Database.Database) {
 }
 
 /** Adds a plain column in place if a database predates it (no CHECK, so no rebuild). */
-function addColumn(db: Database.Database, table: string, column: string, decl: string) {
+function addColumn(db: Database.Database, table: string, column: string, decl: string): boolean {
   const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
-  if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${decl};`);
+  if (cols.some((c) => c.name === column)) return false;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${decl};`);
+  return true;
 }
+const hasTable = (db: Database.Database, name: string) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name);
 
 export function getSetting(key: string): string {
   const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined;
