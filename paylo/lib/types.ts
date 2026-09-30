@@ -121,6 +121,7 @@ export interface WebhookEndpoint {
 export interface WebhookDelivery {
   id: number; endpoint_id: string; event: string; payload: string; status: string;
   response_code: number | null; error: string | null; attempts: number; created_at: string;
+  last_attempt_at: string | null; next_attempt_at: string | null;
 }
 export interface ApiToken {
   id: string; seller_id: string; name: string; prefix: string; token_hash: string;

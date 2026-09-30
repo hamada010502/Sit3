@@ -253,4 +253,6 @@ export const ar: Dict = {
   bulk_skip_digital: 'رقمي، بلا مخزون', bulk_none_selected: 'حدّد منتجًا واحدًا على الأقل.', bulk_bad_value: 'أدخل رقمًا صحيحًا.',
   bulk_bad_pct: 'أدخل نسبة بين −90 و+500 (ليست 0).',
   bulk_hint: 'تعديل النسبة يحدّث أسعار كل الخيارات أيضًا. الطلبات السابقة تحتفظ بسعرها.',
+  wh_st_delivered: 'تم التسليم', wh_st_failed: 'فشل — ستتم إعادة المحاولة', wh_st_dead: 'توقفت المحاولات', wh_attempts: '{n} محاولة',
+  wh_next_retry: 'المحاولة التالية', wh_retry_now: 'أعد المحاولة الآن',
 };

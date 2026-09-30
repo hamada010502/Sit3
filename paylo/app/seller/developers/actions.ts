@@ -41,3 +41,11 @@ export async function revokeTokenAction(tokenId: string): Promise<void> {
   audit('seller', seller.id, seller.store_name, 'api_token', tokenId, 'revoked');
   revalidatePath('/seller/developers');
 }
+
+/** Seller-triggered "retry now": makes it due immediately, then runs one worker pass. */
+export async function retryDeliveryAction(deliveryId: number): Promise<void> {
+  const { seller } = requireApprovedSeller();
+  const { requeueDelivery, retryDueDeliveries } = await import('@/lib/webhooks');
+  if (requeueDelivery(deliveryId, seller.id)) await retryDueDeliveries(10);
+  revalidatePath('/seller/developers');
+}

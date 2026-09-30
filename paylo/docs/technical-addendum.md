@@ -115,8 +115,14 @@ exported for receivers and is exercised against a live receiver in the end-to-en
 
 Delivery has a 4-second timeout and every attempt is recorded in `webhook_deliveries`.
 Failures never propagate: a seller's broken endpoint must not fail a buyer's checkout.
-There is no automatic retry yet — deliveries are recorded, and a replay worker is the
-obvious next step.
+A failed delivery is retried after 1 minute, 5 minutes, 30 minutes, 2 hours and 6 hours;
+if the 6th attempt fails it is marked `dead`. Every retry re-sends the identical body (same
+event `id`, so receivers can de-duplicate) with a fresh signature timestamp. A due delivery
+is claimed with a conditional `UPDATE` before it is sent, so concurrent workers never send
+it twice. Something must call `POST /api/internal/webhooks/retry` (header `x-worker-secret`
+= `WEBHOOK_RETRY_SECRET`) about once a minute: `npm run worker:webhooks` on a single
+server, or a cron job. Sellers see attempts, next retry time and dead deliveries on their
+Developers page, with a "Retry now" button.
 
 ### Inbound courier events (auto-close)
 
@@ -217,7 +223,6 @@ the browser closed need Web Push (service worker + VAPID), which is on the roadm
 
 ## 8. Known gaps
 
-- **No webhook retry.** Failures are recorded, not replayed.
 - **Cash reconciliation is a single click,** not a courier manifest.
 - **Single-item orders.** The link-based model implies one product per order; a cart would
   need an `order_items` table.

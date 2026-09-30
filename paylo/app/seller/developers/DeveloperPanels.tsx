@@ -1,6 +1,6 @@
 'use client';
 import { useFormState } from 'react-dom';
-import { addEndpointAction, createTokenAction, deleteEndpointAction, revokeTokenAction } from './actions';
+import { addEndpointAction, createTokenAction, deleteEndpointAction, retryDeliveryAction, revokeTokenAction } from './actions';
 import { useI18n } from '@/lib/i18n/client';
 import { CopyButton } from '@/components/CopyButton';
 import { Field } from '@/components/Field';
@@ -59,8 +59,13 @@ export function DeveloperPanels({ endpoints, deliveries, tokens, events }:
               <tr key={d.id}>
                 <td className="text-xs whitespace-nowrap">{d.created_at}</td>
                 <td><code dir="ltr" className="text-xs">{d.event}</code></td>
-                <td><span className={`badge ${d.status === 'delivered' ? 'bg-success/12 text-success' : 'bg-cherry/8 text-cherry'}`}>{d.status}{d.response_code ? ` ${d.response_code}` : ''}</span>
-                  {d.error && <div className="text-xs text-ink-soft">{d.error}</div>}</td>
+                <td data-testid={`delivery-${d.id}`}><span className={`badge ${d.status === 'delivered' ? 'bg-success/12 text-success' : d.status === 'dead' ? 'bg-ink/10 text-ink' : 'bg-cherry/8 text-cherry'}`}>{t(`wh_st_${d.status === 'delivered' || d.status === 'dead' ? d.status : 'failed'}` as 'wh_st_failed')}{d.response_code ? ` ${d.response_code}` : ''}</span>
+                  <span className="text-xs text-ink-soft ms-2">{t('wh_attempts', { n: d.attempts })}</span>
+                  {d.error && <div className="text-xs text-ink-soft">{d.error}</div>}
+                  {d.status === 'failed' && d.next_attempt_at && <div className="text-xs text-ink-soft" dir="ltr">{t('wh_next_retry')}: {d.next_attempt_at} UTC</div>}
+                  {d.status !== 'delivered' && (
+                    <form action={retryDeliveryAction.bind(null, d.id)} className="mt-1"><SubmitButton className="btn-secondary btn-sm">{t('wh_retry_now')}</SubmitButton></form>
+                  )}</td>
               </tr>))}</tbody>
           </table>
         </div>

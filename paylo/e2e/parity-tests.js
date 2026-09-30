@@ -718,6 +718,81 @@ const gatewayServer = http.createServer((req, res) => {
   ok(/Select at least one product/.test(await bulk([], 'price_pct', 5)), 'nothing selected → clear error');
   ok(/between −90 and \+500/.test(await bulk(['Olive-wood serving board'], 'price_pct', 0)), 'a 0% change is rejected');
 
+  /* ---------------- 17. Webhook retry worker ---------------- */
+  step('17. Failed webhook deliveries are retried with backoff, then dead-lettered');
+  const hook = { queue: [], got: [], delayMs: 0 };
+  const hookServer = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => { body += c; });
+    req.on('end', async () => {
+      hook.got.push({ body, sig: req.headers['paylo-signature'] });
+      if (hook.delayMs) await new Promise((r) => setTimeout(r, hook.delayMs));
+      res.writeHead(hook.queue.length ? hook.queue.shift() : 200); res.end();
+    });
+  });
+  await new Promise((r) => hookServer.listen(4012, '127.0.0.1', r));
+  const HOOK_SECRET = 'whsec_retrytest';
+  db.prepare("INSERT INTO webhook_endpoints (id, seller_id, url, secret, events, active) VALUES ('ep-retry', ?, 'http://127.0.0.1:4012/hook', ?, 'order.created', 1)").run(spice.id, HOOK_SECRET);
+  const retry = (secret = 'dev-retry-secret') => fetch(BASE + '/api/internal/webhooks/retry', { method: 'POST', headers: secret ? { 'x-worker-secret': secret } : {} });
+  const del = (id) => db.prepare('SELECT * FROM webhook_deliveries WHERE id = ?').get(id);
+  const makeDue = (id) => db.prepare("UPDATE webhook_deliveries SET next_attempt_at = datetime('now', '-1 second') WHERE id = ?").run(id);
+  const secsUntil = (ts) => Math.round((Date.parse(ts.replace(' ', 'T') + 'Z') - Date.now()) / 1000);
+  const validSig = (h) => { const [, t, v] = h.sig.match(/t=(\d+),v1=([0-9a-f]+)/); return createHmac('sha256', HOOK_SECRET).update(`${t}.${h.body}`).digest('hex') === v; };
+
+  ok((await retry(null)).status === 401 && (await retry('wrong')).status === 401, 'retry endpoint rejects callers without the worker secret');
+
+  hook.queue.push(500);
+  const whBuyer = await newPage();
+  await buyNow(whBuyer, { name: 'Webhook Buyer' });
+  const whOrder = await place(whBuyer);
+  const d1 = db.prepare("SELECT * FROM webhook_deliveries WHERE endpoint_id = 'ep-retry' ORDER BY id DESC LIMIT 1").get();
+  const eventId = JSON.parse(d1.payload).id;
+  ok(d1.status === 'failed' && d1.attempts === 1 && JSON.parse(d1.payload).data.code === whOrder.code, 'first delivery failed (HTTP 500) and is recorded');
+  ok(Math.abs(secsUntil(d1.next_attempt_at) - 60) <= 10, `first retry is scheduled ~1 minute out (${secsUntil(d1.next_attempt_at)}s)`);
+  ok((await (await retry()).json()).retried === 0 && del(d1.id).attempts === 1, 'nothing is re-sent before it is due');
+
+  hook.queue.push(500);
+  makeDue(d1.id);
+  await retry();
+  ok(del(d1.id).attempts === 2 && del(d1.id).status === 'failed' && Math.abs(secsUntil(del(d1.id).next_attempt_at) - 300) <= 10, 'second failure backs off to ~5 minutes');
+  makeDue(d1.id);
+  await retry();
+  const d1done = del(d1.id);
+  ok(d1done.status === 'delivered' && d1done.attempts === 3 && d1done.next_attempt_at === null, 'third attempt succeeds; delivery marked delivered after 3 attempts');
+  const sameEvent = hook.got.filter((h) => JSON.parse(h.body).id === eventId);
+  ok(sameEvent.length === 3 && new Set(sameEvent.map((h) => h.body)).size === 1, 'every attempt re-sent the identical body (same event id) so receivers can de-duplicate');
+  ok(sameEvent.every(validSig), 'every attempt carries a valid signature over a fresh timestamp');
+
+  // Two workers at once must not double-send.
+  hook.queue.push(500);
+  const whOrder2 = await (async () => { await buyNow(whBuyer, { name: 'Race Hook' }); return place(whBuyer); })();
+  const d2 = db.prepare("SELECT * FROM webhook_deliveries WHERE endpoint_id = 'ep-retry' ORDER BY id DESC LIMIT 1").get();
+  const before2 = hook.got.length;
+  makeDue(d2.id);
+  hook.delayMs = 400;
+  await Promise.all([retry(), retry(), retry()]);
+  hook.delayMs = 0;
+  ok(hook.got.slice(before2).filter((h) => JSON.parse(h.body).data.code === whOrder2.code).length === 1 && del(d2.id).status === 'delivered', 'three concurrent worker ticks send a due delivery exactly once');
+
+  // Dead-letter after the last attempt.
+  hook.queue.push(500);
+  await buyNow(whBuyer, { name: 'Dead Hook' });
+  await place(whBuyer);
+  const d3 = db.prepare("SELECT * FROM webhook_deliveries WHERE endpoint_id = 'ep-retry' ORDER BY id DESC LIMIT 1").get();
+  db.prepare('UPDATE webhook_deliveries SET attempts = 5 WHERE id = ?').run(d3.id);
+  makeDue(d3.id);
+  hook.queue.push(500);
+  await retry();
+  ok(del(d3.id).status === 'dead' && del(d3.id).attempts === 6 && del(d3.id).next_attempt_at === null, 'after the 6th failed attempt the delivery is dead-lettered, no more retries');
+
+  await seller.goto(BASE + '/seller/developers');
+  const cell = seller.locator(`[data-testid=delivery-${d3.id}]`);
+  ok(/Gave up/.test(await cell.innerText()) && /6 attempt/.test(await cell.innerText()), 'seller sees the dead delivery and its attempt count');
+  await cell.getByRole('button', { name: 'Retry now' }).click();
+  await seller.waitForLoadState('networkidle');
+  ok(del(d3.id).status === 'delivered', 'seller can manually retry a dead delivery once the endpoint is back');
+  hookServer.close();
+
   console.log(`\nALL PASSED — ${passed} assertions`);
   await browser.close();
   db.close();

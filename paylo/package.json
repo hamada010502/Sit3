@@ -12,6 +12,7 @@
     "db:reset": "rm -f data/paylo.db data/paylo.db-wal data/paylo.db-shm && node scripts/seed.js",
     "test:totp": "node scripts/test-totp.js",
     "totp": "node scripts/totp.js",
+    "worker:webhooks": "node scripts/webhook-worker.js",
     "test:e2e": "node e2e/smoke.js"
   },
   "dependencies": {

@@ -9,6 +9,7 @@ SUITES=("$@")
 [ ${#SUITES[@]} -eq 0 ] && SUITES=(smoke registration-tests account-checkout-tests parity-tests)
 
 export LOGISTICS_WEBHOOK_SECRET="${LOGISTICS_WEBHOOK_SECRET:-dev-logistics-secret}"
+export WEBHOOK_RETRY_SECRET="${WEBHOOK_RETRY_SECRET:-dev-retry-secret}"
 stop() { pkill -f "next-server" 2>/dev/null; pkill -f "next start" 2>/dev/null; sleep 1; }
 stop
 if [ $BUILD = 1 ]; then npx next build > /tmp/paylo-build.log 2>&1 || { tail -40 /tmp/paylo-build.log; exit 1; }; fi

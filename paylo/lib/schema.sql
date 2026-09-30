@@ -287,6 +287,9 @@ CREATE TABLE IF NOT EXISTS webhook_deliveries (
   response_code INTEGER,
   error TEXT,
   attempts INTEGER NOT NULL DEFAULT 1,
+  -- status: delivered | failed (will retry at next_attempt_at) | dead (gave up)
+  last_attempt_at TEXT,
+  next_attempt_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_deliveries_endpoint ON webhook_deliveries(endpoint_id);

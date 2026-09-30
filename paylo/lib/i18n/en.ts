@@ -288,5 +288,7 @@ export const en = {
   bulk_skip_digital: 'digital, no stock', bulk_none_selected: 'Select at least one product.', bulk_bad_value: 'Enter a valid whole number.',
   bulk_bad_pct: 'Enter a % between −90 and +500 (not 0).',
   bulk_hint: 'A % change also updates every variant price. Existing orders keep the price they were placed at.',
+  wh_st_delivered: 'Delivered', wh_st_failed: 'Failed — will retry', wh_st_dead: 'Gave up', wh_attempts: '{n} attempt(s)',
+  wh_next_retry: 'Next retry', wh_retry_now: 'Retry now',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };
