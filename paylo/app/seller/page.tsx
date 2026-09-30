@@ -9,6 +9,8 @@ import { getT } from '@/lib/i18n/server';
 import { formatSYP } from '@/lib/money';
 import { sellerBalances } from '@/lib/orders';
 import { nextCutoff, nextTransferDate } from '@/lib/payouts-schedule';
+import { SalesChart } from '@/components/SalesChart';
+import { dailySales } from '@/lib/sales';
 import type { Order } from '@/lib/types';
 
 export default function SellerDashboard() {
@@ -60,6 +62,8 @@ export default function SellerDashboard() {
           <Link href="/seller/payouts" className="link text-sm">{t('nav_payouts')} →</Link>
         </div>
       </section>
+
+      <SalesChart data={dailySales(seller.id)} t={t} lang={lang} />
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
         <div className="stat"><div className="stat-label">{t('bal_available')}</div><div className="stat-value text-lg text-success">{formatSYP(bal.available, lang)}</div><p className="mt-1 text-xs text-ink-soft">{t('bal_available_d')}</p></div>

@@ -133,6 +133,13 @@ export default function TrackPage({ params, searchParams }: { params: { code: st
         </div>
       )}
 
+      {!searchParams.new && seller.thank_you_message && (
+        <div className="card-pad mb-6 text-sm" data-testid="thank-you-later">
+          <p className="text-xs uppercase tracking-wide text-ink-soft mb-1">{t('thank_you_from', { store: seller.store_name })}</p>
+          <p className="whitespace-pre-line leading-relaxed">{seller.thank_you_message}</p>
+        </div>
+      )}
+
       <div className="card-pad"><h2 className="font-bold mb-4">{t('timeline')}</h2><Timeline events={events} t={t} showActor={false} /></div>
     </Shell>
   );

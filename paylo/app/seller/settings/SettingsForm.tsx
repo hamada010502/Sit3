@@ -1,6 +1,7 @@
 'use client';
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
+import { useState } from 'react';
 import { useFormState } from 'react-dom';
 import { saveSettingsAction } from './actions';
 import { useI18n } from '@/lib/i18n/client';
@@ -12,6 +13,7 @@ import type { TKey } from '@/lib/i18n';
 export function SettingsForm({ seller }: { seller: Seller }) {
   const { t } = useI18n();
   const [state, action] = useFormState(saveSettingsAction, null);
+  const [thanks, setThanks] = useState(seller.thank_you_message ?? '');
   return (
     <form action={action} className="card-pad space-y-4" encType="multipart/form-data" data-testid="store-settings-form">
       {state?.error && <div className="alert-error">{t(state.error as TKey)}</div>}
@@ -30,8 +32,15 @@ export function SettingsForm({ seller }: { seller: Seller }) {
         <input name="announcement" className="input" maxLength={160} defaultValue={seller.announcement ?? ''} placeholder={t('store_announcement_ph')} />
       </Field>
       <Field label={t('thank_you_label')} hint={t('thank_you_hint')}>
-        <textarea name="thank_you_message" className="input" rows={3} maxLength={500} defaultValue={seller.thank_you_message ?? ''} placeholder={t('thank_you_ph')} />
+        <textarea name="thank_you_message" className="input" rows={3} maxLength={500} defaultValue={seller.thank_you_message ?? ''} placeholder={t('thank_you_ph')}
+          onChange={(e) => setThanks(e.target.value)} />
       </Field>
+      {thanks.trim() && (
+        <div className="rounded-xl border border-success/30 bg-white p-4 text-sm -mt-2" data-testid="thank-you-preview">
+          <p className="text-[11px] uppercase tracking-wide text-ink-soft">{t('thank_you_preview')} · {t('thank_you_from', { store: seller.store_name })}</p>
+          <p className="whitespace-pre-line leading-relaxed mt-1">{thanks}</p>
+        </div>
+      )}
       <Field label={t('store_about')} hint={t('store_about_builder_hint')}>
         <textarea name="about" className="input" rows={3} defaultValue={seller.about ?? ''} />
       </Field>

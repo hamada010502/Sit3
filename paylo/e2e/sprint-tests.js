@@ -348,6 +348,54 @@ function decryptPush(sub, body) {
   ok(await tiles.count() === 5 && await seller.getByText('Up to 5 photos').count() === 1, 'more than 5 → capped at 5 with a clear message');
   ok(await seller.locator('[data-testid=image-drop]').count() === 0, 'drop zone hides once the 5-photo limit is reached');
 
+  /* ================= SPRINT C ================= */
+  step('C9. The seller’s post-purchase message is surfaced clearly');
+  await seller.goto(BASE + '/seller/settings');
+  const tyBox = seller.locator('textarea[name=thank_you_message]');
+  await tyBox.fill('Shukran! Every jar is ground to order.');
+  ok(/Every jar is ground to order/.test(await seller.locator('[data-testid=thank-you-preview]').innerText()), 'settings shows a live preview of the message as buyers will see it');
+  await seller.locator('[data-testid=store-settings-form]').getByRole('button', { name: 'Save', exact: true }).click();
+  await seller.waitForSelector('[data-testid=store-settings-form] .alert-success');
+  const tyOrder = await buy(buyer, 'Message Buyer');
+  ok(/Every jar is ground to order/.test(await buyer.locator('[data-testid=thank-you]').innerText()), 'prominent on the confirmation page right after purchase');
+  await buyer.goto(BASE + '/track/' + tyOrder.code);
+  ok(/Every jar is ground to order/.test(await buyer.locator('[data-testid=thank-you-later]').innerText()), 'still there when the buyer comes back to track the order');
+
+  step('C10. Sales chart on the seller dashboard');
+  await seller.goto(BASE + '/seller');
+  const chart = seller.locator('[data-testid=sales-chart]');
+  ok(await chart.count() === 1 && await chart.locator('[data-bar]').count() === 30, 'chart shows the last 30 days, one bar per day');
+  const expected = db.prepare("SELECT coalesce(sum(subtotal - refunded_amount),0) s, count(*) c FROM orders WHERE seller_id = ? AND status NOT IN ('cancelled','payment_failed','refunded') AND date(created_at) > date('now','-30 days')").get(spice.id);
+  ok((await chart.locator('[data-testid=sales-total]').innerText()).replace(/\D/g, '') === String(expected.s) && (await chart.innerText()).includes(`${expected.c} orders`), `30-day total (${expected.s} SYP, ${expected.c} orders) matches the database`);
+  const today = new Date().toISOString().slice(0, 10);
+  ok(await chart.locator(`[data-bar="${today}"] path`).count() === 1 && /SYP/.test(await chart.locator(`[data-bar="${today}"] title`).textContent()), "today's bar is drawn and has a hover tooltip with the amount");
+  await chart.getByText('Show as a table').click();
+  ok(await chart.locator('table tbody tr').count() >= 1, 'the same numbers are available as a table');
+  const arSeller = await (await ctx()).newPage();
+  await arSeller.context().addCookies([{ name: 'paylo_lang', value: 'ar', url: BASE }]);
+  await login(arSeller, 'spice@paylo.sy');
+  await arSeller.waitForURL('**/seller');
+  ok(/المبيعات، آخر 30 يومًا/.test(await arSeller.locator('[data-testid=sales-chart]').innerText()) && await arSeller.evaluate(() => document.documentElement.dir) === 'rtl', 'chart renders in Arabic (RTL page, time still reads left→right)');
+
+  step('C11. Checkout friction fixes (validated on Continue; errors return to the right step)');
+  const co = await (await ctx()).newPage();
+  await co.goto(BASE + '/p/' + zaatar.id);
+  await co.fill('input[name=buyer_name]', 'Skips Phone');
+  await co.click('button:has-text("Continue")');
+  ok(!(await co.locator('button[type=submit]').isVisible()) && await co.evaluate(() => document.activeElement?.getAttribute('name')) === 'buyer_phone',
+    'Continue with an empty phone stays on step 1 and puts the cursor on the phone field (before: it advanced, then "Place order" silently did nothing)');
+  await co.fill('input[name=buyer_phone]', '12');
+  await co.fill('textarea[name=address]', 'Mezzeh, Damascus');
+  await co.click('button:has-text("Continue")');
+  ok(!(await co.locator('button[type=submit]').isVisible()), 'a malformed phone is caught at Continue, using the same rule as the server');
+  // Force a server-side rejection by removing the browser checks.
+  await co.locator('input[name=buyer_phone]').evaluate((el) => { el.removeAttribute('pattern'); });
+  await co.click('button:has-text("Continue")');
+  await co.locator('button[type=submit]').click();
+  await co.waitForFunction(() => document.activeElement?.getAttribute('name') === 'buyer_phone');
+  ok(await co.locator('input[name=buyer_phone]').isVisible(), 'a server-side field error sends the buyer back to step 1 with the field focused (before: stuck on step 2, field hidden)');
+  ok(await co.locator('input[name=buyer_name]').getAttribute('autocomplete') === 'name' && await co.locator('textarea[name=address]').getAttribute('autocomplete') === 'street-address', 'fields carry autocomplete hints so phones can fill saved details');
+
   step('A1b. Offline: with the server unreachable, navigation shows the Paylo offline page');
   execSync('pkill -f "next-serve[r]" || true');
   await new Promise((r) => setTimeout(r, 1000));

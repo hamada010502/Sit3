@@ -245,7 +245,7 @@ export const ar: Dict = {
   earn_st_paid: 'مدفوع', earn_st_in_payout: 'ضمن دفعة', earn_st_available: 'متاح', earn_st_pending: 'قيد الانتظار', earn_st_refunded: 'مسترد',
   earn_footnote: 'رسوم التوصيل لا تخضع للعمولة وتذهب لشركة التوصيل، لذا ليست جزءًا من صافيك. تُحسب العمولة على ما دفعه المشتري للمنتجات بعد أي خصم.',
   thank_you_label: 'رسالة بعد الشراء', thank_you_from: 'رسالة من {store}',
-  thank_you_hint: 'تظهر للمشتري فور إتمام الطلب، وتُضاف إلى بريد التأكيد. حتى 500 حرف.',
+  thank_you_hint: 'تظهر للمشتري فور إتمام الطلب وفي صفحة تتبع الطلب، وتُضاف إلى بريد التأكيد. حتى 500 حرف.',
   thank_you_ph: 'شكرًا لك! كل طلب يُغلَّف يدويًا — توقّع وصوله خلال يومين.',
   bulk_select_all: 'تحديد الكل', bulk_action: 'إجراء جماعي', bulk_value: 'القيمة', bulk_apply: 'تطبيق على المحدد',
   bulk_price_pct: 'تعديل السعر بنسبة %', bulk_price_set: 'تحديد السعر (ل.س)', bulk_stock_set: 'تحديد المخزون',
@@ -278,4 +278,8 @@ export const ar: Dict = {
   images_title: 'الصور', images_drop: 'اسحب الصور هنا أو اضغط للاختيار', images_cover: 'الغلاف', images_order: 'ترتيب الصور',
   images_move_earlier: 'نقل للأمام', images_move_later: 'نقل للخلف', images_too_many: 'حتى {n} صور — لم تُضف الصور الزائدة.',
   images_bad_file: 'تم تخطي بعض الملفات: استخدم JPG أو PNG أو WebP أقل من 4 ميغابايت.', images_reorder_hint: 'اسحب لإعادة الترتيب أو استخدم ‹ ›. الصورة الأولى هي الغلاف الذي يراه المشترون.',
+  sales_chart_title: 'المبيعات، آخر 30 يومًا', sales_chart_sub: 'ما دفعه المشترون للمنتجات يوميًا، بعد الخصومات والمبالغ المستردة.',
+  sales_chart_orders: '{n} طلب', sales_chart_empty: 'لا مبيعات في آخر 30 يومًا بعد.', sales_chart_table: 'عرض كجدول', sales_chart_col_sales: 'المبيعات',
+  thank_you_preview: 'معاينة — ما يراه المشترون',
+  phone_format_hint: 'من 8 إلى 15 رقمًا، مثل 0912345678',
 };

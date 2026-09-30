@@ -669,7 +669,7 @@ const gatewayServer = http.createServer((req, res) => {
   ok(tyMail && tyMail.body.includes('A note from Damascus Spice House') && tyMail.body.includes('Ground fresh the morning it ships'), 'message is included in the confirmation email');
 
   await tyBuyer.goto(BASE + '/track/' + tyOrder.code);
-  ok(await tyBuyer.locator('[data-testid=thank-you]').count() === 0, 'shown only right after purchase, not on later visits to tracking');
+  ok(await tyBuyer.locator('[data-testid=thank-you]').count() === 0 && await tyBuyer.locator('[data-testid=thank-you-later]').count() === 1, 'prominent right after purchase; a quieter card on later tracking visits');
   const linaOrder = db.prepare("SELECT code FROM orders WHERE seller_id = (SELECT id FROM sellers WHERE slug = 'lina-handmade') LIMIT 1").get();
   await tyBuyer.goto(BASE + '/track/' + linaOrder.code + '?new=1');
   ok(await tyBuyer.locator('[data-testid=thank-you]').count() === 0, "another store's orders never show this store's message");

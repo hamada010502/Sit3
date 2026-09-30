@@ -1,6 +1,6 @@
 'use client';
 /* eslint-disable @next/next/no-img-element */
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useFormState } from 'react-dom';
 import { checkoutAction, previewCouponAction, type CheckoutState } from './actions';
@@ -32,6 +32,24 @@ const KNOWN_FAILS = ['invalid_card', 'expired_card', 'insufficient_funds', 'prov
 export function CheckoutForm({ productId, basePrice, stock, isDigital, variants, option1, option2, feeDamascus, feeOther, methods, bank, account }: Props) {
   const { t, lang } = useI18n();
   const [state, action] = useFormState(checkoutAction.bind(null, productId), null as CheckoutState | null);
+  const detailsRef = useRef<HTMLElement>(null);
+  // Fields live on step 1. If the server rejects one, go back there and focus it —
+  // otherwise the buyer is left on step 2 with the problem hidden.
+  useEffect(() => {
+    const bad = state?.fields ? Object.keys(state.fields).filter((k) => k !== 'payment_method' && !k.startsWith('card_')) : [];
+    if (bad.length) {
+      setStep(1);
+      requestAnimationFrame(() => (detailsRef.current?.querySelector(`[name="${bad[0]}"]`) as HTMLElement | null)?.focus());
+    }
+  }, [state]);
+  // "Continue" validates step 1 first: a hidden invalid field would otherwise block
+  // "Place order" with no visible reason.
+  const continueToPayment = () => {
+    const fields = Array.from(detailsRef.current?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input, textarea, select') ?? []);
+    const firstBad = fields.find((f) => !f.checkValidity());
+    if (firstBad) { firstBad.reportValidity(); firstBad.focus(); return; }
+    setStep(2);
+  };
   const [step, setStep] = useState<1 | 2>(1);
   const [qty, setQty] = useState(1);
   const [gov, setGov] = useState<string>(account?.address?.governorate ?? DAMASCUS);
@@ -92,7 +110,7 @@ export function CheckoutForm({ productId, basePrice, stock, isDigital, variants,
       )}
 
       {/* Step 1 stays mounted so its values still post with the final submit. */}
-      <section className={`space-y-4 ${step === 1 ? '' : 'hidden'}`}>
+      <section ref={detailsRef} className={`space-y-4 ${step === 1 ? '' : 'hidden'}`}>
         {variant?.image_path && (
           <img src={variant.image_path} alt={variant.label} className="w-full max-h-64 object-contain rounded-xl bg-white border border-ink/10" data-testid="variant-image" />
         )}
@@ -104,10 +122,10 @@ export function CheckoutForm({ productId, basePrice, stock, isDigital, variants,
           </Field>
         )}
         <div className="grid sm:grid-cols-2 gap-4">
-          <Field label={t('full_name')} error={err('buyer_name')}><input name="buyer_name" className="input" required defaultValue={account?.name} /></Field>
-          <Field label={t('phone')} error={err('buyer_phone')}><input name="buyer_phone" className="input" dir="ltr" required placeholder="09xxxxxxxx" defaultValue={account?.phone} /></Field>
+          <Field label={t('full_name')} error={err('buyer_name')}><input name="buyer_name" className="input" required autoComplete="name" defaultValue={account?.name} /></Field>
+          <Field label={t('phone')} error={err('buyer_phone')}><input name="buyer_phone" className="input" dir="ltr" required inputMode="tel" autoComplete="tel" pattern="\+?[0-9\s\-]{8,15}" title={t('phone_format_hint')} placeholder="09xxxxxxxx" defaultValue={account?.phone} /></Field>
         </div>
-        <Field label={t('buyer_email_opt')} error={err('buyer_email')}><input name="buyer_email" type="email" className="input" dir="ltr" required={isDigital} defaultValue={account?.email} /></Field>
+        <Field label={t('buyer_email_opt')} error={err('buyer_email')}><input name="buyer_email" type="email" className="input" dir="ltr" autoComplete="email" inputMode="email" required={isDigital} defaultValue={account?.email} /></Field>
         <div className="grid sm:grid-cols-2 gap-4">
           {!isDigital && (
             <Field label={t('governorate')} error={err('governorate')}>
@@ -129,12 +147,12 @@ export function CheckoutForm({ productId, basePrice, stock, isDigital, variants,
           </>
         ) : (
           <Field label={t('address')} error={err('address')}>
-            <textarea name="address" className="input" rows={2} required defaultValue={account?.address?.address} />
+            <textarea name="address" className="input" rows={2} required autoComplete="street-address" defaultValue={account?.address?.address} />
           </Field>
         )}
         <Field label={t('note')}><input name="note" className="input" /></Field>
         {!isDigital && <p className="text-xs text-ink-soft">{gov === DAMASCUS ? t('delivery_note_dmc') : t('delivery_note_out')}</p>}
-        <button type="button" className="btn-cta w-full" onClick={() => setStep(2)}>{t('checkout_continue')}</button>
+        <button type="button" className="btn-cta w-full" onClick={continueToPayment}>{t('checkout_continue')}</button>
       </section>
 
       <section className={`space-y-4 ${step === 2 ? '' : 'hidden'}`}>

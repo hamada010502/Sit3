@@ -280,7 +280,7 @@ export const en = {
   earn_st_paid: 'Paid out', earn_st_in_payout: 'In payout run', earn_st_available: 'Available', earn_st_pending: 'Pending', earn_st_refunded: 'Refunded',
   earn_footnote: 'Delivery fees are not commissioned and go to the courier, so they are not part of your net. Commission is charged on what the buyer paid for goods, after any discount code.',
   thank_you_label: 'Message after purchase', thank_you_from: 'A note from {store}',
-  thank_you_hint: 'Shown to the buyer right after they order, and added to their confirmation email. Up to 500 characters.',
+  thank_you_hint: 'Shown to the buyer right after they order and on their tracking page, and added to their confirmation email. Up to 500 characters.',
   thank_you_ph: 'Thank you! Every order is packed by hand — expect it within 2 days.',
   bulk_select_all: 'Select all', bulk_action: 'Bulk action', bulk_value: 'Value', bulk_apply: 'Apply to selected',
   bulk_price_pct: 'Adjust price by %', bulk_price_set: 'Set price (SYP)', bulk_stock_set: 'Set stock',
@@ -313,5 +313,9 @@ export const en = {
   images_title: 'Photos', images_drop: 'Drop photos here or tap to choose', images_cover: 'Cover', images_order: 'Photo order',
   images_move_earlier: 'Move earlier', images_move_later: 'Move later', images_too_many: 'Up to {n} photos — extra ones were not added.',
   images_bad_file: 'Some files were skipped: use JPG, PNG or WebP under 4 MB.', images_reorder_hint: 'Drag to reorder, or use ‹ ›. The first photo is the cover buyers see.',
+  sales_chart_title: 'Sales, last 30 days', sales_chart_sub: 'What buyers paid for goods each day, after discounts and refunds.',
+  sales_chart_orders: '{n} orders', sales_chart_empty: 'No sales in the last 30 days yet.', sales_chart_table: 'Show as a table', sales_chart_col_sales: 'Sales',
+  thank_you_preview: 'Preview — what buyers see',
+  phone_format_hint: '8–15 digits, e.g. 0912345678',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };
