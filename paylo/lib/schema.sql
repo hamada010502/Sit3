@@ -460,6 +460,20 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   auth TEXT NOT NULL,
   user_agent TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  last_success_at TEXT
+  last_success_at TEXT,
+  lang TEXT NOT NULL DEFAULT 'en'
 );
 CREATE INDEX IF NOT EXISTS idx_push_seller ON push_subscriptions(seller_id);
+
+-- Every failed Web Push attempt. removed = 1 when the push service said the subscription
+-- is gone (404/410) and it was deleted.
+CREATE TABLE IF NOT EXISTS push_failures (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  seller_id TEXT NOT NULL,
+  endpoint_host TEXT,
+  status_code INTEGER,
+  error TEXT,
+  removed INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_push_failures_created ON push_failures(created_at);

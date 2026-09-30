@@ -5,6 +5,8 @@ import { emitWebhook } from './webhooks';
 import { computeFees } from './fees';
 import { isStoreLive } from './store-status';
 import { pushToSeller } from './push';
+import { makeT } from './i18n';
+import { formatSYP } from './money';
 import { claimCouponUse, discountFor, findCoupon, releaseCouponUse } from './coupons';
 import { currentCutoff, isoDay, isoStamp, nextTransferDate } from './payouts-schedule';
 import { getPaymentProvider, type CardInput } from './payments';
@@ -266,7 +268,7 @@ async function notifyOrderPlaced(order: Order, seller: Seller, awaitingPayment: 
     });
   }
   if (seller.notify_push) {
-    await pushToSeller(seller.id, { title: `New order ${order.code}`, body: `${line} — ${order.total.toLocaleString('en-US')} SYP`, url: `/seller/orders/${order.id}`, tag: order.id });
+    await pushToSeller(seller.id, (lang) => ({ title: makeT(lang)('push_new_order', { code: order.code }), body: `${line} — ${formatSYP(order.total, lang)}`, url: `/seller/orders/${order.id}`, tag: order.id }));
   }
 }
 

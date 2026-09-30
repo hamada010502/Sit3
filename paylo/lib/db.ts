@@ -44,6 +44,7 @@ function migrate(db: Database.Database) {
   addColumn(db, 'webhook_deliveries', 'next_attempt_at', 'TEXT');
   db.exec("CREATE INDEX IF NOT EXISTS idx_deliveries_due ON webhook_deliveries(status, next_attempt_at)");
   addColumn(db, 'products', 'short_code', 'INTEGER');
+  addColumn(db, 'push_subscriptions', 'lang', "TEXT NOT NULL DEFAULT 'en'");
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_products_short_code ON products(short_code)');
   backfillShortCodes(db);
 

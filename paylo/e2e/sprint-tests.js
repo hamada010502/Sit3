@@ -63,7 +63,7 @@ function decryptPush(sub, body) {
   const db = new Database(DB_PATH);
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
   const ctx = (opts = {}) => browser.newContext({ viewport: { width: 1280, height: 900 }, ...opts });
-  const TOTP = { 'spice@paylo.sy': 'MFRGGZDFMZTWQ2LKNNWG23TPOBYXE43U', 'demo@paylo.sy': 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP' };
+  const TOTP = { 'fresh@paylo.sy': 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 'spice@paylo.sy': 'MFRGGZDFMZTWQ2LKNNWG23TPOBYXE43U', 'demo@paylo.sy': 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP' };
   const login = async (p, email, pw = 'seller1234') => {
     await p.goto(BASE + '/login'); await p.fill('input[name=email]', email); await p.fill('input[name=password]', pw);
     await p.click('button[type=submit]');
@@ -395,6 +395,88 @@ function decryptPush(sub, body) {
   await co.waitForFunction(() => document.activeElement?.getAttribute('name') === 'buyer_phone');
   ok(await co.locator('input[name=buyer_phone]').isVisible(), 'a server-side field error sends the buyer back to step 1 with the field focused (before: stuck on step 2, field hidden)');
   ok(await co.locator('input[name=buyer_name]').getAttribute('autocomplete') === 'name' && await co.locator('textarea[name=address]').getAttribute('autocomplete') === 'street-address', 'fields carry autocomplete hints so phones can fill saved details');
+
+  /* ================= PRODUCTION HARDENING ================= */
+  step('P6. Push failures are logged; only 404/410 removes the device');
+  const subFlaky = makeSubscription('device-flaky');
+  await fetch(BASE + '/api/push/subscribe', { method: 'POST', headers: { cookie: await cookieHeader(seller), 'content-type': 'application/json' }, body: JSON.stringify(subFlaky.json) });
+  pushSvc.statusFor['/push/device-flaky'] = 503;
+  const gone2 = makeSubscription('device-gone-2');
+  await fetch(BASE + '/api/push/subscribe', { method: 'POST', headers: { cookie: await cookieHeader(seller), 'content-type': 'application/json' }, body: JSON.stringify(gone2.json) });
+  pushSvc.statusFor['/push/device-gone-2'] = 404;
+  const failBefore = db.prepare('SELECT count(*) c FROM push_failures').get().c;
+  const pbCtx = await ctx(); await buy(await pbCtx.newPage(), 'Hardening Buyer'); await pbCtx.close();
+  await new Promise((r) => setTimeout(r, 500));
+  const fails = db.prepare('SELECT * FROM push_failures WHERE id > ? ORDER BY id').all(failBefore);
+  const f503 = fails.find((f) => f.status_code === 503), f404 = fails.find((f) => f.status_code === 404);
+  ok(!!f503 && f503.removed === 0 && f503.seller_id === spice.id && f503.endpoint_host === '127.0.0.1:4013', 'a 503 from the push service is logged with seller, host and code');
+  ok(!!db.prepare('SELECT 1 FROM push_subscriptions WHERE endpoint = ?').get(subFlaky.json.endpoint), '…and the device is kept (temporary failure)');
+  ok(!!f404 && f404.removed === 1 && !db.prepare('SELECT 1 FROM push_subscriptions WHERE endpoint = ?').get(gone2.json.endpoint), 'a 404 is logged as removed and the subscription is deleted');
+  ok(db.prepare("SELECT count(*) c FROM push_failures WHERE status_code = 410 AND removed = 1").get().c >= 1, 'the earlier 410 was logged as removed too');
+  pushSvc.statusFor['/push/device-flaky'] = 201;
+
+  step('P10. Push text follows the language the device subscribed in');
+  const subAr = makeSubscription('device-ar');
+  await fetch(BASE + '/api/push/subscribe', { method: 'POST', headers: { cookie: (await cookieHeader(seller)) + '; paylo_lang=ar', 'content-type': 'application/json' }, body: JSON.stringify(subAr.json) });
+  const arCtx = await ctx(); const arOrder = await buy(await arCtx.newPage(), 'Arabic Push Buyer'); await arCtx.close();
+  await new Promise((r) => setTimeout(r, 500));
+  const arHit = pushSvc.got.filter((g) => g.path === '/push/device-ar').pop();
+  const arPayload = decryptPush(subAr, arHit.body);
+  ok(arPayload.title === `طلب جديد ${arOrder.code}` && /ل\.س/.test(arPayload.body), 'an Arabic device gets an Arabic title and SYP amount');
+  const enHit = pushSvc.got.filter((g) => g.path === '/push/device-a').pop();
+  ok(decryptPush(subA, enHit.body).title === `New order ${arOrder.code}`, 'the English device still gets English for the same order');
+
+  step('P4/P5/P8. Admin sees system health, worker heartbeat, delivery stats and dead-letter webhooks');
+  db.prepare("INSERT INTO webhook_endpoints (id, seller_id, url, secret, events, active) VALUES ('ep-dead', ?, 'http://127.0.0.1:9/dead', 'x', '*', 1)").run(spice.id);
+  db.prepare("INSERT INTO webhook_deliveries (endpoint_id, event, payload, status, error, attempts) VALUES ('ep-dead', 'order.created', '{}', 'dead', 'connect ECONNREFUSED', 6)").run();
+  db.prepare("INSERT INTO webhook_deliveries (endpoint_id, event, payload, status, error, attempts, next_attempt_at) VALUES ('ep-dead', 'order.updated', '{}', 'failed', 'timeout', 2, datetime('now','-20 minutes'))").run();
+  const adminCtx = await ctx(); const admin = await adminCtx.newPage();
+  await login(admin, 'admin@paylo.sy', 'admin1234'); await admin.waitForURL('**/admin**');
+  await admin.goto(BASE + '/admin/ops');
+  const row = (name) => admin.locator(`[data-testid=ops-health] tr[data-check="${name}"]`);
+  ok(await row('Webhook retry worker').getAttribute('data-level') === 'error' && await admin.getByText('never called in').count() === 1, 'before any worker call, the worker row is red ("never called in")');
+  ok(/1 overdue/.test(await admin.locator('[data-testid=stat-wh-retrying]').innerText()), 'a retry due 20 minutes ago is flagged as overdue');
+  ok(await row('WEBHOOK_RETRY_SECRET').getAttribute('data-level') === 'ok', 'WEBHOOK_RETRY_SECRET is reported set (value never shown)');
+  ok(await admin.locator('[data-testid=ops-health]').getByText('dev-retry-secret').count() === 0, 'secret values never appear on the page');
+  ok(await row('VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY').getAttribute('data-level') === 'warn', 'unset VAPID keys are a warning (stored keys in use), not silently OK');
+  ok(await row('APP_URL').getAttribute('data-level') !== 'ok', 'APP_URL on localhost is flagged');
+  ok(await row('SMS_TRANSPORT (SMS_HTTP_URL / SMS_HTTP_TOKEN)').getAttribute('data-level') === 'ok', 'SMS gateway configured → OK');
+  ok(await admin.locator('[data-testid=ops-dead-webhooks]').getByText('ECONNREFUSED').count() === 1, 'dead-letter webhooks are listed with their error');
+  ok(Number((await admin.locator('[data-testid=stat-push-failed]').innerText()).match(/\d+/)[0]) >= 3 && await admin.locator('[data-testid=ops-push-failures]').getByText('HTTP 503').count() >= 1, 'push failures counted and listed');
+  ok(Number((await admin.locator('[data-testid=stat-push-subs]').innerText()).match(/\d+/)[0]) === db.prepare('SELECT count(*) c FROM push_subscriptions').get().c, 'push device count matches the database');
+  const bad = await fetch(BASE + '/api/internal/webhooks/retry', { method: 'POST', headers: { 'x-worker-secret': 'wrong' } });
+  ok(bad.status === 401 && !db.prepare("SELECT value FROM settings WHERE key = 'webhook_worker_last_run'").get(), 'a wrong secret is refused and does not count as a heartbeat');
+  const worker = require('child_process').spawn('node', ['scripts/webhook-worker.js'], { env: { ...process.env, APP_URL: BASE }, stdio: 'ignore' });
+  for (let i = 0; i < 20 && !db.prepare("SELECT value FROM settings WHERE key = 'webhook_worker_last_run'").get(); i++) await new Promise((r) => setTimeout(r, 250));
+  worker.kill();
+  await admin.goto(BASE + '/admin/ops');
+  ok(await row('Webhook retry worker').getAttribute('data-level') === 'ok', 'after the bundled worker ticks, the worker row turns green');
+  ok(!/overdue/.test(await admin.locator('[data-testid=stat-wh-retrying]').innerText()), 'the worker processed the overdue retry');
+  await admin.setViewportSize({ width: 390, height: 844 });
+  ok(await admin.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'ops page has no horizontal overflow at 390px');
+  await adminCtx.close();
+
+  step('P9. A brand-new approved seller sees a first-sale checklist');
+  const bcrypt = require('bcryptjs');
+  db.prepare("INSERT INTO users (id, email, password_hash, role, name, totp_secret, totp_enabled) VALUES ('u-fresh', 'fresh@paylo.sy', ?, 'seller', 'Fresh Seller', ?, 1)")
+    .run(bcrypt.hashSync('seller1234', 10), TOTP['fresh@paylo.sy']);
+  db.prepare("INSERT INTO sellers (id, user_id, store_name, slug, phone, governorate, status) VALUES ('s-fresh', 'u-fresh', 'Fresh Shop', 'fresh-shop', '0933000111', 'Damascus', 'approved')").run();
+  const fCtx = await ctx(); const newSeller = await fCtx.newPage();
+  await login(newSeller, 'fresh@paylo.sy'); await newSeller.waitForURL('**/seller');
+  const stepDone = async (k) => newSeller.locator(`[data-testid=onboarding] [data-step=${k}]`).getAttribute('data-done');
+  ok(await newSeller.locator('[data-testid=onboarding]').count() === 1, 'checklist shown to a seller with no orders');
+  ok(await stepDone('ob_2fa') === '1' && await stepDone('ob_kyc') === '0' && await stepDone('ob_product') === '0', '2FA done; identity and first product still to do');
+  await newSeller.locator('[data-step=ob_product] a').click(); await newSeller.waitForURL('**/seller/products/new');
+  ok(true, '"Start" on the product step opens the new-product form');
+  db.prepare("INSERT INTO products (id, seller_id, title, price, stock, status) VALUES ('p-fresh', 's-fresh', 'First thing', 10000, 3, 'active')").run();
+  await newSeller.goto(BASE + '/seller');
+  ok(await stepDone('ob_product') === '1', 'adding a product ticks the step');
+  await newSeller.context().addCookies([{ name: 'paylo_lang', value: 'ar', url: BASE }]); await newSeller.reload();
+  ok(await newSeller.locator('[data-testid=onboarding]').getByText('احصل على أول عملية بيع').count() === 1 && await newSeller.evaluate(() => document.documentElement.dir) === 'rtl', 'checklist in Arabic, RTL');
+  db.prepare("UPDATE orders SET seller_id = 's-fresh' WHERE id = ?").run(arOrder.id);
+  await newSeller.reload();
+  ok(await newSeller.locator('[data-testid=onboarding]').count() === 0, 'checklist disappears after the first order');
+  await fCtx.close();
 
   step('A1b. Offline: with the server unreachable, navigation shows the Paylo offline page');
   execSync('pkill -f "next-serve[r]" || true');

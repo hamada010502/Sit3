@@ -13,6 +13,7 @@
     "test:totp": "node scripts/test-totp.js",
     "totp": "node scripts/totp.js",
     "worker:webhooks": "node scripts/webhook-worker.js",
+    "check:env": "node scripts/check-env.js",
     "test:e2e": "node e2e/smoke.js"
   },
   "dependencies": {

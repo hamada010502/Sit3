@@ -1,4 +1,5 @@
 'use server';
+import { makeT } from '@/lib/i18n';
 import { revalidatePath } from 'next/cache';
 import { audit } from '@/lib/audit';
 import { getDb } from '@/lib/db';
@@ -25,5 +26,5 @@ export async function setSoundAction(on: boolean) {
 
 export async function testPushAction(): Promise<{ sent: number }> {
   const { seller } = requireApprovedSeller();
-  return { sent: await pushToSeller(seller.id, { title: 'Paylo test', body: 'Notifications are working on this device.', url: '/seller/settings', tag: 'paylo-test' }) };
+  return { sent: await pushToSeller(seller.id, (lang) => ({ title: makeT(lang)('push_test_title'), body: makeT(lang)('push_test_body'), url: '/seller/settings', tag: 'paylo-test' })) };
 }

@@ -9,7 +9,9 @@ if (!SECRET) { console.error('Set WEBHOOK_RETRY_SECRET (same value the app uses)
 async function tick() {
   try {
     const r = await fetch(APP + '/api/internal/webhooks/retry', { method: 'POST', headers: { 'x-worker-secret': SECRET } });
-    const j = await r.json();
+    const j = await r.json().catch(() => ({}));
+    // A wrong secret (401) or an unset one on the server (501) must be loud, not silent.
+    if (!r.ok) { console.error(new Date().toISOString(), `retry endpoint answered HTTP ${r.status}:`, j.error || ''); return; }
     if (j.retried) console.log(new Date().toISOString(), j);
   } catch (e) { console.error(new Date().toISOString(), 'worker tick failed:', e.message); }
 }

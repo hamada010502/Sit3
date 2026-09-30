@@ -247,7 +247,9 @@ Push takes over (§7d).
   `VAPID_SUBJECT`; if unset a key pair is generated once and stored in `settings`) and
   encrypts payloads (aes128gcm). Subscriptions live in `push_subscriptions`, scoped by the
   seller from the session (`/api/push/subscribe`); a 404/410 from the push service deletes
-  the subscription. The service worker shows a system notification only when no `/seller`
+  the subscription. Every failed attempt is written to `push_failures` (and the server log)
+  and shown on Admin → Operations. Each device stores the language it subscribed in, and
+  its alerts are written in that language. The service worker shows a system notification only when no `/seller`
   tab is visible; otherwise it pings the open tab, which shows the toast and chime.
 - **Preferences** (`/seller/settings`, "Notifications"): `notify_push`, `notify_sound`
   (now stored server-side, not per browser), `notify_email_orders`, `notify_text`, plus a
@@ -284,7 +286,18 @@ watcher, webhook retry/dead-letter, 2FA hold) and sprint (PWA, encrypted push de
 local push service, notification prefs, 390px EN/AR audit, empty states, hand-off, photos,
 sales chart, checkout fixes, offline page).
 
+## 7g. Operations visibility
+
+Admin → Operations adds **System health** (production config checked from the server's own
+environment, values never shown, plus the retry-worker heartbeat), **Delivery** tiles (push
+devices, push failures, failed email/SMS/WhatsApp, webhooks delivered/retrying/overdue/dead)
+and lists of dead-letter webhooks, recent push failures and failed messages. Running it in
+production: `docs/deployment.md`.
+
 ## 8. Known gaps
+
+- **Buyer and seller emails/SMS are English only.** Nothing stores a language per user, so
+  `lib/notify.ts` templates are written in English. Push alerts are localised (per device).
 
 - **Cash reconciliation is a single click,** not a courier manifest.
 - **Single-item orders.** The link-based model implies one product per order; a cart would

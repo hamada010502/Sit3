@@ -4,6 +4,7 @@ import { OrderStatusBadge } from '@/components/StatusBadge';
 import { getDb } from '@/lib/db';
 import { requireAdmin } from '@/lib/guards';
 import { getT } from '@/lib/i18n/server';
+import { configChecks, deliveryStats, workerLastRun } from '@/lib/health';
 import { formatSYP } from '@/lib/money';
 import type { Order, Payout, Seller } from '@/lib/types';
 
@@ -32,6 +33,22 @@ export default function AdminOpsPage() {
   const kyc = q<Seller>(`SELECT * FROM sellers WHERE kyc_status = 'submitted' ORDER BY created_at ASC`);
   const failedPayouts = q<Payout & { store_name: string }>(
     `SELECT p.*, s.store_name FROM payouts p JOIN sellers s ON s.id = p.seller_id WHERE p.status = 'failed' ORDER BY p.created_at DESC`);
+
+  const health = configChecks();
+  const stats = deliveryStats();
+  const lastRun = workerLastRun();
+  const deadWebhooks = q<{ id: number; event: string; error: string | null; response_code: number | null; attempts: number; created_at: string; url: string; store_name: string | null }>(
+    `SELECT d.id, d.event, d.error, d.response_code, d.attempts, d.created_at, e.url, s.store_name FROM webhook_deliveries d
+       JOIN webhook_endpoints e ON e.id = d.endpoint_id LEFT JOIN sellers s ON s.id = e.seller_id
+      WHERE d.status = 'dead' ORDER BY d.id DESC LIMIT 25`);
+  const pushFails = q<{ id: number; store_name: string | null; endpoint_host: string | null; status_code: number | null; error: string | null; removed: number; created_at: string }>(
+    `SELECT f.*, s.store_name FROM push_failures f LEFT JOIN sellers s ON s.id = f.seller_id ORDER BY f.id DESC LIMIT 15`);
+  const failedMsgs = q<{ id: number; channel: string; recipient: string; event: string; status: string; created_at: string }>(
+    `SELECT id, channel, recipient, event, status, created_at FROM notifications WHERE status LIKE 'failed%' ORDER BY id DESC LIMIT 15`);
+  const lvl = { ok: 'bg-success/12 text-success', warn: 'bg-amber-100 text-amber-800', error: 'bg-cherry/10 text-cherry' } as const;
+  const Stat = ({ label, value, sub, warn, id }: { label: string; value: number; sub?: string; warn?: boolean; id: string }) => (
+    <div className="stat" data-testid={id}><div className="stat-label">{label}</div>
+      <div className={`stat-value text-lg ${warn ? 'text-cherry' : ''}`}>{value}</div>{sub && <p className="mt-1 text-xs text-ink-soft">{sub}</p>}</div>);
 
   const age = (iso: string | null) => (iso ? Math.floor((Date.now() - new Date(iso.replace(' ', 'T') + 'Z').getTime()) / 86400000) : 0);
   const total = awaitingTransfer.length + unfulfilled.length + stuckTransit.length + codUncollected.length
@@ -65,6 +82,67 @@ export default function AdminOpsPage() {
         <p className="mt-1 text-sm text-ink-soft">{t('ops_sub')}</p>
       </div>
       {total === 0 && <div className="alert-success">{t('ops_all_clear')}</div>}
+
+      <section className="card overflow-x-auto" data-testid="ops-health">
+        <h2 className="font-bold px-5 pt-5">{t('ops_health')}</h2>
+        <p className="px-5 pb-2 text-xs text-ink-soft">{t('ops_health_sub')} {t('ops_worker_last', { when: lastRun ? lastRun.replace('T', ' ').slice(0, 19) + ' UTC' : t('ops_never') })}</p>
+        <table className="table"><tbody>{health.map((c) => (
+          <tr key={c.name} data-check={c.name} data-level={c.level}>
+            <td className="font-mono text-xs" dir="ltr">{c.name}</td>
+            <td><span className={`badge ${lvl[c.level]}`}>{c.level === 'ok' ? '✓' : c.level === 'warn' ? '!' : '✕'}</span></td>
+            <td className="text-sm">{t(c.note)}</td>
+          </tr>))}</tbody></table>
+      </section>
+
+      <section>
+        <h2 className="font-bold mb-2">{t('ops_delivery')}</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <Stat id="stat-push-subs" label={t('ops_push_subs')} value={stats.pushSubscriptions} sub={t('ops_push_sellers', { n: stats.pushSellers })} />
+          <Stat id="stat-push-failed" label={t('ops_push_failed')} value={stats.pushFailed7d} sub={t('ops_push_removed', { n: stats.pushRemoved7d })} />
+          <Stat id="stat-notify-failed" label={t('ops_notify_failed')} value={stats.notifyFailed7d} warn={stats.notifyFailed7d > 0} />
+          <Stat id="stat-wh-delivered" label={t('ops_wh_delivered')} value={stats.webhooksDelivered24h} />
+          <Stat id="stat-wh-retrying" label={t('ops_wh_retrying')} value={stats.webhooksRetrying} warn={stats.webhooksOverdue > 0} sub={stats.webhooksOverdue > 0 ? t('ops_wh_overdue', { n: stats.webhooksOverdue }) : undefined} />
+          <Stat id="stat-wh-dead" label={t('ops_wh_dead')} value={stats.webhooksDead} warn={stats.webhooksDead > 0} />
+        </div>
+      </section>
+
+      {deadWebhooks.length > 0 && (
+        <div className="card overflow-x-auto" data-testid="ops-dead-webhooks">
+          <h2 className="font-bold px-5 pt-5 pb-2">{t('ops_dead_webhooks')} <span className="text-ink-soft font-normal">({stats.webhooksDead})</span></h2>
+          <table className="table">
+            <thead><tr><th>{t('seller')}</th><th>{t('ops_event')}</th><th>{t('ops_endpoint')}</th><th>{t('ops_attempts')}</th><th>{t('ops_error')}</th><th>{t('date')}</th></tr></thead>
+            <tbody>{deadWebhooks.map((d) => (
+              <tr key={d.id}><td>{d.store_name ?? 'Paylo'}</td><td className="font-mono text-xs" dir="ltr">{d.event}</td>
+                <td className="font-mono text-xs break-all max-w-xs" dir="ltr">{d.url}</td><td>{d.attempts}</td>
+                <td className="text-xs">{d.response_code ? `HTTP ${d.response_code}` : ''} {d.error}</td><td className="text-xs text-ink-soft whitespace-nowrap">{d.created_at}</td></tr>))}</tbody>
+          </table>
+        </div>
+      )}
+
+      {pushFails.length > 0 && (
+        <div className="card overflow-x-auto" data-testid="ops-push-failures">
+          <h2 className="font-bold px-5 pt-5 pb-2">{t('ops_failed_pushes')}</h2>
+          <table className="table">
+            <thead><tr><th>{t('seller')}</th><th>{t('ops_endpoint')}</th><th>{t('ops_error')}</th><th>{t('ops_removed')}</th><th>{t('date')}</th></tr></thead>
+            <tbody>{pushFails.map((f) => (
+              <tr key={f.id}><td>{f.store_name ?? '—'}</td><td className="font-mono text-xs" dir="ltr">{f.endpoint_host}</td>
+                <td className="text-xs">{f.status_code ? `HTTP ${f.status_code} ` : ''}{f.error}</td><td>{f.removed ? t('yes') : t('no')}</td>
+                <td className="text-xs text-ink-soft whitespace-nowrap">{f.created_at}</td></tr>))}</tbody>
+          </table>
+        </div>
+      )}
+
+      {failedMsgs.length > 0 && (
+        <div className="card overflow-x-auto" data-testid="ops-failed-messages">
+          <h2 className="font-bold px-5 pt-5 pb-2">{t('ops_failed_notifications')}</h2>
+          <table className="table">
+            <thead><tr><th>{t('ops_channel')}</th><th>{t('ops_recipient')}</th><th>{t('ops_event')}</th><th>{t('ops_error')}</th><th>{t('date')}</th></tr></thead>
+            <tbody>{failedMsgs.map((m) => (
+              <tr key={m.id}><td>{m.channel}</td><td className="text-xs" dir="ltr">{m.recipient}</td><td className="font-mono text-xs" dir="ltr">{m.event}</td>
+                <td className="text-xs">{m.status}</td><td className="text-xs text-ink-soft whitespace-nowrap">{m.created_at}</td></tr>))}</tbody>
+          </table>
+        </div>
+      )}
 
       <OrderQueue title={t('ops_awaiting_transfer')} rows={awaitingTransfer} />
       <OrderQueue title={t('ops_unfulfilled')} rows={unfulfilled} stamp={(o) => `${age(o.created_at)} ${t('days_open')}`} />
