@@ -450,8 +450,8 @@ const gatewayServer = http.createServer((req, res) => {
   const saveSettings = async (fn) => {
     await seller.goto(BASE + '/seller/settings');
     await fn();
-    await seller.getByRole('button', { name: 'Save', exact: true }).click();
-    await seller.waitForSelector('text=Saved');
+    await seller.locator('[data-testid=store-settings-form]').getByRole('button', { name: 'Save', exact: true }).click();
+    await seller.waitForSelector('[data-testid=store-settings-form] .alert-success');
   };
   await saveSettings(async () => {
     await seller.fill('input[name=announcement]', 'Free cardamom sample with every order this week');

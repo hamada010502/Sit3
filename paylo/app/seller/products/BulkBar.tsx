@@ -23,7 +23,7 @@ export function BulkBar() {
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-1 text-sm"><input type="checkbox" className="accent-cherry" onChange={(e) => toggleAll(e.target.checked)} data-testid="bulk-all" />{t('bulk_select_all')}</label>
+        <label className="tap flex items-center gap-2 text-sm"><input type="checkbox" className="accent-cherry" onChange={(e) => toggleAll(e.target.checked)} data-testid="bulk-all" />{t('bulk_select_all')}</label>
         <select name="bulk_action" className="input w-auto" value={act} onChange={(e) => setAct(e.target.value)} aria-label={t('bulk_action')}>
           <option value="price_pct">{t('bulk_price_pct')}</option>
           <option value="price_set">{t('bulk_price_set')}</option>

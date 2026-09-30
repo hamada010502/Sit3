@@ -13,7 +13,7 @@ export function SettingsForm({ seller }: { seller: Seller }) {
   const { t } = useI18n();
   const [state, action] = useFormState(saveSettingsAction, null);
   return (
-    <form action={action} className="card-pad space-y-4" encType="multipart/form-data">
+    <form action={action} className="card-pad space-y-4" encType="multipart/form-data" data-testid="store-settings-form">
       {state?.error && <div className="alert-error">{t(state.error as TKey)}</div>}
       {state?.ok && <div className="alert-success">{t('settings_saved')}</div>}
       <Field label={t('store_name')}><input name="store_name" className="input" required defaultValue={seller.store_name} /></Field>

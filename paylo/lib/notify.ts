@@ -15,6 +15,8 @@ export interface NotifyInput {
   email?: { to?: string | null; subject: string; body: string };
   sms?: { to?: string | null; body: string };
   whatsapp?: { to?: string | null; body: string };
+  /** Channel for `sms` when the recipient chose one (sellers); otherwise the admin buyer setting. */
+  textChannel?: 'sms' | 'whatsapp';
 }
 
 function record(channel: NotificationChannel, recipient: string, event: string, subject: string | null, body: string, transport: string, status: string) {
@@ -78,7 +80,7 @@ export async function notify(input: NotifyInput) {
   }
   // Buyer text messages go out on one channel, chosen by the admin `text_channel`
   // setting — WhatsApp is often more reliable than SMS in Syria, but never both at once.
-  const textChannel = getSetting('text_channel') === 'whatsapp' ? 'whatsapp' : 'sms';
+  const textChannel = input.textChannel ?? (getSetting('text_channel') === 'whatsapp' ? 'whatsapp' : 'sms');
   if (input.sms?.to && smsOn) {
     const status = await sendTextVia(textChannel, input.sms.to, input.sms.body);
     const transport = (process.env[textChannel === 'sms' ? 'SMS_TRANSPORT' : 'WHATSAPP_TRANSPORT'] || 'log').toLowerCase();

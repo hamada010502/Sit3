@@ -49,7 +49,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
             </div>
           )}
           <div className="mt-5">
-            <Link href={`/s/${seller.slug}`} className="text-xs uppercase tracking-wide text-ink-soft hover:text-cherry">{t('store_by')} · {seller.store_name}</Link>
+            <Link href={`/s/${seller.slug}`} className="tap text-xs uppercase tracking-wide text-ink-soft hover:text-cherry">{t('store_by')} · {seller.store_name}</Link>
             <h1 className="text-2xl font-bold mt-1">{product.title}</h1>
             <p className="text-2xl font-extrabold text-cherry mt-2">
               {variants.length ? `${t('from_price')} ` : ''}{formatSYP(display, lang)}

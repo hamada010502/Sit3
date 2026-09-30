@@ -21,7 +21,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
           <Link href="/seller/verification" className="link">{t('nav_kyc')} →</Link>
         </div>
       )}
-      {approved && !!user.totp_enabled && <NewOrderWatcher />}
+      {approved && !!user.totp_enabled && <NewOrderWatcher soundOn={!!seller.notify_sound} />}
       {children}
     </Shell>
   );

@@ -2,11 +2,10 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useI18n } from '@/lib/i18n/client';
+import { setSoundAction } from '@/app/seller/settings/notifications/actions';
+import { subscribeThisDevice } from '@/lib/push-client';
 
 interface NewOrder { id: string; code: string; product_title: string; total: number }
-const SOUND_KEY = 'paylo_sale_sound';
-const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
-const write = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } };
 
 /** Two short rising tones, synthesised — no audio file to ship or cache. */
 function chime() {
@@ -30,16 +29,24 @@ function chime() {
  * While any seller page is open, polls for new orders and announces them: in-page toast
  * always, a desktop notification if the seller allowed it, and an optional sale chime.
  */
-export function NewOrderWatcher({ intervalMs = 12000 }: { intervalMs?: number }) {
+export function NewOrderWatcher({ intervalMs = 12000, soundOn = false }: { intervalMs?: number; soundOn?: boolean }) {
   const { t } = useI18n();
   const cursor = useRef<string | null>(null);
   const [toasts, setToasts] = useState<NewOrder[]>([]);
   const [perm, setPerm] = useState<NotificationPermission | 'unsupported'>('default');
-  const [sound, setSound] = useState(false);
+  // Sale sound is a server-side preference (Settings → Notifications), so it follows the seller across devices.
+  const [sound, setSound] = useState(soundOn);
+  const soundRef = useRef(soundOn);
+  soundRef.current = sound;
+  const tickRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     setPerm(typeof Notification === 'undefined' ? 'unsupported' : Notification.permission);
-    setSound(read(SOUND_KEY) === '1');
+    // A push arriving while this tab is visible is handed to us by the service worker instead
+    // of becoming a system notification — check for it now rather than at the next poll.
+    const onMsg = (e: MessageEvent) => { if (e.data?.type === 'paylo-new-order') tickRef.current(); };
+    navigator.serviceWorker?.addEventListener('message', onMsg);
+    return () => navigator.serviceWorker?.removeEventListener('message', onMsg);
   }, []);
 
   useEffect(() => {
@@ -54,12 +61,13 @@ export function NewOrderWatcher({ intervalMs = 12000 }: { intervalMs?: number })
         cursor.current = data.cursor;
         if (stop || fresh.length === 0) return;
         setToasts((x) => [...fresh, ...x].slice(0, 4));
-        if (read(SOUND_KEY) === '1') chime();
+        if (soundRef.current) chime();
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           for (const o of fresh) new Notification(t('new_order_title', { code: o.code }), { body: `${o.product_title} — ${o.total.toLocaleString()} SYP`, tag: o.id });
         }
       } catch { /* offline — try again next tick */ }
     };
+    tickRef.current = tick;
     tick();
     const h = setInterval(tick, intervalMs);
     return () => { stop = true; clearInterval(h); };
@@ -67,11 +75,14 @@ export function NewOrderWatcher({ intervalMs = 12000 }: { intervalMs?: number })
 
   const enableDesktop = async () => {
     if (typeof Notification === 'undefined') return;
-    setPerm(await Notification.requestPermission());
+    // Permission for the in-tab alert, plus a push subscription so alerts also arrive with the tab closed.
+    const r = await subscribeThisDevice();
+    setPerm(r === 'denied' ? 'denied' : Notification.permission);
   };
   const toggleSound = () => {
     const next = !sound;
-    setSound(next); write(SOUND_KEY, next ? '1' : '0');
+    setSound(next);
+    setSoundAction(next);
     if (next) chime();
   };
 

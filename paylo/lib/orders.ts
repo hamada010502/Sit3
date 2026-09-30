@@ -4,6 +4,7 @@ import { notify, appUrl } from './notify';
 import { emitWebhook } from './webhooks';
 import { computeFees } from './fees';
 import { isStoreLive } from './store-status';
+import { pushToSeller } from './push';
 import { claimCouponUse, discountFor, findCoupon, releaseCouponUse } from './coupons';
 import { currentCutoff, isoDay, isoStamp, nextTransferDate } from './payouts-schedule';
 import { getPaymentProvider, type CardInput } from './payments';
@@ -251,10 +252,22 @@ async function notifyOrderPlaced(order: Order, seller: Seller, awaitingPayment: 
         `\nTrack it: ${track}\n\n— Paylo` } : undefined,
     sms: { to: order.buyer_phone, body: `Paylo: order ${order.code} received. Track it at ${track}` },
   });
-  if (su) await notify({ event: 'order.placed.seller', email: { to: su.email, subject: `Paylo — new order ${order.code}`,
-    body: `New order ${order.code}: "${order.product_title}"${order.variant_label ? ' (' + order.variant_label + ')' : ''} ×${order.quantity} for ${order.buyer_name}, ${order.governorate}.\n` +
-      (awaitingPayment ? 'Payment is not confirmed yet — do not ship until it is.\n' : 'Cash on delivery. Prepare the parcel and mark it handed off.\n') +
-      `\n${appUrl('/seller/orders/' + order.id)}\n\n— Paylo` } });
+  // Seller alerts follow their Settings → Notifications choices.
+  const line = `${order.product_title}${order.variant_label ? ' (' + order.variant_label + ')' : ''} ×${order.quantity}`;
+  if (su && (seller.notify_email_orders || seller.notify_text !== 'none')) {
+    await notify({
+      event: 'order.placed.seller',
+      email: seller.notify_email_orders ? { to: su.email, subject: `Paylo — new order ${order.code}`,
+        body: `New order ${order.code}: "${line}" for ${order.buyer_name}, ${order.governorate}.\n` +
+          (awaitingPayment ? 'Payment is not confirmed yet — do not ship until it is.\n' : 'Cash on delivery. Prepare the parcel and mark it handed off.\n') +
+          `\n${appUrl('/seller/orders/' + order.id)}\n\n— Paylo` } : undefined,
+      sms: seller.notify_text !== 'none' ? { to: seller.phone, body: `Paylo: new order ${order.code} — ${line}. ${appUrl('/seller/orders/' + order.id)}` } : undefined,
+      textChannel: seller.notify_text === 'whatsapp' ? 'whatsapp' : 'sms',
+    });
+  }
+  if (seller.notify_push) {
+    await pushToSeller(seller.id, { title: `New order ${order.code}`, body: `${line} — ${order.total.toLocaleString('en-US')} SYP`, url: `/seller/orders/${order.id}`, tag: order.id });
+  }
 }
 
 /* --------------------------- payment events -------------------------- */

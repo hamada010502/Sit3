@@ -42,6 +42,11 @@ CREATE TABLE IF NOT EXISTS sellers (
   -- About page builder: JSON array of { heading, body, image } sections, rendered as text.
   about_sections TEXT,
   thank_you_message TEXT,
+  -- Seller notification preferences (Settings → Notifications).
+  notify_push INTEGER NOT NULL DEFAULT 1,
+  notify_sound INTEGER NOT NULL DEFAULT 0,
+  notify_email_orders INTEGER NOT NULL DEFAULT 1,
+  notify_text TEXT NOT NULL DEFAULT 'none' CHECK (notify_text IN ('none','sms','whatsapp')),
   visible INTEGER NOT NULL DEFAULT 1,
   payout_details TEXT,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','suspended')),
@@ -444,3 +449,17 @@ CREATE TABLE IF NOT EXISTS variation_presets (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE (seller_id, name)
 );
+
+-- Web Push subscriptions, one per seller device/browser. Deleted when the push service
+-- reports them gone (404/410).
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id TEXT PRIMARY KEY,
+  seller_id TEXT NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  user_agent TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  last_success_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_push_seller ON push_subscriptions(seller_id);

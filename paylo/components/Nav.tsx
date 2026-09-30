@@ -22,7 +22,7 @@ export function Nav() {
   return (
     <header className="bg-white border-b border-ink/10 sticky top-0 z-30">
       <div className="mx-auto max-w-7xl px-4 h-16 flex items-center justify-between gap-3">
-        <Link href={home} className="shrink-0" aria-label="Paylo">
+        <Link href={home} className="shrink-0 tap" aria-label="Paylo">
           <span className="sm:hidden"><Logo size={28} wordmark={false} /></span>
           <span className="hidden sm:inline-flex"><Logo size={30} /></span>
         </Link>
@@ -32,18 +32,18 @@ export function Nav() {
         <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
           <LangSwitch />
           {user ? (
-            <form action="/logout" method="post"><button className="text-sm font-semibold text-ink-soft hover:text-cherry">{t('nav_logout')}</button></form>
+            <form action="/logout" method="post"><button className="tap text-sm font-semibold text-ink-soft hover:text-cherry">{t('nav_logout')}</button></form>
           ) : (
             <>
-              <Link href="/login" className="text-sm font-semibold text-ink-soft hover:text-cherry">{t('nav_login')}</Link>
+              <Link href="/login" className="tap text-sm font-semibold text-ink-soft hover:text-cherry">{t('nav_login')}</Link>
               <Link href="/apply" className="btn-primary btn-sm">{t('nav_apply')}</Link>
             </>
           )}
         </div>
       </div>
       {links.length > 0 && (
-        <nav className="lg:hidden flex gap-4 px-4 pb-2 text-sm font-medium text-ink-soft overflow-x-auto">
-          {links.map(([href, label]) => <Link key={href} href={href} className="hover:text-cherry whitespace-nowrap">{label}</Link>)}
+        <nav className="lg:hidden flex gap-4 px-4 text-sm font-medium text-ink-soft overflow-x-auto">
+          {links.map(([href, label]) => <Link key={href} href={href} className="tap hover:text-cherry whitespace-nowrap">{label}</Link>)}
         </nav>
       )}
     </header>

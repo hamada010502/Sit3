@@ -37,7 +37,7 @@ export default function EarningsPage({ searchParams }: { searchParams: { m?: str
           <tbody>{rows.map((r) => (
             <tr key={r.id} data-code={r.code}>
               <td className="text-xs text-ink-soft whitespace-nowrap" dir="ltr">{r.created_at.slice(0, 10)}</td>
-              <td><Link href={`/seller/orders/${r.id}`} className="font-mono text-cherry" dir="ltr">{r.code}</Link></td>
+              <td><Link href={`/seller/orders/${r.id}`} className="tap-inline font-mono text-cherry" dir="ltr">{r.code}</Link></td>
               <td>{r.product} × {r.qty}</td>
               <td>{f(r.listPrice)}</td>
               <td>{r.discount ? `− ${f(r.discount)}` : '—'}</td>

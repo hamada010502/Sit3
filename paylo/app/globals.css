@@ -107,3 +107,16 @@ body { @apply bg-cream text-ink antialiased; }
   .wf-card { transition: none; }
   .ld-sweep { inset-inline-start: 0; width: 100%; }
 }
+
+/* Touch screens: every control at least 44px tall (WCAG 2.5.5 / platform guidelines).
+   Links get vertical padding instead: on inline text that grows the tap area without
+   moving any text. Mouse/trackpad layouts are unchanged. */
+@media (pointer: coarse) {
+  .btn, .btn-primary, .btn-secondary, .btn-dark, .btn-danger, .btn-ghost, .btn-sm, .btn-cta { min-height: 44px; }
+  .link { padding-block: 12px; }
+  .tap { min-height: 44px; display: inline-flex; align-items: center; }
+  .tap-inline { padding-block: 12px; }
+  /* Badge-styled links are filter chips — full-size targets on touch. */
+  a.badge { min-height: 44px; display: inline-flex; align-items: center; }
+  .input { min-height: 44px; }
+}

@@ -256,4 +256,13 @@ export const ar: Dict = {
   wh_st_delivered: 'تم التسليم', wh_st_failed: 'فشل — ستتم إعادة المحاولة', wh_st_dead: 'توقفت المحاولات', wh_attempts: '{n} محاولة',
   wh_next_retry: 'المحاولة التالية', wh_retry_now: 'أعد المحاولة الآن',
   tfa_hold_note: 'متجرك معلّق: لا يمكن للمشترين رؤيته أو الشراء منه، والمدفوعات متوقفة حتى تفعّل التحقق بخطوتين.',
+  notif_settings_title: 'الإشعارات', notif_settings_sub: 'كيف تعرف بالطلبات الجديدة.',
+  notif_this_device: 'هذا الجهاز', notif_device_on: 'الإشعارات الفورية مفعّلة', notif_device_off: 'الإشعارات الفورية متوقفة',
+  notif_device_unsupported: 'هذا المتصفح لا يدعم الإشعارات الفورية', notif_device_failed: 'تعذّر التفعيل — حاول مجددًا',
+  notif_device_enable: 'تفعيل على هذا الجهاز', notif_device_disable: 'إيقاف هنا', notif_send_test: 'إرسال تجربة',
+  notif_test_sent: 'أُرسلت التجربة إلى {n} جهاز.', notif_devices_count: '{n} جهاز يستقبل الإشعارات',
+  notif_push: 'الإشعارات الفورية', notif_push_hint: 'تصلك الطلبات الجديدة على هاتفك أو حاسوبك حتى وPaylo مغلق.',
+  notif_sound: 'صوت البيع', notif_sound_hint: 'نغمة قصيرة عند وصول طلب وPaylo مفتوح.',
+  notif_email: 'بريد لكل طلب جديد', notif_email_hint: 'يُرسل إلى بريد حسابك.',
+  notif_text: 'رسالة نصية لكل طلب جديد', notif_text_hint: 'تُرسل إلى رقم هاتف متجرك.', notif_text_none: 'متوقفة',
 };

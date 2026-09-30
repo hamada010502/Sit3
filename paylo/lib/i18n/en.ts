@@ -291,5 +291,14 @@ export const en = {
   wh_st_delivered: 'Delivered', wh_st_failed: 'Failed — will retry', wh_st_dead: 'Gave up', wh_attempts: '{n} attempt(s)',
   wh_next_retry: 'Next retry', wh_retry_now: 'Retry now',
   tfa_hold_note: 'Your store is on hold: buyers cannot see it or check out, and payouts are paused until you turn on two-factor authentication.',
+  notif_settings_title: 'Notifications', notif_settings_sub: 'How you hear about new orders.',
+  notif_this_device: 'This device', notif_device_on: 'push notifications on', notif_device_off: 'push notifications off',
+  notif_device_unsupported: 'this browser does not support push', notif_device_failed: 'could not turn on — try again',
+  notif_device_enable: 'Turn on for this device', notif_device_disable: 'Turn off here', notif_send_test: 'Send a test',
+  notif_test_sent: 'Test sent to {n} device(s).', notif_devices_count: '{n} device(s) receiving pushes',
+  notif_push: 'Push notifications', notif_push_hint: 'New orders reach your phone or computer even with Paylo closed.',
+  notif_sound: 'Sale sound', notif_sound_hint: 'A short chime when an order arrives while Paylo is open.',
+  notif_email: 'Email for each new order', notif_email_hint: 'Sent to your account email.',
+  notif_text: 'Text message for each new order', notif_text_hint: 'Sent to your store phone number.', notif_text_none: 'Off',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };
