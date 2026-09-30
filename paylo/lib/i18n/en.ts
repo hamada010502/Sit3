@@ -228,5 +228,8 @@ export const en = {
   register_error_taken: 'An account with that email already exists.', register_btn: 'Create account',
   register_already: 'Already have an account?', login_no_account_yet: "Don't have an account?",
   saved_payment_coming_soon: 'Saved payment methods will be available once card payments are live. Cash on delivery and bank transfer work today.',
+  // parity: payouts
+  payout_cutoff_note: 'Orders cleared before {cutoff} are included — {left}.',
+  payout_in_next_run: 'Going out in this run', payout_days_left: '{n} days left', payout_hours_left: '{n} hours left',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

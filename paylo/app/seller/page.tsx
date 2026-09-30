@@ -8,6 +8,7 @@ import { requireApprovedSeller } from '@/lib/guards';
 import { getT } from '@/lib/i18n/server';
 import { formatSYP } from '@/lib/money';
 import { sellerBalances } from '@/lib/orders';
+import { nextCutoff, nextTransferDate } from '@/lib/payouts-schedule';
 import type { Order } from '@/lib/types';
 
 export default function SellerDashboard() {
@@ -23,6 +24,15 @@ export default function SellerDashboard() {
   const recent = db.prepare('SELECT * FROM orders WHERE seller_id = ? ORDER BY created_at DESC LIMIT 8').all(seller.id) as Order[];
   const storeUrl = appUrl(`/s/${seller.slug}`);
 
+  // Payout calendar is UTC (lib/payouts-schedule.ts), so dates render in UTC too.
+  const cutoff = nextCutoff();
+  const transfer = nextTransferDate();
+  const locale = lang === 'ar' ? 'ar-SY' : 'en-GB';
+  const fmtDay = (d: Date) => d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  const fmtCutoff = (d: Date) => `${d.toLocaleDateString(locale, { weekday: 'long', timeZone: 'UTC' })} ${d.toISOString().slice(11, 16)} UTC`;
+  const hoursLeft = Math.max(0, Math.round((cutoff.getTime() - Date.now()) / 3_600_000));
+  const leftText = hoursLeft >= 48 ? t('payout_days_left', { n: Math.floor(hoursLeft / 24) }) : t('payout_hours_left', { n: hoursLeft });
+
   return (
     <div>
       <AutoRefresh seconds={10} />
@@ -36,11 +46,23 @@ export default function SellerDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <section className="card-pad mb-4 border-cherry/20 bg-cherry/5 flex flex-wrap items-center justify-between gap-4" data-testid="next-payout">
+        <div>
+          <div className="stat-label">{t('bal_next_payout')}</div>
+          <div className="text-2xl font-extrabold mt-1">{fmtDay(transfer)}</div>
+          <p className="text-sm text-ink-soft mt-1">{t('payout_cutoff_note', { cutoff: fmtCutoff(cutoff), left: leftText })}</p>
+        </div>
+        <div className="text-end">
+          <div className="stat-label">{t('payout_in_next_run')}</div>
+          <div className="text-2xl font-extrabold text-success mt-1">{formatSYP(bal.available, lang)}</div>
+          <Link href="/seller/payouts" className="link text-sm">{t('nav_payouts')} →</Link>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
         <div className="stat"><div className="stat-label">{t('bal_available')}</div><div className="stat-value text-lg text-success">{formatSYP(bal.available, lang)}</div><p className="mt-1 text-xs text-ink-soft">{t('bal_available_d')}</p></div>
         <div className="stat"><div className="stat-label">{t('bal_pending')}</div><div className="stat-value text-lg">{formatSYP(bal.pending, lang)}</div><p className="mt-1 text-xs text-ink-soft">{t('bal_pending_d')}</p></div>
         <div className="stat"><div className="stat-label">{t('bal_lifetime')}</div><div className="stat-value text-lg">{formatSYP(bal.lifetime, lang)}</div></div>
-        <div className="stat"><div className="stat-label">{t('bal_next_payout')}</div><div className="stat-value text-lg" dir="ltr">{bal.nextPayout}</div></div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">

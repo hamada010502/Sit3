@@ -194,4 +194,6 @@ export const ar: Dict = {
   register_error_taken: 'يوجد حساب بهذا البريد الإلكتروني بالفعل.', register_btn: 'إنشاء حساب',
   register_already: 'لديك حساب بالفعل؟', login_no_account_yet: 'ليس لديك حساب؟',
   saved_payment_coming_soon: 'ستتوفر طرق الدفع المحفوظة عند تفعيل الدفع بالبطاقة. الدفع عند الاستلام والتحويل البنكي متاحان الآن.',
+  payout_cutoff_note: 'الطلبات المكتملة قبل {cutoff} تُضاف لهذه الدفعة — {left}.',
+  payout_in_next_run: 'المبلغ في هذه الدفعة', payout_days_left: 'متبقٍ {n} أيام', payout_hours_left: 'متبقٍ {n} ساعة',
 };
