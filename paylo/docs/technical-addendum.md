@@ -233,9 +233,56 @@ plain-text bodies onto approved templates before WhatsApp goes live.
 While any seller page is open, `NewOrderWatcher` polls `GET /api/seller/new-orders`
 (session-scoped to that store, 401 otherwise) and announces each new order with an in-page
 toast, a desktop notification if the seller allowed it, and an optional sale chime
-(synthesised with Web Audio; the on/off choice is remembered per browser). Orders already
-there when the page loads are never announced. This covers "dashboard open"; alerts with
-the browser closed need Web Push (service worker + VAPID), which is on the roadmap below.
+(synthesised with Web Audio). Orders already there when the page loads are never
+announced. The watcher only runs for a live store (2FA on). With the browser closed, Web
+Push takes over (§7d).
+
+## 7d. PWA and Web Push (Sprint A)
+
+- **Installable app.** `app/manifest.ts` (start URL `/seller`, icons in `public/icons/`),
+  `public/sw.js` registered by `components/ServiceWorker.tsx`. Navigations that fail while
+  offline get `public/offline.html` (English + Arabic); nothing else is cached, so stale
+  money figures are never shown.
+- **Push.** `lib/push.ts` signs with VAPID (`VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` /
+  `VAPID_SUBJECT`; if unset a key pair is generated once and stored in `settings`) and
+  encrypts payloads (aes128gcm). Subscriptions live in `push_subscriptions`, scoped by the
+  seller from the session (`/api/push/subscribe`); a 404/410 from the push service deletes
+  the subscription. The service worker shows a system notification only when no `/seller`
+  tab is visible; otherwise it pings the open tab, which shows the toast and chime.
+- **Preferences** (`/seller/settings`, "Notifications"): `notify_push`, `notify_sound`
+  (now stored server-side, not per browser), `notify_email_orders`, `notify_text`, plus a
+  "send test push" button. `notifyOrderPlaced()` honours all four.
+
+## 7e. Seller UX (Sprints A–C)
+
+- **Touch sizing.** Under `@media (pointer: coarse)` buttons, inputs and `.tap` links are at
+  least 44px tall. The e2e audit checks every seller/buyer page at 390px, in English and
+  Arabic, for horizontal overflow, tap targets under 40px and clipped text.
+- **Empty states** (`components/EmptyState.tsx`) on products, collections, variations,
+  coupons, orders (unfiltered vs filtered) and returns (open vs all).
+- **Hand-off.** `HandOffForm` has labelled fields; after hand-off `HandedOffCard` shows the
+  tracking number first, with copy, the buyer's tracking link, and an audited edit.
+- **Product photos.** `ImageManager` supports drag-drop, several files at once, reorder
+  (first photo = cover) and removal, up to 5. The server only keeps paths that already
+  belong to that product, so a forged path cannot attach another store's file.
+- **Commission breakdown** (`/seller/payouts`) and **post-purchase message** (shown on the
+  buyer's tracking page on every later visit, with a live preview in settings).
+- **Sales chart.** `lib/sales.ts` `dailySales()` sums goods value (excluding cancelled, failed-payment and refunded orders)
+  per UTC day for 30 days; `components/SalesChart.tsx` is a single-series bar chart
+  with per-bar tooltips and a table view.
+- **Checkout.** Still two steps (details → payment). Fixed: "Continue" now validates step 1
+  in the browser (same phone rule as the server), and a server-side field error returns the
+  buyer to step 1 with the field focused instead of leaving it hidden on step 2.
+- **Returns list** shows the refunded amount and the resulting seller net for partial
+  refunds.
+
+## 7f. Test coverage
+
+`scripts/run-e2e.sh` builds once and runs five suites: smoke, registration, account/checkout,
+parity (Shopier items 1–17 incl. returns, partial refunds, coupons, bulk updates, new-order
+watcher, webhook retry/dead-letter, 2FA hold) and sprint (PWA, encrypted push delivery via a
+local push service, notification prefs, 390px EN/AR audit, empty states, hand-off, photos,
+sales chart, checkout fixes, offline page).
 
 ## 8. Known gaps
 
@@ -247,7 +294,5 @@ the browser closed need Web Push (service worker + VAPID), which is on the roadm
 
 ## 9. Roadmap (not built)
 
-- **Native mobile app / installable PWA.** Sellers run their store from their phones. The
-  responsive web app is the current answer and is checked at 390px on every seller and buyer
-  page added in the Shopier-parity work. A PWA (manifest, offline shell, Web Push for
-  new-order alerts with the browser closed) is the next step; a native app only after that.
+- **Native mobile app.** The PWA (§7d) is shipped; a native app only if install rates or
+  iOS push limits make it necessary (iOS delivers Web Push only to home-screen installs).

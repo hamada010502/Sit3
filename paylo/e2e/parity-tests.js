@@ -162,6 +162,10 @@ const gatewayServer = http.createServer((req, res) => {
   const [rA] = refundsOf(spiceDelivered.id);
   ok(rA && rA.kind === 'partial' && rA.amount === 30000 && rA.liability === 'seller' && rA.dispute_id === dispute.id, 'ledger row: partial, 30,000, liability seller, tied to the dispute');
   ok(db.prepare('SELECT status, liability FROM disputes WHERE id = ?').get(dispute.id).liability === 'seller', 'dispute records liability = seller');
+  await seller.goto(BASE + '/seller/returns?f=resolved');
+  { const txt = await seller.locator('[data-testid=seller-returns]').innerText();
+    ok(txt.includes(spiceDelivered.code) && /30,000/.test(await seller.locator('[data-testid=return-refunded]').first().innerText()), 'resolved partial refund appears in the seller returns list with the refunded amount');
+    ok((await seller.locator('[data-testid=return-refunded]').first().innerText()).includes(new Intl.NumberFormat('en-US').format(ord(spiceDelivered.id).seller_net)), 'returns row shows the reduced seller net'); }
   ok(A1.status === 'delivered' && A1.order_state === 'closed', 'order returns to its pre-dispute status (delivered/closed), not "refunded"');
   ok(A1.refunded_amount === 30000, 'order tracks 30,000 refunded so far');
   ok(A1.commission_amount === A0.commission_amount - commissionBack, `commission reduced proportionally (−${commissionBack})`);

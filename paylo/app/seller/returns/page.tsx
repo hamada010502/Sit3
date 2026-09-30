@@ -8,7 +8,7 @@ import { getT } from '@/lib/i18n/server';
 import { formatSYP } from '@/lib/money';
 import type { Dispute, Order } from '@/lib/types';
 
-type Row = Dispute & Pick<Order, 'code' | 'product_title' | 'variant_label' | 'buyer_name' | 'total'> & { order_status: Order['status'] };
+type Row = Dispute & Pick<Order, 'code' | 'product_title' | 'variant_label' | 'buyer_name' | 'total' | 'refunded_amount' | 'seller_net'> & { order_status: Order['status'] };
 const FILTERS = ['open', 'resolved', 'all'] as const;
 
 /**
@@ -22,7 +22,7 @@ export default function SellerReturnsPage({ searchParams }: { searchParams: { f?
   const f = (FILTERS as readonly string[]).includes(searchParams.f || '') ? searchParams.f as typeof FILTERS[number] : 'open';
   const where = f === 'open' ? "AND d.status IN ('open','investigating')" : f === 'resolved' ? "AND d.status NOT IN ('open','investigating')" : '';
   const rows = getDb().prepare(`
-    SELECT d.*, o.code, o.product_title, o.variant_label, o.buyer_name, o.total, o.status AS order_status
+    SELECT d.*, o.code, o.product_title, o.variant_label, o.buyer_name, o.total, o.refunded_amount, o.seller_net, o.status AS order_status
       FROM disputes d JOIN orders o ON o.id = d.order_id
      WHERE o.seller_id = ? ${where}
      ORDER BY d.created_at DESC`).all(seller.id) as Row[];
@@ -56,7 +56,8 @@ export default function SellerReturnsPage({ searchParams }: { searchParams: { f?
                 <td><strong>{t(`dr_${d.reason}` as 'dr_other')}</strong>{d.description && <div className="text-xs text-ink-soft whitespace-pre-line max-w-xs">{d.description}</div>}</td>
                 <td><DisputeStatusBadge status={d.status} t={t} />
                   {resolved && d.admin_note && <div className="text-xs text-ink-soft mt-1 max-w-xs">{d.admin_note}</div>}</td>
-                <td>{d.liability ? t(`li_${d.liability}` as const) : '—'}</td>
+                <td>{d.liability ? t(`li_${d.liability}` as const) : '—'}
+                  {d.refunded_amount > 0 && <div className="text-xs mt-1" data-testid="return-refunded">{t('refunded_so_far')}: <strong>{formatSYP(d.refunded_amount, lang)}</strong><div className="text-ink-soft">{t('seller_net')}: {formatSYP(d.seller_net, lang)}</div></div>}</td>
                 <td className="text-xs text-ink-soft whitespace-nowrap">{d.created_at}{d.resolved_at && <div>→ {d.resolved_at}</div>}</td>
               </tr>
             );
