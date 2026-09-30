@@ -240,5 +240,14 @@ export const en = {
   refunds_title: 'Refunds', refunded_so_far: 'Refunded so far', refund_liability_note: 'Liability: {l}',
   seller_net_after: 'Your payout for this order',
   partial_refund_note: '{amount} has been refunded to you on this order.',
+  discount: 'Discount', coupon_placeholder: 'Discount code', coupon_apply: 'Apply',
+  coupon_invalid: 'That code is not valid for this store.', coupon_min: 'Your order is below the minimum for this code.',
+  coupons_title: 'Discount codes', nav_coupons: 'Coupons', coupon_code: 'Code', coupon_kind: 'Type',
+  coupon_percent: 'Percent off', coupon_fixed: 'Amount off (SYP)', coupon_value: 'Value', coupon_min_subtotal: 'Minimum order (SYP)',
+  coupon_max_uses: 'Max uses (blank = unlimited)', coupon_expires: 'Expires (optional)', coupon_create: 'Create code',
+  coupon_uses: 'Used', coupon_active: 'Active', coupon_deactivate: 'Turn off', coupon_activate: 'Turn on', coupons_none: 'No discount codes yet.',
+  coupon_code_format: 'Use 3–24 letters, numbers, - or _.', coupon_value_range: 'Percent must be 1–90; amount must be above 0.',
+  coupon_code_taken: 'You already have a code with that name.',
+  coupons_sub: 'Codes apply to goods only — the delivery fee is never discounted. Commission is charged on what the buyer actually pays.',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

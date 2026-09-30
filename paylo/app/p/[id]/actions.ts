@@ -2,6 +2,8 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { checkout } from '@/lib/orders';
+import { discountFor, findCoupon } from '@/lib/coupons';
+import { getDb } from '@/lib/db';
 import { GOVERNORATES, type PaymentMethod } from '@/lib/types';
 
 export interface CheckoutState { error?: string; fields?: Record<string, string> }
@@ -38,7 +40,19 @@ export async function checkoutAction(productId: string, _prev: CheckoutState | n
   const result = await checkout({
     productId, variantId, quantity, buyerName, buyerPhone, buyerEmail: buyerEmail || undefined,
     governorate, address, note: f('note') || undefined, paymentMethod, card, userId,
+    couponCode: f('coupon_code') || null,
   });
   if (!result.ok) return { error: result.error };
   redirect(`/track/${result.order.code}?new=1`);
+}
+
+/** Checkout preview only — the real check (and use claim) happens again inside checkout(). */
+export async function previewCouponAction(productId: string, code: string, variantId: string | null, qty: number): Promise<{ discount?: number; code?: string; error?: string }> {
+  const db = getDb();
+  const product = db.prepare('SELECT id, seller_id, price FROM products WHERE id = ?').get(productId) as { id: string; seller_id: string; price: number } | undefined;
+  if (!product || !code.trim()) return { error: 'coupon_invalid' };
+  const variant = variantId ? db.prepare('SELECT price FROM product_variants WHERE id = ? AND product_id = ?').get(variantId, productId) as { price: number } | undefined : undefined;
+  const coupon = findCoupon(product.seller_id, code);
+  const d = discountFor(coupon, (variant?.price ?? product.price) * Math.max(1, Math.floor(qty)));
+  return 'error' in d ? { error: d.error } : { discount: d.discount, code: coupon!.code };
 }

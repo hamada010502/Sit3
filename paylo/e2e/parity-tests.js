@@ -206,6 +206,94 @@ const step = (m) => console.log('\n' + m);
   await buyer.goto(BASE + '/track/' + spiceDelivered.code);
   ok(await buyer.getByText('has been refunded to you on this order').count() === 1, 'buyer tracking page shows the partial refund');
 
+  /* ---------------- 5. Seller coupons ---------------- */
+  step('5. Sellers create discount codes; checkout applies them correctly');
+  const makeCoupon = async ({ code, kind = 'percent', value, min = '', max = '' }) => {
+    await seller.goto(BASE + '/seller/coupons');
+    const f = seller.locator('[data-testid=coupon-form]');
+    await f.locator('input[name=code]').fill(code);
+    await f.locator('select[name=kind]').selectOption(kind);
+    await f.locator('input[name=value]').fill(String(value));
+    await f.locator('input[name=min_subtotal]').fill(String(min));
+    await f.locator('input[name=max_uses]').fill(String(max));
+    await f.getByRole('button', { name: 'Create code' }).click();
+    await seller.waitForLoadState('networkidle');
+  };
+  await makeCoupon({ code: 'x', value: 10 });
+  ok(await seller.getByText('Use 3–24 letters').count() === 1, 'malformed code is rejected');
+  await makeCoupon({ code: 'TOOMUCH', value: 95 });
+  ok(await seller.getByText('Percent must be 1–90').count() === 1, 'percent above 90 is rejected');
+  await makeCoupon({ code: 'eid20', value: 20, max: 1 });
+  ok(!!db.prepare("SELECT 1 FROM coupons WHERE seller_id = ? AND code = 'EID20'").get(spice.id), 'code is created (normalised to upper case)');
+  await makeCoupon({ code: 'EID20', value: 5 });
+  ok(await seller.getByText('You already have a code with that name').count() === 1, 'duplicate code for the same store is rejected');
+  await makeCoupon({ code: 'BULK5K', kind: 'fixed', value: 5000, min: 100000 });
+  await makeCoupon({ code: 'RACE1', value: 10, max: 1 });
+
+  const zaatar = db.prepare("SELECT * FROM products WHERE seller_id = ? AND title LIKE 'Za%'").get(spice.id);
+  const buyNow = async (page, { code, qty = 1, name = 'Coupon Buyer' }) => {
+    await page.goto(BASE + '/p/' + zaatar.id);
+    await page.fill('input[name=buyer_name]', name);
+    await page.fill('input[name=buyer_phone]', '0912345000');
+    await page.fill('textarea[name=address]', 'Shaalan, Damascus');
+    await page.locator('input[name=quantity]').fill(String(qty));
+    await page.click('button:has-text("Continue")');
+    if (code) {
+      await page.getByLabel('Discount code').fill(code);
+      await page.getByRole('button', { name: 'Apply' }).click();
+      await page.waitForSelector('[data-testid=discount-line], [data-testid=coupon-box] .alert-error');
+    }
+  };
+  const place = async (page) => {
+    await page.locator('button[type=submit]').click();
+    await page.waitForURL('**/track/**', { timeout: 15000 });
+    return db.prepare('SELECT * FROM orders WHERE code = ?').get(decodeURIComponent(new URL(page.url()).pathname.split('/').pop()));
+  };
+
+  const b1 = await newPage();
+  await buyNow(b1, { code: 'eid20' });
+  ok(/7,000/.test(await b1.locator('[data-testid=discount-line]').innerText()), 'preview shows 20% off 35,000 = 7,000');
+  const o1 = await place(b1);
+  ok(o1.coupon_code === 'EID20' && o1.discount_amount === 7000, 'order records code EID20 and 7,000 discount');
+  ok(o1.subtotal === 28000 && o1.delivery_fee === 15000 && o1.total === 43000, 'discount comes off goods only; delivery fee (15,000) untouched');
+  ok(o1.commission_amount === 1400 && o1.seller_net === 26600, 'commission is charged on the paid 28,000 (5% = 1,400), seller net 26,600');
+  ok(db.prepare("SELECT used_count FROM coupons WHERE code = 'EID20'").get().used_count === 1, 'use is counted');
+
+  const b2 = await newPage();
+  await buyNow(b2, { code: 'EID20' });
+  ok(await b2.getByText('That code is not valid for this store').count() === 1, 'a used-up code is refused at preview');
+
+  await buyNow(b2, { code: 'BULK5K' });
+  ok(await b2.getByText('below the minimum for this code').count() === 1, 'minimum order is enforced (35,000 < 100,000)');
+  await buyNow(b2, { code: 'BULK5K', qty: 3 });
+  ok(/5,000/.test(await b2.locator('[data-testid=discount-line]').innerText()), 'fixed 5,000 applies once the minimum is met');
+
+  db.prepare("INSERT INTO coupons (id, seller_id, code, kind, value) VALUES ('c-lina', (SELECT id FROM sellers WHERE slug = 'lina-handmade'), 'LINA10', 'percent', 10)").run();
+  await buyNow(b2, { code: 'LINA10' });
+  ok(await b2.getByText('That code is not valid for this store').count() === 1, "another store's code does not work here");
+
+  // Concurrent race on the last use: both preview fine, only one can take it.
+  const [race1, race2] = [await newPage(), await newPage()];
+  await buyNow(race1, { code: "RACE1", name: "Racer One" });
+  await buyNow(race2, { code: "RACE1", name: "Racer Two" });
+  const outcome = async (p) => {
+    await p.locator('button[type=submit]').click();
+    return p.waitForURL('**/track/**', { timeout: 15000 }).then(() => 'ordered').catch(() => 'refused');
+  };
+  const results = await Promise.all([outcome(race1), outcome(race2)]);
+  const raceOrders = db.prepare("SELECT count(*) c FROM orders WHERE coupon_code = 'RACE1'").get().c;
+  ok(raceOrders === 1 && db.prepare("SELECT used_count FROM coupons WHERE code = 'RACE1'").get().used_count === 1,
+    `two concurrent checkouts on a 1-use code create exactly one discounted order (${results.join(', ')})`);
+
+  // Cancelling gives the use back.
+  await admin.goto(BASE + '/admin/orders/' + o1.id);
+  await admin.getByRole('button', { name: 'Cancelled', exact: true }).click();
+  await admin.waitForLoadState('networkidle');
+  ok(db.prepare('SELECT status FROM orders WHERE id = ?').get(o1.id).status === 'cancelled' && db.prepare("SELECT used_count FROM coupons WHERE code = 'EID20'").get().used_count === 0, 'cancelling the order releases its coupon use');
+
+  await seller.goto(BASE + '/seller/orders/' + (db.prepare("SELECT id FROM orders WHERE coupon_code = 'RACE1'").get().id));
+  ok(await seller.locator('[data-testid=order-discount]').count() === 1, 'seller sees the discount and code on the order');
+
   console.log(`\nALL PASSED — ${passed} assertions`);
   await browser.close();
   db.close();

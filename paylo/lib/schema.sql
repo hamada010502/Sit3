@@ -127,6 +127,10 @@ CREATE TABLE IF NOT EXISTS orders (
   -- Running total of partial refunds (goods value). A full refund still moves the order
   -- to status 'refunded'; this column is only non-zero for orders that stay live.
   refunded_amount INTEGER NOT NULL DEFAULT 0,
+  -- Seller coupon applied at checkout. subtotal is already net of it (what the buyer
+  -- pays for goods, and what commission is charged on); this is kept for display.
+  discount_amount INTEGER NOT NULL DEFAULT 0,
+  coupon_code TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   paid_at TEXT,
   closed_at TEXT,
@@ -388,3 +392,20 @@ CREATE TABLE IF NOT EXISTS refunds (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_refunds_order ON refunds(order_id);
+
+-- Seller discount codes. Scoped to one seller's products; the discount comes off the
+-- goods value only (delivery fee untouched) and commission is charged on what is paid.
+CREATE TABLE IF NOT EXISTS coupons (
+  id TEXT PRIMARY KEY,
+  seller_id TEXT NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+  code TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('percent','fixed')),
+  value INTEGER NOT NULL CHECK (value > 0),
+  min_subtotal INTEGER NOT NULL DEFAULT 0,
+  max_uses INTEGER,
+  used_count INTEGER NOT NULL DEFAULT 0,
+  expires_at TEXT,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (seller_id, code)
+);

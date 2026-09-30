@@ -1,8 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useFormState } from 'react-dom';
-import { checkoutAction, type CheckoutState } from './actions';
+import { checkoutAction, previewCouponAction, type CheckoutState } from './actions';
 import { useI18n } from '@/lib/i18n/client';
 import { Field } from '@/components/Field';
 import { SubmitButton } from '@/components/SubmitButton';
@@ -42,11 +42,23 @@ export function CheckoutForm({ productId, basePrice, stock, isDigital, variants,
   const available = variant ? variant.stock : stock;
   const fee = isDigital ? 0 : gov === DAMASCUS ? feeDamascus : feeOther;
   const subtotal = unit * qty;
+  const [couponInput, setCouponInput] = useState('');
+  const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [couponErr, setCouponErr] = useState<string | null>(null);
+  const [checking, startCheck] = useTransition();
+  // A discount depends on the goods value, so a change of quantity or variant needs a re-check.
+  useEffect(() => { setCoupon(null); }, [qty, variantId]);
+  const discount = coupon?.discount ?? 0;
+  const applyCoupon = () => startCheck(async () => {
+    const r = await previewCouponAction(productId, couponInput, variantId || null, qty);
+    if (r.error) { setCoupon(null); setCouponErr(r.error); } else { setCoupon({ code: r.code!, discount: r.discount! }); setCouponErr(null); }
+  });
   const err = (k: string) => (state?.fields?.[k] ? t('required') : undefined);
   const failMsg = !state?.error || state.error === 'checkout_error' ? null
     : state.error === 'qty_exceeds' ? t('qty_exceeds', { n: available })
     : state.error === 'variant_required' ? t('variant_required')
     : state.error === 'product_unavailable' ? t('product_unavailable')
+    : state.error === 'coupon_invalid' || state.error === 'coupon_min' ? null
     : state.error === 'payment_method_unavailable' ? t('payment_method_unavailable')
     : KNOWN_FAILS.includes(state.error) ? t(`fail_${state.error}` as TKey) : t('fail_generic');
 
@@ -157,17 +169,30 @@ export function CheckoutForm({ productId, basePrice, stock, isDigital, variants,
           </div>
         )}
 
+        <div className="space-y-2" data-testid="coupon-box">
+          {(couponErr || state?.error === 'coupon_invalid' || state?.error === 'coupon_min') && (
+            <div className="alert-error text-sm">{t((couponErr || state?.error) === 'coupon_min' ? 'coupon_min' : 'coupon_invalid')}</div>
+          )}
+          <div className="flex gap-2">
+            <input className="input" dir="ltr" placeholder={t('coupon_placeholder')} value={couponInput} aria-label={t('coupon_placeholder')}
+              onChange={(e) => setCouponInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyCoupon(); } }} />
+            <button type="button" className="btn-secondary shrink-0" onClick={applyCoupon} disabled={checking || !couponInput.trim()}>{t('coupon_apply')}</button>
+          </div>
+        </div>
+
         <div className="rounded-lg bg-cream p-4 text-sm space-y-1">
           <h3 className="font-bold mb-1">{t('order_summary')}</h3>
+          {discount > 0 && <input type="hidden" name="coupon_code" value={coupon!.code} />}
           {variant && <div className="flex justify-between"><span>{t('variant_label')}</span><span>{variant.label}</span></div>}
           <div className="flex justify-between"><span>{t('subtotal')} ({qty})</span><span>{formatSYP(subtotal, lang)}</span></div>
+          {discount > 0 && <div className="flex justify-between text-success" data-testid="discount-line"><span>{t('discount')} ({coupon!.code})</span><span>− {formatSYP(discount, lang)}</span></div>}
           <div className="flex justify-between"><span>{t('delivery_fee')}</span><span>{formatSYP(fee, lang)}</span></div>
-          <div className="flex justify-between font-bold text-base pt-1 border-t border-ink/10"><span>{t('total')}</span><span>{formatSYP(subtotal + fee, lang)}</span></div>
+          <div className="flex justify-between font-bold text-base pt-1 border-t border-ink/10"><span>{t('total')}</span><span>{formatSYP(subtotal - discount + fee, lang)}</span></div>
         </div>
 
         <div className="flex flex-col-reverse sm:flex-row gap-3">
           <button type="button" className="btn-secondary sm:w-auto" onClick={() => setStep(1)}>{t('checkout_back')}</button>
-          <SubmitButton className="btn-cta flex-1 whitespace-nowrap" pendingText="…">{t('place_order')} · {formatSYP(subtotal + fee, lang)}</SubmitButton>
+          <SubmitButton className="btn-cta flex-1 whitespace-nowrap" pendingText="…">{t('place_order')} · {formatSYP(subtotal - discount + fee, lang)}</SubmitButton>
         </div>
       </section>
     </form>

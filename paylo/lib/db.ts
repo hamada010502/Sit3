@@ -29,6 +29,8 @@ function migrate(db: Database.Database) {
   migrateOrdersUserId(db);
   migrateUsersPhone(db);
   addColumn(db, 'orders', 'refunded_amount', 'INTEGER NOT NULL DEFAULT 0');
+  addColumn(db, 'orders', 'discount_amount', 'INTEGER NOT NULL DEFAULT 0');
+  addColumn(db, 'orders', 'coupon_code', 'TEXT');
 
   const defaults: Record<string, string> = {
     // Commission (Functional Spec §2.4). Percentages stay provisional until a settlement

@@ -3,6 +3,7 @@ import { audit } from './audit';
 import { notify, appUrl } from './notify';
 import { emitWebhook } from './webhooks';
 import { computeFees } from './fees';
+import { claimCouponUse, discountFor, findCoupon, releaseCouponUse } from './coupons';
 import { currentCutoff, isoDay, isoStamp, nextTransferDate } from './payouts-schedule';
 import { getPaymentProvider, type CardInput } from './payments';
 import {
@@ -107,6 +108,8 @@ export interface CheckoutInput {
    * required. The order always keeps its own buyer_name/phone/email/address copy
    * regardless, so this is purely "which account, if any, gets this in its history." */
   userId?: string | null;
+  /** Optional seller discount code; see lib/coupons.ts. */
+  couponCode?: string | null;
 }
 export type CheckoutResult = { ok: true; order: Order } | { ok: false; error: string; order?: Order };
 
@@ -141,7 +144,17 @@ export async function checkout(input: CheckoutInput): Promise<CheckoutResult> {
   if (!isDigital && qty > available) return { ok: false, error: 'qty_exceeds' };
 
   const unitPrice = variant ? variant.price : product.price;
-  const subtotal = unitPrice * qty;
+  const goods = unitPrice * qty;
+  // Discount comes off goods only; subtotal stores what the buyer pays for goods, so
+  // commission, partial-refund caps and payouts all work from the paid amount.
+  const coupon = input.couponCode ? findCoupon(seller.id, input.couponCode) : undefined;
+  let discount = 0;
+  if (input.couponCode) {
+    const d = discountFor(coupon, goods);
+    if ('error' in d) return { ok: false, error: d.error };
+    discount = d.discount;
+  }
+  const subtotal = goods - discount;
   const deliveryFee = isDigital ? 0 : parseInt(getSetting(input.governorate === DAMASCUS ? 'delivery_fee_damascus' : 'delivery_fee_other'), 10) || 0;
   const fees = computeFees(subtotal);
   const total = subtotal + deliveryFee;
@@ -149,24 +162,27 @@ export async function checkout(input: CheckoutInput): Promise<CheckoutResult> {
   const code = newOrderCode();
   const initialStatus: OrderStatus = input.paymentMethod === 'bank_transfer' ? 'awaiting_payment' : input.paymentMethod === 'card' ? 'awaiting_payment' : 'confirmed';
 
-  db.transaction(() => {
+  class CouponRace extends Error {}
+  try { db.transaction(() => {
+    // Claimed in the same transaction as the insert: two buyers cannot both take the last use.
+    if (coupon && !claimCouponUse(coupon.id)) throw new CouponRace();
     db.prepare(`INSERT INTO orders (
         id, code, seller_id, product_id, user_id, product_title, product_type, variant_id, variant_label, unit_price, quantity,
-        subtotal, delivery_fee, total, commission_rate, commission_fixed, commission_vat, commission_amount, seller_net,
+        subtotal, discount_amount, coupon_code, delivery_fee, total, commission_rate, commission_fixed, commission_vat, commission_amount, seller_net,
         buyer_name, buyer_phone, buyer_email, governorate, address, note, payment_method, payment_status,
         fulfillment_method, order_state, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'open', ?)`).run(
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'open', ?)`).run(
       id, code, seller.id, product.id, input.userId || null, product.title, product.type, variant?.id ?? null, variant?.label ?? null, unitPrice, qty,
-      subtotal, deliveryFee, total, fees.rate, fees.fixed, fees.vat, fees.commission, fees.sellerNet,
+      subtotal, discount, coupon?.code ?? null, deliveryFee, total, fees.rate, fees.fixed, fees.vat, fees.commission, fees.sellerNet,
       input.buyerName, input.buyerPhone, input.buyerEmail || null, input.governorate, input.address, input.note || null,
       input.paymentMethod, defaultFulfillment(input.governorate, isDigital), initialStatus,
     );
     db.prepare('INSERT INTO order_events (order_id, from_status, to_status, from_state, to_state, actor, note) VALUES (?, NULL, ?, NULL, ?, ?, ?)')
       .run(id, initialStatus, 'open', 'buyer', `Placed via ${input.paymentMethod}`);
     if (!isDigital) reserveStock(product.id, variant?.id ?? null, qty);
-  })();
+  })(); } catch (e) { if (e instanceof CouponRace) return { ok: false, error: 'coupon_invalid' }; throw e; }
 
-  audit('buyer', input.userId || null, input.buyerName, 'order', id, 'created', { code, method: input.paymentMethod, total });
+  audit('buyer', input.userId || null, input.buyerName, 'order', id, 'created', { code, method: input.paymentMethod, total, coupon: coupon?.code, discount: discount || undefined });
   const order0 = getOrder(id)!;
 
   if (input.paymentMethod === 'card') {
@@ -180,6 +196,7 @@ export async function checkout(input: CheckoutInput): Promise<CheckoutResult> {
       db.transaction(() => {
         transition(order0, 'payment_failed', 'system', result.failureReason);
         if (!isDigital) releaseStock(product.id, variant?.id ?? null, qty);
+        releaseCouponUse(seller.id, coupon?.code ?? null);
       })();
       return { ok: false, error: result.failureReason || 'generic', order: getOrder(id) };
     }
@@ -416,6 +433,7 @@ export async function cancelOrder(order: Order, actor: Actor, reason: string) {
   db.transaction(() => {
     transition(order, 'cancelled', actor, reason);
     if (order.product_type !== 'digital') releaseStock(order.product_id, order.variant_id, order.quantity);
+    releaseCouponUse(order.seller_id, order.coupon_code);
   })();
   const fresh = getOrder(order.id)!;
   await notify({ event: 'order.cancelled', email: fresh.buyer_email ? { to: fresh.buyer_email,
@@ -749,7 +767,8 @@ export function publicOrder(o: Order) {
   return {
     id: o.id, code: o.code, state: o.order_state, status: o.status, payment_method: o.payment_method,
     payment_status: o.payment_status, product: { id: o.product_id, title: o.product_title, variant: o.variant_label, type: o.product_type },
-    quantity: o.quantity, subtotal: o.subtotal, delivery_fee: o.delivery_fee, total: o.total, currency: 'SYP',
+    quantity: o.quantity, subtotal: o.subtotal, discount: o.discount_amount, coupon_code: o.coupon_code, refunded_amount: o.refunded_amount,
+    delivery_fee: o.delivery_fee, total: o.total, currency: 'SYP',
     commission: o.commission_amount + o.commission_vat, seller_net: o.seller_net,
     buyer: { name: o.buyer_name, phone: o.buyer_phone, email: o.buyer_email, governorate: o.governorate, address: o.address },
     fulfillment: { method: o.fulfillment_method, reference: o.fulfillment_ref, tracking_number: o.tracking_number, pickup_location: o.pickup_location },

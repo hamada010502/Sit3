@@ -87,6 +87,7 @@ export default function TrackPage({ params, searchParams }: { params: { code: st
           <div className="flex justify-between gap-3"><span className="text-ink-soft">{t('product')}</span>
             <span className="font-semibold text-end">{order.product_title}{order.variant_label ? ` · ${order.variant_label}` : ''} × {order.quantity}</span></div>
           <div className="flex justify-between gap-3"><span className="text-ink-soft">{t('store_by')}</span><span>{seller.store_name}</span></div>
+          {order.discount_amount > 0 && <div className="flex justify-between gap-3"><span className="text-ink-soft">{t('discount')} ({order.coupon_code})</span><span>− {formatSYP(order.discount_amount, lang)}</span></div>}
           <div className="flex justify-between gap-3"><span className="text-ink-soft">{t('subtotal')}</span><span>{formatSYP(order.subtotal, lang)}</span></div>
           <div className="flex justify-between gap-3"><span className="text-ink-soft">{t('delivery_fee')}</span><span>{formatSYP(order.delivery_fee, lang)}</span></div>
           <div className="flex justify-between gap-3 font-bold border-t border-ink/10 pt-1"><span>{t('total')}</span><span>{formatSYP(order.total, lang)}</span></div>

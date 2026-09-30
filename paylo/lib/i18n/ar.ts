@@ -205,4 +205,13 @@ export const ar: Dict = {
   refunds_title: 'المبالغ المستردة', refunded_so_far: 'المسترد حتى الآن', refund_liability_note: 'المسؤولية: {l}',
   seller_net_after: 'مستحقك من هذا الطلب',
   partial_refund_note: 'تم استرداد {amount} لك من هذا الطلب.',
+  discount: 'الخصم', coupon_placeholder: 'رمز الخصم', coupon_apply: 'تطبيق',
+  coupon_invalid: 'هذا الرمز غير صالح لهذا المتجر.', coupon_min: 'طلبك أقل من الحد الأدنى لهذا الرمز.',
+  coupons_title: 'رموز الخصم', nav_coupons: 'الخصومات', coupon_code: 'الرمز', coupon_kind: 'النوع',
+  coupon_percent: 'نسبة مئوية', coupon_fixed: 'مبلغ ثابت (ل.س)', coupon_value: 'القيمة', coupon_min_subtotal: 'الحد الأدنى للطلب (ل.س)',
+  coupon_max_uses: 'أقصى عدد استخدامات (فارغ = غير محدود)', coupon_expires: 'ينتهي في (اختياري)', coupon_create: 'إنشاء رمز',
+  coupon_uses: 'مستخدم', coupon_active: 'فعّال', coupon_deactivate: 'إيقاف', coupon_activate: 'تفعيل', coupons_none: 'لا توجد رموز خصم بعد.',
+  coupon_code_format: 'استخدم 3–24 حرفًا أو رقمًا أو - أو _.', coupon_value_range: 'النسبة بين 1 و90؛ والمبلغ أكبر من 0.',
+  coupon_code_taken: 'لديك رمز بهذا الاسم بالفعل.',
+  coupons_sub: 'تُطبَّق الرموز على المنتجات فقط — لا خصم على رسوم التوصيل. تُحسب العمولة على المبلغ المدفوع فعليًا.',
 };

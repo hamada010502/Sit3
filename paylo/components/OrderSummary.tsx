@@ -12,6 +12,7 @@ export function OrderSummary({ order, t, lang, showNet = true, admin = false }: 
     <div className="grid sm:grid-cols-2 gap-4">
       <div className="card-pad text-sm space-y-1">
         <Row k={t('product')} v={<>{order.product_title}{order.variant_label ? ` · ${order.variant_label}` : ''} × {order.quantity}</>} />
+        {order.discount_amount > 0 && <Row k={t('discount')} v={<span data-testid="order-discount">− {formatSYP(order.discount_amount, lang)} ({order.coupon_code})</span>} />}
         <Row k={t('subtotal')} v={formatSYP(order.subtotal, lang)} />
         <Row k={t('delivery_fee')} v={formatSYP(order.delivery_fee, lang)} />
         <Row k={t('total')} v={formatSYP(order.total, lang)} bold />
