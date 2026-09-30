@@ -249,5 +249,10 @@ export const en = {
   coupon_code_format: 'Use 3–24 letters, numbers, - or _.', coupon_value_range: 'Percent must be 1–90; amount must be above 0.',
   coupon_code_taken: 'You already have a code with that name.',
   coupons_sub: 'Codes apply to goods only — the delivery fee is never discounted. Commission is charged on what the buyer actually pays.',
+  collections_title: 'Collections', nav_collections: 'Collections', collection_name: 'Collection name',
+  collection_name_ph: 'e.g. Coffee, Gift sets', collection_add: 'Add collection', collection_count: '{n} products',
+  collections_none: 'No collections yet.', collection_exists: 'You already have a collection with that name.',
+  collection_name_required: 'Give the collection a name.', collection_none_opt: 'No collection', all_products: 'All',
+  collections_sub: 'Group products so buyers can browse your store by category. Each collection also has its own shareable link.',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

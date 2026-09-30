@@ -294,6 +294,63 @@ const step = (m) => console.log('\n' + m);
   await seller.goto(BASE + '/seller/orders/' + (db.prepare("SELECT id FROM orders WHERE coupon_code = 'RACE1'").get().id));
   ok(await seller.locator('[data-testid=order-discount]').count() === 1, 'seller sees the discount and code on the order');
 
+  /* ---------------- 6. Collections ---------------- */
+  step('6. Products can be grouped into collections, filterable on the storefront');
+  const addCollection = async (name) => {
+    await seller.goto(BASE + '/seller/collections');
+    await seller.getByLabel('Collection name').fill(name);
+    await seller.getByRole('button', { name: 'Add collection' }).click();
+    await seller.waitForLoadState('networkidle');
+  };
+  await addCollection('Spice blends');
+  await addCollection('Coffee');
+  await addCollection('coffee');
+  ok(await seller.getByText('already have a collection with that name').count() === 1, 'duplicate collection name is rejected');
+  const colSpice = db.prepare("SELECT * FROM collections WHERE seller_id = ? AND slug = 'spice-blends'").get(spice.id);
+  const colCoffee = db.prepare("SELECT * FROM collections WHERE seller_id = ? AND slug = 'coffee'").get(spice.id);
+  ok(colSpice && colCoffee, 'collections created with URL-safe slugs');
+
+  const setCollection = async (productId, collectionId, forge) => {
+    await seller.goto(BASE + '/seller/products/' + productId);
+    const sel = seller.locator('select[name=collection_id]');
+    if (forge) await sel.evaluate((el, v) => { el.options[1].value = v; el.selectedIndex = 1; }, forge);
+    else await sel.selectOption(collectionId);
+    await seller.getByRole('button', { name: 'Save', exact: true }).click();
+    await seller.waitForURL('**saved=1');
+  };
+  const coffeeP = db.prepare("SELECT * FROM products WHERE seller_id = ? AND title LIKE 'Arabic coffee%'").get(spice.id);
+  const sevenP = db.prepare("SELECT * FROM products WHERE seller_id = ? AND title LIKE 'Seven-spice%'").get(spice.id);
+  await setCollection(zaatar.id, colSpice.id);
+  await setCollection(coffeeP.id, colCoffee.id);
+  ok(db.prepare('SELECT collection_id FROM products WHERE id = ?').get(zaatar.id).collection_id === colSpice.id, 'product assigned to a collection from the product form');
+
+  const linaCol = db.prepare("SELECT id FROM collections WHERE slug = 'kitchen'").get();
+  await setCollection(sevenP.id, null, linaCol.id);
+  ok(db.prepare('SELECT collection_id FROM products WHERE id = ?').get(sevenP.id).collection_id === null, "a forged id for another store's collection is ignored");
+
+  const shopper = await newPage();
+  await shopper.goto(BASE + '/s/spice-house');
+  const chips = shopper.locator('[data-testid=collection-chips]');
+  ok(await chips.getByText('Coffee').count() === 1 && await chips.getByText('Spice blends').count() === 1, 'storefront shows collection chips');
+  ok(await shopper.getByText('Seven-spice mix').count() === 1 && await shopper.getByText('Arabic coffee').count() === 1, '"All" shows every product, categorised or not');
+  await chips.getByText('Coffee').click();
+  await shopper.waitForURL('**?c=coffee');
+  ok(await shopper.getByText('Arabic coffee').count() === 1 && await shopper.getByText("Za'atar blend").count() === 0 && await shopper.getByText('Seven-spice mix').count() === 0, '?c=coffee shows only that collection');
+  await shopper.goto(BASE + '/s/spice-house?c=no-such-collection');
+  ok(await shopper.getByText('Seven-spice mix').count() === 1, 'unknown collection slug falls back to all products');
+
+  await seller.goto(BASE + '/seller/collections');
+  await seller.locator('[data-testid=collection-list] > div', { hasText: 'Coffee' }).getByRole('button', { name: 'Delete' }).click();
+  await seller.waitForLoadState('networkidle');
+  ok(!db.prepare('SELECT 1 FROM collections WHERE id = ?').get(colCoffee.id) && db.prepare('SELECT collection_id, status FROM products WHERE id = ?').get(coffeeP.id).collection_id === null,
+    'deleting a collection keeps its products, uncategorised');
+  await shopper.goto(BASE + '/s/spice-house');
+  ok(await shopper.locator('[data-testid=collection-chips]').getByText('Coffee').count() === 0 && await shopper.getByText('Arabic coffee').count() === 1, 'deleted collection disappears; product still for sale');
+
+  await addCollection('Empty one');
+  await shopper.goto(BASE + '/s/spice-house');
+  ok(await shopper.locator('[data-testid=collection-chips]').getByText('Empty one').count() === 0, 'empty collections are hidden from buyers');
+
   console.log(`\nALL PASSED — ${passed} assertions`);
   await browser.close();
   db.close();

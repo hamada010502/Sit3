@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS products (
   digital_note TEXT,
   option1_name TEXT,
   option2_name TEXT,
+  collection_id TEXT REFERENCES collections(id) ON DELETE SET NULL,
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive','out_of_stock','removed')),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -408,4 +409,16 @@ CREATE TABLE IF NOT EXISTS coupons (
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE (seller_id, code)
+);
+
+-- Store collections (categories). One optional collection per product; deleting a
+-- collection leaves its products in the store, just uncategorised.
+CREATE TABLE IF NOT EXISTS collections (
+  id TEXT PRIMARY KEY,
+  seller_id TEXT NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (seller_id, slug)
 );

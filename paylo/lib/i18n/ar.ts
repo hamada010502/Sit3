@@ -214,4 +214,9 @@ export const ar: Dict = {
   coupon_code_format: 'استخدم 3–24 حرفًا أو رقمًا أو - أو _.', coupon_value_range: 'النسبة بين 1 و90؛ والمبلغ أكبر من 0.',
   coupon_code_taken: 'لديك رمز بهذا الاسم بالفعل.',
   coupons_sub: 'تُطبَّق الرموز على المنتجات فقط — لا خصم على رسوم التوصيل. تُحسب العمولة على المبلغ المدفوع فعليًا.',
+  collections_title: 'التصنيفات', nav_collections: 'التصنيفات', collection_name: 'اسم التصنيف',
+  collection_name_ph: 'مثال: قهوة، مجموعات هدايا', collection_add: 'إضافة تصنيف', collection_count: '{n} منتجات',
+  collections_none: 'لا توجد تصنيفات بعد.', collection_exists: 'لديك تصنيف بهذا الاسم بالفعل.',
+  collection_name_required: 'أدخل اسمًا للتصنيف.', collection_none_opt: 'بدون تصنيف', all_products: 'الكل',
+  collections_sub: 'جمّع منتجاتك ليتصفح المشترون متجرك حسب التصنيف. لكل تصنيف رابط خاص قابل للمشاركة.',
 };

@@ -6,11 +6,11 @@ import { saveProductAction } from './actions';
 import { useI18n } from '@/lib/i18n/client';
 import { Field } from '@/components/Field';
 import { SubmitButton } from '@/components/SubmitButton';
-import type { Product, ProductVariant } from '@/lib/types';
+import type { Collection, Product, ProductVariant } from '@/lib/types';
 
 interface Row { option1_value: string; option2_value: string; price: number; stock: number }
 
-export function ProductForm({ product, images, variants = [] }: { product?: Product; images: string[]; variants?: ProductVariant[] }) {
+export function ProductForm({ product, images, variants = [], collections = [] }: { product?: Product; images: string[]; variants?: ProductVariant[]; collections?: Collection[] }) {
   const { t } = useI18n();
   const [state, action] = useFormState(saveProductAction.bind(null, product?.id ?? null), null);
   const [type, setType] = useState(product?.type ?? 'physical');
@@ -46,6 +46,14 @@ export function ProductForm({ product, images, variants = [] }: { product?: Prod
             <Field label={t('stock')}><input name="stock" type="number" min={0} step={1} className="input" dir="ltr" required defaultValue={product?.stock ?? 1} /></Field>
           )}
         </div>
+        {collections.length > 0 && (
+          <Field label={t('nav_collections')}>
+            <select name="collection_id" className="input" defaultValue={product?.collection_id ?? ''}>
+              <option value="">{t('collection_none_opt')}</option>
+              {collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </Field>
+        )}
         <Field label={t('description')}><textarea name="description" className="input" rows={4} defaultValue={product?.description ?? ''} /></Field>
         {isDigital && (
           <Field label={t('digital_note')} hint={t('digital_note_hint')}>

@@ -210,6 +210,17 @@ if (spice && !db.prepare('SELECT 1 FROM orders WHERE seller_id = ?').get(spice.i
   seedOrder({ sellerId: spice.id, product: sp[0], buyer: omar, qty: 2, status: 'confirmed', state: 'open', ago: 2 });
 }
 
+// Collections for the demo store, so the storefront shows category chips.
+if (demoSeller && !db.prepare('SELECT 1 FROM collections WHERE seller_id = ?').get(demoSeller.id)) {
+  const mk = (name, slug, pos) => { const cid = id(); db.prepare('INSERT INTO collections (id, seller_id, name, slug, position) VALUES (?, ?, ?, ?, ?)').run(cid, demoSeller.id, name, slug, pos); return cid; };
+  const home = mk('Home & candles', 'home-candles', 0), kitchen = mk('Kitchen', 'kitchen', 1);
+  const set = db.prepare('UPDATE products SET collection_id = ? WHERE seller_id = ? AND title = ?');
+  set.run(home, demoSeller.id, 'Damascus rose scented candle');
+  set.run(home, demoSeller.id, 'Candle-making guide (PDF)');
+  set.run(kitchen, demoSeller.id, 'Ceramic espresso cups');
+  set.run(kitchen, demoSeller.id, 'Olive-wood serving board');
+}
+
 // Store registrations waiting in the owner's review queue.
 if (!db.prepare('SELECT 1 FROM store_registration_requests').get()) {
   const insR = db.prepare(`INSERT INTO store_registration_requests (id, full_name, phone, email, national_id, store_name, slug,

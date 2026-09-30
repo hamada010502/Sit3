@@ -6,6 +6,7 @@ import path from 'path';
 import { getDb, newId, nowIso } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { requireApprovedSeller } from '@/lib/guards';
+import { collectionOf } from '@/lib/collections';
 import { syncProductStockStatus } from '@/lib/orders';
 import type { Product, ProductType } from '@/lib/types';
 import { UPLOAD_DIR } from '@/lib/uploads';
@@ -43,6 +44,9 @@ export async function saveProductAction(productId: string | null, _prev: { error
   const option1 = String(formData.get('option1_name') || '').trim() || null;
   const option2 = String(formData.get('option2_name') || '').trim() || null;
   if (!title || !Number.isFinite(price) || price <= 0) return { error: 'product_error' };
+  // Only ever one of this seller's own collections — never trust the posted id alone.
+  const collectionRaw = String(formData.get('collection_id') || '');
+  const collectionId = collectionRaw && collectionOf(seller.id, collectionRaw) ? collectionRaw : null;
 
   let variants: VariantRow[] = [];
   try { variants = JSON.parse(String(formData.get('variants') || '[]')); } catch { variants = []; }
@@ -71,13 +75,13 @@ export async function saveProductAction(productId: string | null, _prev: { error
       const existing = db.prepare('SELECT * FROM products WHERE id = ? AND seller_id = ?').get(id, seller.id) as Product | undefined;
       if (!existing || existing.status === 'removed') throw new Error('not_found');
       db.prepare(`UPDATE products SET type = ?, title = ?, description = ?, price = ?, stock = ?, images = ?, digital_note = ?,
-        option1_name = ?, option2_name = ?, updated_at = ? WHERE id = ?`)
-        .run(type, title, description, price, effectiveStock, JSON.stringify(images), digitalNote, option1, option2, nowIso(), id);
+        option1_name = ?, option2_name = ?, collection_id = ?, updated_at = ? WHERE id = ?`)
+        .run(type, title, description, price, effectiveStock, JSON.stringify(images), digitalNote, option1, option2, collectionId, nowIso(), id);
     } else {
       id = newId();
-      db.prepare(`INSERT INTO products (id, seller_id, type, title, description, price, stock, images, digital_note, option1_name, option2_name, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`)
-        .run(id, seller.id, type, title, description, price, effectiveStock, JSON.stringify(images), digitalNote, option1, option2);
+      db.prepare(`INSERT INTO products (id, seller_id, type, title, description, price, stock, images, digital_note, option1_name, option2_name, collection_id, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`)
+        .run(id, seller.id, type, title, description, price, effectiveStock, JSON.stringify(images), digitalNote, option1, option2, collectionId);
     }
     db.prepare('DELETE FROM product_variants WHERE product_id = ?').run(id);
     const insV = db.prepare('INSERT INTO product_variants (id, product_id, option1_value, option2_value, label, price, stock, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');

@@ -36,7 +36,7 @@ export interface Seller {
 }
 export interface Product {
   id: string; seller_id: string; type: ProductType; title: string; description: string | null; price: number;
-  stock: number; images: string; digital_note: string | null; option1_name: string | null; option2_name: string | null;
+  stock: number; images: string; digital_note: string | null; option1_name: string | null; option2_name: string | null; collection_id: string | null;
   status: ProductStatus; created_at: string; updated_at: string;
 }
 export interface ProductVariant {
@@ -91,6 +91,7 @@ export interface StoreRegistrationRequest {
   duplicate_check: string; created_seller_id: string | null;
   submitted_at: string; reviewed_at: string | null; reviewed_by: string | null; updated_at: string;
 }
+export interface Collection { id: string; seller_id: string; name: string; slug: string; position: number; created_at: string }
 export interface Coupon {
   id: string; seller_id: string; code: string; kind: 'percent' | 'fixed'; value: number; min_subtotal: number;
   max_uses: number | null; used_count: number; expires_at: string | null; active: number; created_at: string;
