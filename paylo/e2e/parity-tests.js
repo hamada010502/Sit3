@@ -15,7 +15,21 @@ let passed = 0;
 const ok = (c, m) => { if (!c) throw new Error('ASSERT FAILED: ' + m); passed++; console.log('  ✓ ' + m); };
 const step = (m) => console.log('\n' + m);
 
+// Local SMS/WhatsApp gateway stand-in: records every message; can be told to fail.
+const http = require('http');
+const gateway = { hits: [], failNext: false };
+const gatewayServer = http.createServer((req, res) => {
+  let body = '';
+  req.on('data', (c) => { body += c; });
+  req.on('end', () => {
+    gateway.hits.push({ path: req.url, auth: req.headers.authorization, body: JSON.parse(body || '{}') });
+    if (gateway.failNext) { gateway.failNext = false; res.writeHead(500); return res.end(); }
+    res.writeHead(200, { 'content-type': 'application/json' }); res.end('{"ok":true}');
+  });
+});
+
 (async () => {
+  await new Promise((r) => gatewayServer.listen(4011, '127.0.0.1', r));
   const db = new Database(DB_PATH);
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
   const newPage = async () => (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
@@ -516,7 +530,85 @@ const step = (m) => console.log('\n' + m);
   await seller.waitForLoadState('networkidle');
   ok((await fetch(BASE + '/' + apronCode, { redirect: 'manual' })).status === 404, "a removed product's short link stops working");
 
+  /* ================= PHASE 3 ================= */
+  /* ---------------- 11a. SMS / WhatsApp actually delivered ---------------- */
+  step('11a. Buyer SMS / WhatsApp messages are really sent through the configured gateway');
+  const smsHits = gateway.hits.filter((h) => h.path === '/sms');
+  ok(smsHits.length > 0, `SMS gateway received ${smsHits.length} real HTTP deliveries during this run`);
+  ok(smsHits.every((h) => h.auth === 'Bearer sms-test-token' && h.body.to && h.body.body && h.body.channel === 'sms'), 'each carries the bearer token and a {to, body, channel} payload');
+  const smsRows = db.prepare("SELECT status, count(*) c FROM notifications WHERE channel = 'sms' GROUP BY status").all();
+  ok(smsRows.length === 1 && smsRows[0].status === 'sent', `every SMS is recorded as "sent", not just logged (${JSON.stringify(smsRows)})`);
+
+  const textBuyer = await newPage();
+  db.prepare("UPDATE settings SET value = 'whatsapp' WHERE key = 'text_channel'").run();
+  const waBefore = gateway.hits.filter((h) => h.path === '/wa').length;
+  await buyNow(textBuyer, { name: 'WhatsApp Buyer' });
+  const waOrder = await place(textBuyer);
+  const waHits = gateway.hits.filter((h) => h.path === '/wa').slice(waBefore);
+  ok(waHits.length >= 1 && waHits.some((h) => h.body.body.includes(waOrder.code) && h.auth === 'Bearer wa-test-token' && h.body.channel === 'whatsapp'), 'with text channel = WhatsApp, the order confirmation goes to the WhatsApp gateway');
+  ok(!gateway.hits.some((h) => h.path === '/sms' && h.body.body.includes(waOrder.code)), 'and not also by SMS — one channel, never both');
+  ok(!!db.prepare("SELECT 1 FROM notifications WHERE channel = 'whatsapp' AND status = 'sent' AND body LIKE ?").get(`%${waOrder.code}%`), 'recorded as a sent WhatsApp message');
+  db.prepare("UPDATE settings SET value = 'sms' WHERE key = 'text_channel'").run();
+
+  gateway.failNext = true;
+  await buyNow(textBuyer, { name: 'Gateway Down' });
+  const failOrder = await place(textBuyer);
+  ok(!!db.prepare("SELECT 1 FROM notifications WHERE channel = 'sms' AND status = 'failed: HTTP 500' AND body LIKE ?").get(`%${failOrder.code}%`), 'a gateway error is recorded as failed, and the order still goes through');
+
+  /* ---------------- 11b + 12. New-order alerts on the open dashboard ---------------- */
+  step('11b/12. Open dashboard announces new orders: toast, desktop notification, sale sound');
+  const alertCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await alertCtx.addInitScript(() => {
+    window.__notes = [];
+    window.Notification = class { constructor(title, opts) { window.__notes.push({ title, body: opts && opts.body }); } };
+    window.Notification.permission = 'default';
+    window.Notification.requestPermission = async () => { window.Notification.permission = 'granted'; return 'granted'; };
+  });
+  const watch = await alertCtx.newPage();
+  await login(watch, 'spice@paylo.sy', 'seller1234');
+  await watch.waitForURL('**/seller');
+  await watch.locator('[data-testid=enable-desktop]').click();
+  await watch.waitForSelector('[data-testid=desktop-on]');
+  ok(true, 'seller can turn on desktop alerts from the dashboard');
+  await watch.locator('[data-testid=sound-toggle]').click();
+  ok(await watch.locator('[data-testid=sound-toggle]').getAttribute('aria-pressed') === 'true', 'sale sound can be switched on');
+  const chimesBefore = await watch.evaluate(() => window.__paylo_chimes || 0);
+  await watch.waitForTimeout(1500); // let the baseline poll set its cursor
+
+  const alertBuyer = await newPage();
+  await buyNow(alertBuyer, { name: 'Alert Buyer' });
+  const alertOrder = await place(alertBuyer);
+  await watch.locator('[data-testid=order-toasts]').getByText(alertOrder.code).waitFor({ timeout: 25000 });
+  ok(true, `in-page toast appears for the new order ${alertOrder.code}`);
+  const notes = await watch.evaluate(() => window.__notes);
+  ok(notes.some((n) => n.title.includes(alertOrder.code) && /Za'atar/.test(n.body)), 'a desktop notification fires with the order code and product');
+  ok(await watch.evaluate(() => window.__paylo_chimes || 0) > chimesBefore, 'the sale sound plays on the new order');
+  ok(notes.filter((n) => n.title.includes('PL-')).length === 1, 'existing orders at page load are not re-announced');
+
+  await watch.reload();
+  ok(await watch.locator('[data-testid=sound-toggle]').getAttribute('aria-pressed') === 'true', 'sale-sound preference is remembered');
+
+  const demoCookies = (await demo.context().cookies()).map((c) => `${c.name}=${c.value}`).join('; ');
+  const demoFeed = await (await fetch(BASE + '/api/seller/new-orders?since=1970-01-01', { headers: { cookie: demoCookies } })).json();
+  ok(!demoFeed.orders.some((o) => o.code === alertOrder.code), "another seller's feed never includes this store's orders");
+  ok((await fetch(BASE + '/api/seller/new-orders?since=1970-01-01')).status === 401, 'the feed requires a seller session');
+
+  /* ---------------- 13. Responsive web still intact ---------------- */
+  step('13. Mobile layout: no horizontal overflow on the new pages (390px)');
+  const phoneCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
+  const phone = await phoneCtx.newPage();
+  await login(phone, 'spice@paylo.sy', 'seller1234');
+  await phone.waitForURL('**/seller');
+  const pages = ['/seller', '/seller/returns?f=all', '/seller/coupons', '/seller/collections', '/seller/variations', '/seller/settings', '/seller/settings/about',
+    '/seller/products/' + zaatar.id, '/s/spice-house', '/s/spice-house/about', '/s/lina-handmade', '/p/' + cups.id, '/track/' + spiceDelivered.code];
+  for (const pth of pages) {
+    await phone.goto(BASE + pth);
+    const over = await phone.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    ok(over <= 1, `${pth} fits a 390px screen (overflow ${over}px)`);
+  }
+
   console.log(`\nALL PASSED — ${passed} assertions`);
   await browser.close();
   db.close();
+  gatewayServer.close();
 })().catch((e) => { console.error('\nFAILED:', e.message); process.exit(1); });

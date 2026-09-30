@@ -80,6 +80,12 @@ export function AdminSettingsForm({ s, cardEnvEnabled }: { s: Record<string, str
         <h2 className="font-bold">{t('notif_title')}</h2>
         <Check name="notify_email" label={t('notify_email')} />
         <Check name="notify_sms" label={t('notify_sms')} />
+        <label className="block"><span className="label">{t('text_channel')}</span>
+          <select name="text_channel" className="input" defaultValue={s.text_channel || 'sms'}>
+            <option value="sms">SMS</option><option value="whatsapp">WhatsApp</option>
+          </select>
+          <span className="text-xs text-ink-soft">{t('text_channel_hint')}</span>
+        </label>
       </div>
 
       <SubmitButton>{t('save')}</SubmitButton>

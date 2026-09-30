@@ -41,13 +41,31 @@ async function sendEmailVia(to: string, subject: string, body: string): Promise<
 }
 
 /**
- * Hook for a real SMS/WhatsApp gateway. Returns the delivery status string that gets
- * recorded. Left as `logged` until a regional provider is contracted.
+ * SMS / WhatsApp delivery. Transports (SMS_TRANSPORT / WHATSAPP_TRANSPORT):
+ *   log  — record only (default; nothing leaves the server)
+ *   http — POST {"to","body","channel"} as JSON to SMS_HTTP_URL / WHATSAPP_HTTP_URL with
+ *          "Authorization: Bearer <SMS_HTTP_TOKEN / WHATSAPP_HTTP_TOKEN>". Fits the usual
+ *          regional SMS HTTP APIs and WhatsApp BSPs directly or through a thin relay.
+ * Returns the status string recorded in `notifications`: sent, logged, failed: …, skipped: ….
  */
-async function sendTextVia(channel: 'sms' | 'whatsapp', _to: string, _body: string): Promise<string> {
-  const transport = (process.env[channel === 'sms' ? 'SMS_TRANSPORT' : 'WHATSAPP_TRANSPORT'] || 'log').toLowerCase();
+async function sendTextVia(channel: 'sms' | 'whatsapp', to: string, body: string): Promise<string> {
+  const P = channel === 'sms' ? 'SMS' : 'WHATSAPP';
+  const transport = (process.env[`${P}_TRANSPORT`] || 'log').toLowerCase();
   if (transport === 'log') return 'logged';
-  return 'skipped: no gateway configured';
+  if (transport !== 'http') return `skipped: unknown transport "${transport}"`;
+  const url = process.env[`${P}_HTTP_URL`];
+  if (!url) return `skipped: ${P}_HTTP_URL not set`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(process.env[`${P}_HTTP_TOKEN`] ? { authorization: `Bearer ${process.env[`${P}_HTTP_TOKEN`]}` } : {}) },
+      body: JSON.stringify({ to, body, channel }),
+      signal: AbortSignal.timeout(5000),
+    });
+    return res.ok ? 'sent' : `failed: HTTP ${res.status}`;
+  } catch (e) {
+    return 'failed: ' + (e instanceof Error ? e.message : String(e));
+  }
 }
 
 export async function notify(input: NotifyInput) {
@@ -58,9 +76,13 @@ export async function notify(input: NotifyInput) {
     const status = await sendEmailVia(input.email.to, input.email.subject, input.email.body);
     record('email', input.email.to, input.event, input.email.subject, input.email.body, (process.env.EMAIL_TRANSPORT || 'log').toLowerCase(), status);
   }
+  // Buyer text messages go out on one channel, chosen by the admin `text_channel`
+  // setting — WhatsApp is often more reliable than SMS in Syria, but never both at once.
+  const textChannel = getSetting('text_channel') === 'whatsapp' ? 'whatsapp' : 'sms';
   if (input.sms?.to && smsOn) {
-    const status = await sendTextVia('sms', input.sms.to, input.sms.body);
-    record('sms', input.sms.to, input.event, null, input.sms.body, (process.env.SMS_TRANSPORT || 'log').toLowerCase(), status);
+    const status = await sendTextVia(textChannel, input.sms.to, input.sms.body);
+    const transport = (process.env[textChannel === 'sms' ? 'SMS_TRANSPORT' : 'WHATSAPP_TRANSPORT'] || 'log').toLowerCase();
+    record(textChannel, input.sms.to, input.event, null, input.sms.body, transport, status);
   }
   if (input.whatsapp?.to && smsOn) {
     const status = await sendTextVia('whatsapp', input.whatsapp.to, input.whatsapp.body);

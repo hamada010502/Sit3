@@ -235,4 +235,8 @@ export const ar: Dict = {
   about_section: 'قسم', about_heading: 'العنوان', about_body: 'النص', about_add_section: 'إضافة قسم',
   about_move_up: 'تحريك لأعلى', about_move_down: 'تحريك لأسفل', about_view: 'عرض الصفحة', about_empty: 'لم يكتب هذا المتجر صفحة "من نحن" بعد.',
   short_link: 'رابط مختصر', short_link_hint: 'أسهل للكتابة أو القول — يفتح صفحة الشراء نفسها.',
+  text_channel: 'رسائل المشترين عبر', text_channel_hint: 'تُرسل تحديثات الطلبات للمشترين عبر هذه القناة فقط. اضبط البوابة عبر متغيرات SMS_* / WHATSAPP_* في البيئة.',
+  new_order_title: 'طلب جديد {code}', new_order_alerts: 'تنبيهات الطلبات الجديدة', desktop_alerts_enable: 'تفعيل تنبيهات سطح المكتب',
+  desktop_alerts_on: 'تنبيهات سطح المكتب مفعّلة', desktop_alerts_blocked: 'التنبيهات محظورة في المتصفح', sale_sound_on: 'صوت البيع: مفعّل',
+  sale_sound_off: 'صوت البيع: متوقف', close: 'إغلاق',
 };

@@ -39,9 +39,9 @@ export default function SellerDashboard() {
       <AutoRefresh seconds={10} />
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="section-title">{seller.store_name}</h1>
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 text-sm min-w-0 max-w-full">
           <span className="text-ink-soft">{t('dash_store_link')}:</span>
-          <code className="bg-white border border-ink/10 rounded px-2 py-1" dir="ltr">{storeUrl}</code>
+          <code className="bg-white border border-ink/10 rounded px-2 py-1 truncate max-w-full min-w-0" dir="ltr">{storeUrl}</code>
           <CopyButton text={storeUrl} />
           <Link href={`/s/${seller.slug}`} target="_blank" className="btn-secondary btn-sm">{t('open')}</Link>
         </div>

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Shell } from '@/components/Shell';
+import { NewOrderWatcher } from '@/components/NewOrderWatcher';
 import { requireSeller } from '@/lib/guards';
 import { getT } from '@/lib/i18n/server';
 
@@ -18,6 +19,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
           <Link href="/seller/verification" className="link">{t('nav_kyc')} →</Link>
         </div>
       )}
+      {approved && <NewOrderWatcher />}
       {children}
     </Shell>
   );

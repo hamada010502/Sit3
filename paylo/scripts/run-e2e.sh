@@ -17,6 +17,13 @@ FAIL=0
 for s in "${SUITES[@]}"; do
   stop
   npm run db:reset > /dev/null 2>&1
+  # parity-tests exercises real SMS/WhatsApp HTTP delivery against a local receiver.
+  if [ "$s" = parity-tests ]; then
+    export SMS_TRANSPORT=http SMS_HTTP_URL=http://127.0.0.1:4011/sms SMS_HTTP_TOKEN=sms-test-token
+    export WHATSAPP_TRANSPORT=http WHATSAPP_HTTP_URL=http://127.0.0.1:4011/wa WHATSAPP_HTTP_TOKEN=wa-test-token
+  else
+    unset SMS_TRANSPORT SMS_HTTP_URL SMS_HTTP_TOKEN WHATSAPP_TRANSPORT WHATSAPP_HTTP_URL WHATSAPP_HTTP_TOKEN
+  fi
   (npx next start > "/tmp/paylo-$s.log" 2>&1 &)
   for _ in $(seq 1 30); do curl -s -o /dev/null http://localhost:3000/ && break; sleep 0.5; done
   echo "== $s"

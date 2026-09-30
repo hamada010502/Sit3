@@ -270,5 +270,9 @@ export const en = {
   about_section: 'Section', about_heading: 'Heading', about_body: 'Text', about_add_section: 'Add section',
   about_move_up: 'Move up', about_move_down: 'Move down', about_view: 'View page', about_empty: 'This store has not written an About page yet.',
   short_link: 'Short link', short_link_hint: 'Easier to type or say out loud — opens the same checkout page.',
+  text_channel: 'Buyer text messages via', text_channel_hint: 'Order updates to buyers go out on this one channel. Configure the gateway with SMS_* / WHATSAPP_* in the environment.',
+  new_order_title: 'New order {code}', new_order_alerts: 'New-order alerts', desktop_alerts_enable: 'Turn on desktop alerts',
+  desktop_alerts_on: 'Desktop alerts on', desktop_alerts_blocked: 'Desktop alerts blocked in browser', sale_sound_on: 'Sale sound: on',
+  sale_sound_off: 'Sale sound: off', close: 'Close',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

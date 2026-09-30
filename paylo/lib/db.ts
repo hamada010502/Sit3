@@ -56,7 +56,7 @@ function migrate(db: Database.Database) {
     // Buyer self-service
     address_change_window_hours: '24',
     // Notification channels
-    notify_email: '1', notify_sms: '1',
+    notify_email: '1', notify_sms: '1', text_channel: 'sms',
   };
   const ins = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
   for (const [k, v] of Object.entries(defaults)) ins.run(k, v);

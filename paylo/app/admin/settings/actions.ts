@@ -27,6 +27,7 @@ export async function saveAdminSettingsAction(_prev: { ok?: boolean } | null, fo
   text('logistics_partner_name'); text('bank_name'); text('bank_account_name'); text('bank_iban'); text('bank_note');
   flag('yalla_go_enabled'); flag('cod_enabled'); flag('bank_transfer_enabled'); flag('card_enabled');
   flag('notify_email'); flag('notify_sms');
+  setSetting('text_channel', formData.get('text_channel') === 'whatsapp' ? 'whatsapp' : 'sms');
 
   audit('admin', null, 'admin', 'settings', 'platform', 'updated');
   revalidatePath('/admin/settings');

@@ -188,6 +188,33 @@ unrefunded (the uncommissioned delivery fee is never part of it), and paid-out o
 settled manually. A later full refund returns only what is left. Payouts pay
 `sum(seller_net)`, so a seller-liable reduction reaches the actual transfer.
 
+## 7b. Buyer text messages (SMS / WhatsApp)
+
+Every buyer-facing order event sends a text as well as an email. Until this change no text
+was ever delivered — every transport returned `logged` or `skipped` — and WhatsApp had no
+call sites at all. Now:
+
+- `SMS_TRANSPORT=http` / `WHATSAPP_TRANSPORT=http` POST `{"to","body","channel"}` as JSON
+  to `SMS_HTTP_URL` / `WHATSAPP_HTTP_URL` with `Authorization: Bearer <…_HTTP_TOKEN>`.
+  `log` (the default) still records without sending.
+- Admin → Settings → "Buyer text messages via" picks SMS or WhatsApp. A buyer gets one
+  channel, never both. It is a DB setting, so switching needs no restart.
+- Each attempt is recorded in `notifications` as `sent`, `logged` or `failed: …`; a gateway
+  failure never blocks the order.
+
+WhatsApp note: business-initiated WhatsApp messages outside a 24-hour conversation window
+must use pre-approved templates. A BSP relay behind `WHATSAPP_HTTP_URL` has to map these
+plain-text bodies onto approved templates before WhatsApp goes live.
+
+## 7c. New-order alerts on the seller dashboard
+
+While any seller page is open, `NewOrderWatcher` polls `GET /api/seller/new-orders`
+(session-scoped to that store, 401 otherwise) and announces each new order with an in-page
+toast, a desktop notification if the seller allowed it, and an optional sale chime
+(synthesised with Web Audio; the on/off choice is remembered per browser). Orders already
+there when the page loads are never announced. This covers "dashboard open"; alerts with
+the browser closed need Web Push (service worker + VAPID), which is on the roadmap below.
+
 ## 8. Known gaps
 
 - **No webhook retry.** Failures are recorded, not replayed.
@@ -196,3 +223,10 @@ settled manually. A later full refund returns only what is left. Payouts pay
   need an `order_items` table.
 - **SQLite.** Correct for a pilot, and v2 §7.1 explicitly defers PostgreSQL until scale
   demands it. Writes are serialised, so plan the migration before high concurrency.
+
+## 9. Roadmap (not built)
+
+- **Native mobile app / installable PWA.** Sellers run their store from their phones. The
+  responsive web app is the current answer and is checked at 390px on every seller and buyer
+  page added in the Shopier-parity work. A PWA (manifest, offline shell, Web Push for
+  new-order alerts with the browser closed) is the next step; a native app only after that.
