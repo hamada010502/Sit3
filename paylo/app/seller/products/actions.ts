@@ -135,3 +135,20 @@ export async function deleteProductAction(productId: string) {
   revalidatePath('/seller/products');
   redirect('/seller/products');
 }
+
+export interface BulkState { error?: string; result?: import('@/lib/bulk').BulkResult }
+export async function bulkProductsAction(_prev: BulkState | null, formData: FormData): Promise<BulkState> {
+  const { seller } = requireApprovedSeller();
+  const { applyBulk, BulkError } = await import('@/lib/bulk');
+  const action = String(formData.get('bulk_action') || '') as import('@/lib/bulk').BulkAction;
+  if (!['price_set', 'price_pct', 'stock_set', 'activate', 'deactivate'].includes(action)) return { error: 'bulk_bad_value' };
+  const value = Number(String(formData.get('bulk_value') || '0').replace(/[^0-9.\-]/g, ''));
+  try {
+    const result = applyBulk(seller.id, seller.store_name, formData.getAll('ids').map(String), action, value);
+    revalidatePath('/seller/products');
+    return { result };
+  } catch (e) {
+    if (e instanceof BulkError) return { error: e.message };
+    throw e;
+  }
+}

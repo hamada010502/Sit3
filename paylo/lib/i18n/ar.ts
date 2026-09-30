@@ -247,4 +247,10 @@ export const ar: Dict = {
   thank_you_label: 'رسالة بعد الشراء', thank_you_from: 'رسالة من {store}',
   thank_you_hint: 'تظهر للمشتري فور إتمام الطلب، وتُضاف إلى بريد التأكيد. حتى 500 حرف.',
   thank_you_ph: 'شكرًا لك! كل طلب يُغلَّف يدويًا — توقّع وصوله خلال يومين.',
+  bulk_select_all: 'تحديد الكل', bulk_action: 'إجراء جماعي', bulk_value: 'القيمة', bulk_apply: 'تطبيق على المحدد',
+  bulk_price_pct: 'تعديل السعر بنسبة %', bulk_price_set: 'تحديد السعر (ل.س)', bulk_stock_set: 'تحديد المخزون',
+  bulk_updated: 'تم تحديث {n} منتج.', bulk_skipped: 'تم التخطي', bulk_skip_has_variants: 'له خيارات — عدّل كل خيار',
+  bulk_skip_digital: 'رقمي، بلا مخزون', bulk_none_selected: 'حدّد منتجًا واحدًا على الأقل.', bulk_bad_value: 'أدخل رقمًا صحيحًا.',
+  bulk_bad_pct: 'أدخل نسبة بين −90 و+500 (ليست 0).',
+  bulk_hint: 'تعديل النسبة يحدّث أسعار كل الخيارات أيضًا. الطلبات السابقة تحتفظ بسعرها.',
 };

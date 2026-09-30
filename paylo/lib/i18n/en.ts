@@ -282,5 +282,11 @@ export const en = {
   thank_you_label: 'Message after purchase', thank_you_from: 'A note from {store}',
   thank_you_hint: 'Shown to the buyer right after they order, and added to their confirmation email. Up to 500 characters.',
   thank_you_ph: 'Thank you! Every order is packed by hand — expect it within 2 days.',
+  bulk_select_all: 'Select all', bulk_action: 'Bulk action', bulk_value: 'Value', bulk_apply: 'Apply to selected',
+  bulk_price_pct: 'Adjust price by %', bulk_price_set: 'Set price (SYP)', bulk_stock_set: 'Set stock',
+  bulk_updated: '{n} product(s) updated.', bulk_skipped: 'Skipped', bulk_skip_has_variants: 'has variants — edit per variant',
+  bulk_skip_digital: 'digital, no stock', bulk_none_selected: 'Select at least one product.', bulk_bad_value: 'Enter a valid whole number.',
+  bulk_bad_pct: 'Enter a % between −90 and +500 (not 0).',
+  bulk_hint: 'A % change also updates every variant price. Existing orders keep the price they were placed at.',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

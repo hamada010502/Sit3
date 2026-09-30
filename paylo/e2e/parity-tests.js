@@ -670,6 +670,54 @@ const gatewayServer = http.createServer((req, res) => {
   await tyBuyer.goto(BASE + '/track/' + linaOrder.code + '?new=1');
   ok(await tyBuyer.locator('[data-testid=thank-you]').count() === 0, "another store's orders never show this store's message");
 
+  /* ---------------- 16. Bulk product actions ---------------- */
+  step('16. Bulk price and stock updates across multiple products');
+  const lp = (title) => db.prepare("SELECT * FROM products WHERE seller_id = ? AND title = ?").get(lina.id, title);
+  const vPrices = (pid) => db.prepare('SELECT price FROM product_variants WHERE product_id = ? ORDER BY position').all(pid).map((r) => r.price);
+  const candle0 = lp('Damascus rose scented candle'), cups0 = lp('Ceramic espresso cups'), guide0 = lp('Candle-making guide (PDF)'), board0 = lp('Olive-wood serving board'), tote0 = lp('Embroidered tote bag');
+  const cupsV0 = vPrices(cups0.id);
+  const candleOrderPrice0 = db.prepare('SELECT unit_price FROM orders WHERE product_id = ? LIMIT 1').get(candle0.id).unit_price;
+  const bulk = async (titles, act, value, forgeId) => {
+    await demo.goto(BASE + '/seller/products');
+    for (const title of titles) await demo.locator(`[data-product-row="${title}"] input[name=ids]`).check();
+    if (forgeId) await demo.evaluate((v) => { const i = document.createElement('input'); i.type = 'checkbox'; i.name = 'ids'; i.value = v; i.checked = true; i.setAttribute('form', 'bulk-form'); document.body.appendChild(i); }, forgeId);
+    const bar = demo.locator('[data-testid=bulk-bar]');
+    await bar.locator('select[name=bulk_action]').selectOption(act);
+    if (value !== undefined) await bar.locator('input[name=bulk_value]').fill(String(value));
+    await bar.getByRole('button', { name: 'Apply to selected' }).click();
+    await demo.waitForSelector('[data-testid=bulk-result], [data-testid=bulk-bar] .alert-error');
+    return (await bar.innerText());
+  };
+
+  await bulk(['Damascus rose scented candle', 'Ceramic espresso cups', 'Candle-making guide (PDF)'], 'price_pct', 10);
+  ok(lp('Damascus rose scented candle').price === Math.round(candle0.price * 1.1) && lp('Candle-making guide (PDF)').price === Math.round(guide0.price * 1.1), '+10% raises plain and digital product prices');
+  ok(JSON.stringify(vPrices(cups0.id)) === JSON.stringify(cupsV0.map((p) => Math.round(p * 1.1))), '+10% also raises every variant price, keeping their differences');
+  ok(db.prepare('SELECT unit_price FROM orders WHERE product_id = ? LIMIT 1').get(candle0.id).unit_price === candleOrderPrice0, 'existing orders keep the price they were placed at');
+
+  const setTxt = await bulk(['Damascus rose scented candle', 'Ceramic espresso cups'], 'price_set', 90000);
+  ok(lp('Damascus rose scented candle').price === 90000, 'set price applies to a product without variants');
+  ok(JSON.stringify(vPrices(cups0.id)) === JSON.stringify(cupsV0.map((p) => Math.round(p * 1.1))) && /Ceramic espresso cups \(has variants/.test(setTxt), 'a product with variants is skipped and named, not flattened');
+
+  const stockTxt = await bulk(['Olive-wood serving board', 'Candle-making guide (PDF)', 'Embroidered tote bag'], 'stock_set', 7);
+  ok(lp('Olive-wood serving board').stock === 7 && lp('Embroidered tote bag').stock === 7, 'set stock updates physical products');
+  ok(tote0.status === 'out_of_stock' && lp('Embroidered tote bag').status === 'active', 'a sold-out product comes back on sale when stock is set');
+  ok(/Candle-making guide \(PDF\) \(digital/.test(stockTxt), 'digital product is skipped for stock');
+
+  await bulk(['Damascus rose scented candle', 'Olive-wood serving board'], 'deactivate');
+  ok(lp('Damascus rose scented candle').status === 'inactive' && lp('Olive-wood serving board').status === 'inactive', 'bulk deactivate');
+  const shop2 = await newPage();
+  await shop2.goto(BASE + '/s/lina-handmade');
+  ok(await shop2.getByText('Olive-wood serving board').count() === 0, 'deactivated products leave the storefront');
+  await bulk(['Damascus rose scented candle', 'Olive-wood serving board'], 'activate');
+  ok(lp('Damascus rose scented candle').status === 'active', 'bulk activate');
+
+  const zaatarBefore = db.prepare('SELECT price FROM products WHERE id = ?').get(zaatar.id).price;
+  await bulk(['Olive-wood serving board'], 'price_set', 12345, zaatar.id);
+  ok(db.prepare('SELECT price FROM products WHERE id = ?').get(zaatar.id).price === zaatarBefore && lp('Olive-wood serving board').price === 12345, "a forged id for another store's product is ignored");
+
+  ok(/Select at least one product/.test(await bulk([], 'price_pct', 5)), 'nothing selected → clear error');
+  ok(/between −90 and \+500/.test(await bulk(['Olive-wood serving board'], 'price_pct', 0)), 'a 0% change is rejected');
+
   console.log(`\nALL PASSED — ${passed} assertions`);
   await browser.close();
   db.close();

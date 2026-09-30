@@ -9,6 +9,7 @@ import { getT } from '@/lib/i18n/server';
 import { formatSYP } from '@/lib/money';
 import type { Product } from '@/lib/types';
 import { toggleProductAction } from './actions';
+import { BulkBar } from './BulkBar';
 
 export default function ProductsPage() {
   const { seller } = requireApprovedSeller();
@@ -26,10 +27,14 @@ export default function ProductsPage() {
       </div>
       {products.length === 0 ? <div className="card-pad text-center text-ink-soft">{t('products_empty')}</div> : (
         <div className="space-y-3">
+          <BulkBar />
           {products.map((p) => {
             const link = appUrl(`/p/${p.id}`);
             return (
-              <div key={p.id} className="card p-3 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div key={p.id} className="card p-3 flex flex-col sm:flex-row sm:items-center gap-4" data-product-row={p.title}>
+                {p.status !== 'removed' && (
+                  <input type="checkbox" name="ids" value={p.id} form="bulk-form" className="accent-cherry h-4 w-4 shrink-0" aria-label={p.title} />
+                )}
                 <ProductImage images={p.images} alt={p.title} className="h-20 w-20 rounded-lg shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
