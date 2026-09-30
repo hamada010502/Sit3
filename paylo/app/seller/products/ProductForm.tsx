@@ -6,12 +6,12 @@ import { saveProductAction } from './actions';
 import { useI18n } from '@/lib/i18n/client';
 import { Field } from '@/components/Field';
 import { SubmitButton } from '@/components/SubmitButton';
-import type { Collection, Product, ProductVariant } from '@/lib/types';
+import type { Collection, Product, ProductVariant, VariationPreset } from '@/lib/types';
 
 interface Row { uid: string; option1_value: string; option2_value: string; price: number; stock: number; image: string | null }
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-export function ProductForm({ product, images, variants = [], collections = [] }: { product?: Product; images: string[]; variants?: ProductVariant[]; collections?: Collection[] }) {
+export function ProductForm({ product, images, variants = [], collections = [], presets = [] }: { product?: Product; images: string[]; variants?: ProductVariant[]; collections?: Collection[]; presets?: VariationPreset[] }) {
   const { t } = useI18n();
   const [state, action] = useFormState(saveProductAction.bind(null, product?.id ?? null), null);
   const [type, setType] = useState(product?.type ?? 'physical');
@@ -24,6 +24,23 @@ export function ProductForm({ product, images, variants = [], collections = [] }
   const hasOptions = opt1.trim().length > 0;
 
   const setRow = (i: number, patch: Partial<Row>) => setRows((r) => r.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const [p1, setP1] = useState('');
+  const [p2, setP2] = useState('');
+  // Fills option names and generates every combination; rows that already existed keep
+  // their price, stock and photo so re-applying never wipes a seller's work.
+  const applyPresets = () => {
+    const a = presets.find((p) => p.id === p1);
+    if (!a) return;
+    const b = presets.find((p) => p.id === p2 && p.id !== p1);
+    setOpt1(a.name);
+    setOpt2(b?.name ?? '');
+    const base = Number((document.querySelector('input[name=price]') as HTMLInputElement | null)?.value) || product?.price || 0;
+    const combos = b ? a.values.flatMap((x) => b.values.map((y) => [x, y])) : a.values.map((x) => [x, '']);
+    setRows((prev) => combos.slice(0, 30).map(([x, y]) => {
+      const old = prev.find((r) => r.option1_value === x && r.option2_value === y);
+      return old ?? { uid: uid(), option1_value: x, option2_value: y, price: base, stock: 0, image: null };
+    }));
+  };
 
   return (
     <form action={action} className="space-y-5" encType="multipart/form-data">
@@ -69,6 +86,20 @@ export function ProductForm({ product, images, variants = [], collections = [] }
             <h2 className="font-bold">{t('options_title')}</h2>
             <p className="text-sm text-ink-soft mt-1">{t('options_hint')}</p>
           </div>
+          {presets.length > 0 && (
+            <div className="rounded-lg bg-cream p-3 space-y-2" data-testid="preset-picker">
+              <label className="label">{t('variation_pick')}</label>
+              <div className="flex flex-wrap gap-2">
+                <select className="input flex-1 min-w-[120px]" value={p1} onChange={(e) => setP1(e.target.value)} aria-label={t('option1_name')}>
+                  <option value="">—</option>{presets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                <select className="input flex-1 min-w-[120px]" value={p2} onChange={(e) => setP2(e.target.value)} aria-label={t('option2_name')}>
+                  <option value="">—</option>{presets.filter((p) => p.id !== p1).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                <button type="button" className="btn-secondary shrink-0" onClick={applyPresets} disabled={!p1}>{t('variation_apply')}</button>
+              </div>
+            </div>
+          )}
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label={t('option1_name')}><input name="option1_name" className="input" value={opt1} onChange={(e) => setOpt1(e.target.value)} placeholder="Size" /></Field>
             <Field label={t('option2_name')}><input name="option2_name" className="input" value={opt2} onChange={(e) => setOpt2(e.target.value)} placeholder="Colour" disabled={!hasOptions} /></Field>

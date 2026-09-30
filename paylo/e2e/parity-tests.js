@@ -386,6 +386,47 @@ const step = (m) => console.log('\n' + m);
   await cupsBuyer.selectOption('select[name=variant_id]', sandId);
   ok(await cupsBuyer.locator('[data-testid=variant-image]').count() === 0, 'no variant photo shown for a variant without one');
 
+  /* ---------------- 8. Global variation settings ---------------- */
+  step('8. Reusable option lists generate variants on any product');
+  const addPreset = async (name, values) => {
+    await seller.goto(BASE + '/seller/variations');
+    const f = seller.locator('[data-testid=preset-new]');
+    await f.locator('input[name=name]').fill(name);
+    await f.locator('input[name=values]').fill(values);
+    await f.getByRole('button', { name: 'Add option list' }).click();
+    await seller.waitForLoadState('networkidle');
+  };
+  await addPreset('Size', 'S, M, L, m');
+  const sizeRow = db.prepare("SELECT \"values\" v FROM variation_presets WHERE seller_id = ? AND name = 'Size'").get(spice.id);
+  ok(sizeRow && JSON.stringify(JSON.parse(sizeRow.v)) === '["S","M","L"]', 'values are trimmed and de-duplicated (S, M, L)');
+  await addPreset('Colour', 'Red');
+  ok(await seller.getByText('Add at least two values').count() === 1, 'a list with fewer than two values is rejected');
+  await addPreset('Colour', 'Red, Blue');
+  await addPreset('size', 'XS, XL');
+  ok(await seller.getByText('already have an option list with that name').count() === 1, 'duplicate list name (case-insensitive) is rejected');
+
+  await seller.goto(BASE + '/seller/products/new');
+  await seller.fill('input[name=title]', 'Linen apron');
+  await seller.fill('input[name=price]', '45000');
+  const picker = seller.locator('[data-testid=preset-picker]');
+  await picker.locator('select').nth(0).selectOption({ label: 'Size' });
+  await picker.locator('select').nth(1).selectOption({ label: 'Colour' });
+  await picker.getByRole('button', { name: 'Apply' }).click();
+  ok(await seller.locator('[data-variant-row]').count() === 6, 'applying Size × Colour generates 6 variant rows');
+  ok(await seller.locator('input[name=option1_name]').inputValue() === 'Size' && await seller.locator('input[name=option2_name]').inputValue() === 'Colour', 'option names are filled from the lists');
+  await seller.locator('[data-variant-row]').nth(0).locator('input[type=number]').nth(1).fill('4');
+  await picker.getByRole('button', { name: 'Apply' }).click();
+  ok(await seller.locator('[data-variant-row]').nth(0).locator('input[type=number]').nth(1).inputValue() === '4', 're-applying keeps stock already entered on existing rows');
+  await seller.getByRole('button', { name: 'Save', exact: true }).click();
+  await seller.waitForURL('**saved=1');
+  const apron = db.prepare("SELECT id FROM products WHERE seller_id = ? AND title = 'Linen apron'").get(spice.id);
+  const apronLabels = db.prepare('SELECT label, price, stock FROM product_variants WHERE product_id = ? ORDER BY position').all(apron.id);
+  ok(apronLabels.length === 6 && apronLabels[0].label === 'S / Red' && apronLabels[5].label === 'L / Blue', 'saved product has all six combinations in order');
+  ok(apronLabels.every((v) => v.price === 45000) && apronLabels[0].stock === 4, 'generated rows take the base price; entered stock is saved');
+
+  await demo.goto(BASE + '/seller/products/new');
+  ok(await demo.locator('[data-testid=preset-picker]').count() === 0, "another store never sees this store's option lists");
+
   console.log(`\nALL PASSED — ${passed} assertions`);
   await browser.close();
   db.close();

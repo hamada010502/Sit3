@@ -255,5 +255,11 @@ export const en = {
   collection_name_required: 'Give the collection a name.', collection_none_opt: 'No collection', all_products: 'All',
   collections_sub: 'Group products so buyers can browse your store by category. Each collection also has its own shareable link.',
   variant_image: 'Photo',
+  variations_title: 'Variation settings', nav_variations: 'Variations', variation_name: 'Option name',
+  variation_values: 'Values', variation_values_hint: 'Separate with commas.', variation_add: 'Add option list',
+  variations_none: 'No option lists yet.', variation_exists: 'You already have an option list with that name.',
+  variation_name_required: 'Give the option list a name.', variation_values_min: 'Add at least two values.',
+  variations_sub: 'Define option lists once (Size, Colour…) and apply them to any product. Applying a list fills in the product’s variants; changing a list later never touches existing products.',
+  variation_apply: 'Apply', variation_pick: 'Use a saved option list',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

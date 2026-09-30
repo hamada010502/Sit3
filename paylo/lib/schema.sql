@@ -423,3 +423,15 @@ CREATE TABLE IF NOT EXISTS collections (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE (seller_id, slug)
 );
+
+-- Reusable option lists ("Size: S, M, L") a seller applies to many products.
+-- values is a JSON array of strings. Applying a preset only fills the product form;
+-- products keep their own variant rows, so editing a preset never rewrites live stock.
+CREATE TABLE IF NOT EXISTS variation_presets (
+  id TEXT PRIMARY KEY,
+  seller_id TEXT NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  "values" TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (seller_id, name)
+);

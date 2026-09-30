@@ -91,6 +91,7 @@ export interface StoreRegistrationRequest {
   duplicate_check: string; created_seller_id: string | null;
   submitted_at: string; reviewed_at: string | null; reviewed_by: string | null; updated_at: string;
 }
+export interface VariationPreset { id: string; seller_id: string; name: string; values: string[] }
 export interface Collection { id: string; seller_id: string; name: string; slug: string; position: number; created_at: string }
 export interface Coupon {
   id: string; seller_id: string; code: string; kind: 'percent' | 'fixed'; value: number; min_subtotal: number;

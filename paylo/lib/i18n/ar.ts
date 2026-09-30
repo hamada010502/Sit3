@@ -220,4 +220,10 @@ export const ar: Dict = {
   collection_name_required: 'أدخل اسمًا للتصنيف.', collection_none_opt: 'بدون تصنيف', all_products: 'الكل',
   collections_sub: 'جمّع منتجاتك ليتصفح المشترون متجرك حسب التصنيف. لكل تصنيف رابط خاص قابل للمشاركة.',
   variant_image: 'صورة',
+  variations_title: 'إعدادات الخيارات', nav_variations: 'الخيارات', variation_name: 'اسم الخيار',
+  variation_values: 'القيم', variation_values_hint: 'افصل بينها بفواصل.', variation_add: 'إضافة قائمة خيارات',
+  variations_none: 'لا توجد قوائم خيارات بعد.', variation_exists: 'لديك قائمة خيارات بهذا الاسم بالفعل.',
+  variation_name_required: 'أدخل اسمًا لقائمة الخيارات.', variation_values_min: 'أضف قيمتين على الأقل.',
+  variations_sub: 'عرّف قوائم الخيارات مرة واحدة (المقاس، اللون…) وطبّقها على أي منتج. تطبيق القائمة يملأ خيارات المنتج؛ وتعديلها لاحقًا لا يغيّر المنتجات الحالية.',
+  variation_apply: 'تطبيق', variation_pick: 'استخدم قائمة خيارات محفوظة',
 };
