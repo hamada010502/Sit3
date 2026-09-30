@@ -670,7 +670,7 @@ const gatewayServer = http.createServer((req, res) => {
   ok(await tyBox.count() === 1 && (await tyBox.innerText()).includes('Ground fresh the morning it ships'), 'confirmation page shows the seller’s message');
   ok((await tyBox.innerText()).includes('<i>Keep sealed</i>') && await tyBox.locator('i').count() === 0, 'message renders as text, never HTML');
   const tyMail = db.prepare("SELECT body FROM notifications WHERE channel = 'email' AND recipient = 'ty-buyer@example.com' AND event = 'order.placed'").get();
-  ok(tyMail && tyMail.body.includes('A note from Damascus Spice House') && tyMail.body.includes('Ground fresh the morning it ships'), 'message is included in the confirmation email');
+  ok(tyMail && tyMail.body.includes('Damascus Spice House:') && tyMail.body.includes('Ground fresh the morning it ships'), 'message is included in the confirmation email');
 
   await tyBuyer.goto(BASE + '/track/' + tyOrder.code);
   ok(await tyBuyer.locator('[data-testid=thank-you]').count() === 0 && await tyBuyer.locator('[data-testid=thank-you-later]').count() === 1, 'prominent right after purchase; a quieter card on later tracking visits');

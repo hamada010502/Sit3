@@ -478,6 +478,54 @@ function decryptPush(sub, body) {
   ok(await newSeller.locator('[data-testid=onboarding]').count() === 0, 'checklist disappears after the first order');
   await fCtx.close();
 
+  /* ================= EMAIL / SMS LOCALISATION ================= */
+  step('L2. Buyer emails and texts are in Arabic; Admin → Notifications shows them');
+  db.prepare('UPDATE sellers SET notify_email_orders = 1 WHERE id = ?').run(spice.id);
+  const lCtx = await ctx(); const lb = await lCtx.newPage();
+  await lb.goto(BASE + '/p/' + zaatar.id);
+  await lb.fill('input[name=buyer_name]', 'سارة');
+  await lb.fill('input[name=buyer_phone]', '0912000333');
+  await lb.fill('input[name=buyer_email]', 'arabic-buyer@example.com');
+  await lb.fill('textarea[name=address]', 'Mezzeh, Damascus');
+  await lb.click('button:has-text("Continue")');
+  await lb.locator('button[type=submit]').click();
+  await lb.waitForURL('**/track/**', { timeout: 15000 });
+  const lOrder = db.prepare('SELECT * FROM orders WHERE code = ?').get(decodeURIComponent(new URL(lb.url()).pathname.split('/').pop()));
+  await lCtx.close();
+  const bMail = db.prepare("SELECT subject, body FROM notifications WHERE channel = 'email' AND recipient = 'arabic-buyer@example.com' AND event = 'order.placed'").get();
+  ok(bMail.subject === `بايلو — استلمنا طلبك ${lOrder.code}` && bMail.body.startsWith('مرحبًا سارة،') && bMail.body.includes('— بايلو') && !/\b(Hi|Your|Track)\b/.test(bMail.body), 'buyer confirmation email: Arabic subject, greeting, body and sign-off');
+  const bSms = db.prepare("SELECT body FROM notifications WHERE channel IN ('sms','whatsapp') AND recipient = '0912000333' AND event = 'order.placed'").get();
+  ok(bSms && bSms.body.startsWith('بايلو:') && bSms.body.includes(lOrder.code), 'buyer text message is Arabic too');
+  const nCtx = await ctx(); const nAdmin = await nCtx.newPage();
+  await login(nAdmin, 'admin@paylo.sy', 'admin1234'); await nAdmin.waitForURL('**/admin**');
+  await nAdmin.goto(BASE + '/admin/notifications?channel=email');
+  ok(await nAdmin.getByText(`بايلو — استلمنا طلبك ${lOrder.code}`).count() >= 1 && await nAdmin.getByText('ستدفع للمندوب عند الاستلام.', { exact: false }).count() >= 1, 'Admin → Notifications shows the Arabic subject and body');
+  await nCtx.close();
+
+  step('L3. Seller emails follow the language of their latest push device');
+  const sMail = (code) => db.prepare("SELECT subject, body FROM notifications WHERE channel = 'email' AND recipient = 'spice@paylo.sy' AND event = 'order.placed.seller' AND subject LIKE ?").get(`%${code}%`);
+  // The newest device so far is the Arabic one from P10.
+  ok(sMail(lOrder.code)?.subject === `بايلو — طلب جديد ${lOrder.code}`, 'latest device Arabic → seller new-order email in Arabic');
+  const subEn = makeSubscription('device-en-latest');
+  await fetch(BASE + '/api/push/subscribe', { method: 'POST', headers: { cookie: (await cookieHeader(seller)) + '; paylo_lang=en', 'content-type': 'application/json' }, body: JSON.stringify(subEn.json) });
+  const eCtx = await ctx(); const enOrder = await buy(await eCtx.newPage(), 'English Seller Check'); await eCtx.close();
+  const enMail = sMail(enOrder.code);
+  ok(enMail?.subject === `Paylo — new order ${enOrder.code}` && enMail.body.includes('New order') && enMail.body.endsWith('— Paylo') && !/[؀-ۿ]{3,}/.test(enMail.body.replace(/Za'atar.*?\)/, '')), 'seller with an English push device gets the new-order email in English, not Arabic');
+  const lina = db.prepare("SELECT * FROM sellers WHERE slug = 'lina-handmade'").get();
+  ok(db.prepare('SELECT count(*) c FROM push_subscriptions WHERE seller_id = ?').get(lina.id).c === 0, 'a seller with no push device…');
+  db.prepare('UPDATE sellers SET notify_email_orders = 1 WHERE id = ?').run(lina.id);
+  const linaProduct = db.prepare("SELECT id FROM products WHERE seller_id = ? AND status = 'active' AND type = 'physical' AND stock > 0 AND id NOT IN (SELECT product_id FROM product_variants) LIMIT 1").get(lina.id);
+  const liCtx = await ctx(); const li = await liCtx.newPage();
+  await li.goto(BASE + '/p/' + linaProduct.id);
+  await li.fill('input[name=buyer_name]', 'Fallback Buyer'); await li.fill('input[name=buyer_phone]', '0912000444');
+  await li.fill('textarea[name=address]', 'Mezzeh, Damascus');
+  await li.click('button:has-text("Continue")'); await li.locator('button[type=submit]').click();
+  await li.waitForURL('**/track/**', { timeout: 15000 });
+  const liCode = decodeURIComponent(new URL(li.url()).pathname.split('/').pop()); await liCtx.close();
+  const linaMail = db.prepare("SELECT subject FROM notifications WHERE event = 'order.placed.seller' AND channel = 'email' AND subject LIKE ?").get(`%${liCode}%`);
+  ok(linaMail?.subject === `بايلو — طلب جديد ${liCode}`, '…falls back to Arabic');
+
+
   step('A1b. Offline: with the server unreachable, navigation shows the Paylo offline page');
   execSync('pkill -f "next-serve[r]" || true');
   await new Promise((r) => setTimeout(r, 1000));

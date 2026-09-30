@@ -10,7 +10,7 @@ export function makeT(lang: Lang) {
   const d = dicts[lang];
   return (key: TKey, vars?: Record<string, string | number>) => {
     let s: string = d[key] ?? en[key] ?? key;
-    if (vars) for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, String(v));
+    if (vars) for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v));
     return s;
   };
 }

@@ -4,6 +4,7 @@ import { audit } from '@/lib/audit';
 import { getDb, nowIso } from '@/lib/db';
 import { notify, appUrl } from '@/lib/notify';
 import { requireAdmin } from '@/lib/guards';
+import { sellerAccountStatus, sellerKycReviewed, sellerLang } from '@/lib/notify-templates';
 import type { SellerStatus, User } from '@/lib/types';
 
 export interface SellerActionState { error?: string; ok?: boolean }
@@ -21,11 +22,8 @@ export async function setSellerStatusAction(sellerId: string, status: SellerStat
   db.prepare('UPDATE sellers SET status = ?, review_note = ?, reviewed_at = ? WHERE id = ?').run(status, note, nowIso(), sellerId);
   audit('admin', null, 'admin', 'seller', sellerId, 'status:' + status, note);
 
-  const msg = status === 'approved' ? `Your store "${row.store_name}" is approved. Your storefront: ${appUrl('/s/' + row.slug)}\nAdd products and share the links from ${appUrl('/seller/products')}.`
-    : status === 'rejected' ? `Your seller application for "${row.store_name}" was not approved.`
-    : status === 'suspended' ? `Your seller account "${row.store_name}" has been suspended and your links are disabled.`
-    : `Your seller account "${row.store_name}" is under review.`;
-  await notify({ event: 'seller.' + status, email: { to: row.email, subject: `Paylo — seller account ${status}`, body: `${msg}${note ? '\n\nNote from Paylo: ' + note : ''}\n\n— Paylo` } });
+  await notify({ event: 'seller.' + status, email: { to: row.email,
+    ...sellerAccountStatus(sellerLang(sellerId), { store: row.store_name, status, note, storeUrl: appUrl('/s/' + row.slug), productsUrl: appUrl('/seller/products') }) } });
   revalidatePath('/admin/sellers');
   revalidatePath(`/admin/sellers/${sellerId}`);
   return { ok: true };
@@ -39,8 +37,8 @@ export async function reviewKycAction(sellerId: string, approve: boolean, formDa
     .run(approve ? 'approved' : 'rejected', note, nowIso(), sellerId);
   audit('admin', null, 'admin', 'seller', sellerId, approve ? 'kyc.approved' : 'kyc.rejected', note);
   const u = db.prepare('SELECT u.email, s.store_name FROM sellers s JOIN users u ON u.id = s.user_id WHERE s.id = ?').get(sellerId) as { email: string; store_name: string } | undefined;
-  if (u) await notify({ event: 'kyc.reviewed', email: { to: u.email, subject: `Paylo — identity verification ${approve ? 'approved' : 'rejected'}`,
-    body: `Hi ${u.store_name},\n\nYour identity verification was ${approve ? 'approved. Payouts are now unlocked.' : 'not accepted.'}${note ? '\n\n' + note : ''}\n\n${appUrl('/seller/verification')}\n\n— Paylo` } });
+  if (u) await notify({ event: 'kyc.reviewed', email: { to: u.email,
+    ...sellerKycReviewed(sellerLang(sellerId), { store: u.store_name, approved: approve, note, url: appUrl('/seller/verification') }) } });
   revalidatePath(`/admin/sellers/${sellerId}`);
   revalidatePath('/admin/ops');
 }

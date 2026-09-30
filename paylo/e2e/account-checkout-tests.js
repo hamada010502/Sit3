@@ -198,7 +198,7 @@ const DEMO_TOTP = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
 
   const claim = db.prepare('SELECT * FROM order_claims WHERE order_id = ? ORDER BY created_at DESC LIMIT 1').get(guestOrderRow.id);
   ok(!!claim && claim.user_id === claimUser.id, 'a one-time verification code was generated and tied to this specific account');
-  const plainCode = db.prepare("SELECT body FROM notifications WHERE event = 'order.claim_code' ORDER BY id DESC LIMIT 1").get().body.match(/is (\d{6})\./)[1];
+  const plainCode = db.prepare("SELECT body FROM notifications WHERE event = 'order.claim_code' ORDER BY id DESC LIMIT 1").get().body.match(/(?<!\d)(\d{6})(?!\d)/)[1];  // language-agnostic: the only 6-digit number
 
   await claimPage.fill('input[name=verify_code]', '000000');
   await claimPage.click('button[type=submit]');

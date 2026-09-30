@@ -1,4 +1,6 @@
 import { getDb, newId, nowIso } from './db';
+// Applicants have no account or language preference yet: Arabic, like buyers.
+import { buyerLang, registrationApproved, registrationMoreInfo, registrationReceived, registrationRejected } from './notify-templates';
 import { hashPassword } from './auth';
 import { audit } from './audit';
 import { notify, appUrl } from './notify';
@@ -56,11 +58,7 @@ export async function submitRegistration(input: RegistrationInput): Promise<Stor
   }
 
   audit('system', null, input.email, 'store_registration_request', id, 'submitted', { storeName: input.storeName });
-  await notify({
-    event: 'registration.submitted',
-    email: { to: input.email, subject: 'Paylo — registration received', body:
-      `Hi ${input.fullName},\n\nWe received your registration for "${input.storeName}". It is under review; you'll hear back within 24 hours.\n\nYour store is not active yet.\n\n— Paylo` },
-  });
+  await notify({ event: 'registration.submitted', email: { to: input.email, ...registrationReceived(buyerLang(), { name: input.fullName, store: input.storeName }) } });
   return db.prepare('SELECT * FROM store_registration_requests WHERE id = ?').get(id) as StoreRegistrationRequest;
 }
 
@@ -106,11 +104,8 @@ export async function approveRegistrationRequest(req: StoreRegistrationRequest, 
   })();
 
   audit('owner', reviewerId, 'owner', 'store_registration_request', req.id, 'approved', { sellerId, submittedAt: req.submitted_at });
-  await notify({
-    event: 'registration.approved',
-    email: { to: req.email, subject: 'Paylo — your store is approved', body:
-      `Hi ${req.full_name},\n\n"${req.store_name}" is approved and live: ${appUrl('/s/' + slug)}\n\nLog in with the email and password you registered with: ${appUrl('/login')}\n\n— Paylo` },
-  });
+  await notify({ event: 'registration.approved', email: { to: req.email,
+    ...registrationApproved(buyerLang(), { name: req.full_name, store: req.store_name, storeUrl: appUrl('/s/' + slug), loginUrl: appUrl('/login') }) } });
   return sellerId;
 }
 
@@ -121,11 +116,7 @@ export async function rejectRegistrationRequest(req: StoreRegistrationRequest, r
     .run(note, nowIso(), reviewerId, nowIso(), req.id);
   audit('owner', reviewerId, 'owner', 'store_registration_request', req.id, 'rejected', { note, notifyApplicant, submittedAt: req.submitted_at });
   if (notifyApplicant) {
-    await notify({
-      event: 'registration.rejected',
-      email: { to: req.email, subject: 'Paylo — registration update', body:
-        `Hi ${req.full_name},\n\nYour registration for "${req.store_name}" was not approved.\n\n— Paylo` },
-    });
+    await notify({ event: 'registration.rejected', email: { to: req.email, ...registrationRejected(buyerLang(), { name: req.full_name, store: req.store_name }) } });
   }
 }
 
@@ -135,9 +126,5 @@ export async function requestMoreInformation(req: StoreRegistrationRequest, revi
   db.prepare("UPDATE store_registration_requests SET status = 'MORE_INFORMATION_REQUIRED', info_request_note = ?, updated_at = ? WHERE id = ?")
     .run(note, nowIso(), req.id);
   audit('owner', reviewerId, 'owner', 'store_registration_request', req.id, 'more_info_requested', { note, submittedAt: req.submitted_at });
-  await notify({
-    event: 'registration.more_info',
-    email: { to: req.email, subject: 'Paylo — more information needed', body:
-      `Hi ${req.full_name},\n\nWe need more information to continue reviewing your registration for "${req.store_name}":\n\n${note}\n\nReply to this email or contact Paylo support.\n\n— Paylo` },
-  });
+  await notify({ event: 'registration.more_info', email: { to: req.email, ...registrationMoreInfo(buyerLang(), { name: req.full_name, store: req.store_name, note }) } });
 }

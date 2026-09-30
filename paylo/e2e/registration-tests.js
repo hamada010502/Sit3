@@ -167,6 +167,7 @@ const OWNER_TOTP = 'KRSXG5CTMVRXEZLUKN2XAZLSEBB2EWDN';
   const stillOpen = db.prepare('SELECT status FROM store_registration_requests WHERE id = ?').get(idA).status;
   ok(stillOpen === 'PENDING_REVIEW', 'reject without a note does not change status (enforced server-side)');
   await rejectForm.locator('textarea[name=note]').fill('Documents did not match.');
+  if (await rejectForm.locator('input[name=notify]').count()) await rejectForm.locator('input[name=notify]').check();
   await rejectForm.locator('button[type=submit]').click();
   await owner.waitForSelector('text=Rejected');
   const afterReject = db.prepare('SELECT status, created_seller_id FROM store_registration_requests WHERE id = ?').get(idA);
@@ -200,6 +201,19 @@ const OWNER_TOTP = 'KRSXG5CTMVRXEZLUKN2XAZLSEBB2EWDN';
   ok(!!afterApprove.created_seller_id, 'approval creates a seller row');
   const sellerAfter = db.prepare("SELECT status FROM sellers WHERE id = ?").get(afterApprove.created_seller_id);
   ok(sellerAfter.status === 'approved', 'the store is active (approved) immediately on approval, never before');
+
+  step('7d. Registration emails are in Arabic');
+  const mail = (id, event) => db.prepare(`SELECT n.subject, n.body FROM notifications n JOIN store_registration_requests r ON r.email = n.recipient
+    WHERE r.id = ? AND n.event = ? ORDER BY n.id DESC LIMIT 1`).get(id, event);
+  const arabic = (m) => !!m && /[\u0600-\u06FF]/.test(m.subject) && /[\u0600-\u06FF]/.test(m.body) && !/\b(Hi|Your|We)\b/.test(m.body);
+  const received = mail(idB, 'registration.submitted');
+  ok(arabic(received) && received.subject === 'بايلو — استلمنا طلب التسجيل', 'registration received: Arabic subject and body');
+  const moreInfo = mail(idB, 'registration.more_info');
+  ok(arabic(moreInfo) && moreInfo.body.includes('Please resend a clearer ID photo.') && moreInfo.subject === 'بايلو — نحتاج معلومات إضافية', 'more-info: Arabic, with the owner’s note');
+  const approved = mail(idC, 'registration.approved');
+  ok(arabic(approved) && approved.subject === 'بايلو — تمت الموافقة على متجرك' && approved.body.includes('التحقق بخطوتين'), 'approved: Arabic, and tells the seller the store goes live once 2FA is on');
+  const rejected = mail(idA, 'registration.rejected');
+  ok(arabic(rejected) && rejected.subject === 'بايلو — تحديث بشأن طلب التسجيل', 'rejected: Arabic');
 
   // ---- Test 8: authorization — non-owner session gets 404, not 403, on every owner registration route ----
   step('8. Authorization: non-owner sessions cannot reach owner registration routes');

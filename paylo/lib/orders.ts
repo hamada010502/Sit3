@@ -6,6 +6,12 @@ import { computeFees } from './fees';
 import { isStoreLive } from './store-status';
 import { pushToSeller } from './push';
 import { makeT } from './i18n';
+import {
+  buyerAddressReviewed, buyerCancelled, buyerDelivered, buyerDigitalReady, buyerLang, buyerOrderPlaced, buyerPaymentConfirmed,
+  buyerReadyForPickup, buyerRefundFull, buyerRefundPartial, buyerReturnResolved, buyerShipped, buyerTransferRejected,
+  sellerLang, sellerNewOrder, sellerOrderCollected, sellerOrderDelivered, sellerPayoutSent, sellerRefundPartial, sellerReturnOpened,
+  type ReturnOutcome,
+} from './notify-templates';
 import { formatSYP } from './money';
 import { claimCouponUse, discountFor, findCoupon, releaseCouponUse } from './coupons';
 import { currentCutoff, isoDay, isoStamp, nextTransferDate } from './payouts-schedule';
@@ -245,25 +251,16 @@ export function syncProductStockStatus(productId: string) {
 async function notifyOrderPlaced(order: Order, seller: Seller, awaitingPayment: boolean) {
   const su = sellerEmail(seller.id);
   const track = appUrl('/track/' + order.code);
-  await notify({
-    event: 'order.placed',
-    email: order.buyer_email ? { to: order.buyer_email, subject: `Paylo — order ${order.code} received`,
-      body: `Hi ${order.buyer_name},\n\nYour order ${order.code} from ${seller.store_name} has been received.\n` +
-        (awaitingPayment ? `We are waiting for your bank transfer. Upload the receipt on your tracking page to speed it up.\n` : `You will pay the courier on delivery.\n`) +
-        (seller.thank_you_message ? `\nA note from ${seller.store_name}:\n${seller.thank_you_message}\n` : '') +
-        `\nTrack it: ${track}\n\n— Paylo` } : undefined,
-    sms: { to: order.buyer_phone, body: `Paylo: order ${order.code} received. Track it at ${track}` },
-  });
+  const placed = buyerOrderPlaced(buyerLang(), { name: order.buyer_name, code: order.code, store: seller.store_name, awaitingPayment, sellerNote: seller.thank_you_message, track });
+  await notify({ event: 'order.placed', email: order.buyer_email ? { to: order.buyer_email, ...placed.email } : undefined, sms: { to: order.buyer_phone, body: placed.sms } });
   // Seller alerts follow their Settings → Notifications choices.
   const line = `${order.product_title}${order.variant_label ? ' (' + order.variant_label + ')' : ''} ×${order.quantity}`;
   if (su && (seller.notify_email_orders || seller.notify_text !== 'none')) {
+    const m = sellerNewOrder(sellerLang(seller.id), { code: order.code, line, buyer: order.buyer_name, governorate: order.governorate, awaitingPayment, url: appUrl('/seller/orders/' + order.id) });
     await notify({
       event: 'order.placed.seller',
-      email: seller.notify_email_orders ? { to: su.email, subject: `Paylo — new order ${order.code}`,
-        body: `New order ${order.code}: "${line}" for ${order.buyer_name}, ${order.governorate}.\n` +
-          (awaitingPayment ? 'Payment is not confirmed yet — do not ship until it is.\n' : 'Cash on delivery. Prepare the parcel and mark it handed off.\n') +
-          `\n${appUrl('/seller/orders/' + order.id)}\n\n— Paylo` } : undefined,
-      sms: seller.notify_text !== 'none' ? { to: seller.phone, body: `Paylo: new order ${order.code} — ${line}. ${appUrl('/seller/orders/' + order.id)}` } : undefined,
+      email: seller.notify_email_orders ? { to: su.email, ...m.email } : undefined,
+      sms: seller.notify_text !== 'none' ? { to: seller.phone, body: m.sms } : undefined,
       textChannel: seller.notify_text === 'whatsapp' ? 'whatsapp' : 'sms',
     });
   }
@@ -280,12 +277,8 @@ export async function markPaymentConfirmed(order: Order, actor: Actor, note: str
   if (order.status === 'awaiting_payment') transition(getOrder(order.id)!, 'confirmed', actor, note);
   audit(actor, null, actor, 'order', order.id, 'payment.confirmed', note);
   const fresh = getOrder(order.id)!;
-  await notify({
-    event: 'payment.confirmed',
-    email: fresh.buyer_email ? { to: fresh.buyer_email, subject: `Paylo — payment confirmed for ${fresh.code}`,
-      body: `Hi ${fresh.buyer_name},\n\nWe have confirmed payment for order ${fresh.code}. The seller is preparing it now.\n\n${appUrl('/track/' + fresh.code)}\n\n— Paylo` } : undefined,
-    sms: { to: fresh.buyer_phone, body: `Paylo: payment confirmed for order ${fresh.code}.` },
-  });
+  const m = buyerPaymentConfirmed(buyerLang(), { name: fresh.buyer_name, code: fresh.code, track: appUrl('/track/' + fresh.code) });
+  await notify({ event: 'payment.confirmed', email: fresh.buyer_email ? { to: fresh.buyer_email, ...m.email } : undefined, sms: { to: fresh.buyer_phone, body: m.sms } });
   await emitWebhook('order.updated', publicOrder(fresh), fresh.seller_id);
   if (fresh.product_type === 'digital') await autoDeliverDigital(fresh);
 }
@@ -311,10 +304,8 @@ export async function reviewTransfer(order: Order, approve: boolean, note: strin
     await markPaymentConfirmed(order, 'admin', `Bank transfer confirmed${bt.reference ? ' (' + bt.reference + ')' : ''}`);
   } else {
     audit('admin', null, 'admin', 'order', order.id, 'transfer.rejected', note);
-    await notify({ event: 'transfer.rejected', email: order.buyer_email ? { to: order.buyer_email,
-      subject: `Paylo — we could not match your transfer for ${order.code}`,
-      body: `Hi ${order.buyer_name},\n\nWe could not match the transfer for order ${order.code}.${note ? '\n\n' + note : ''}\nUpload a clearer receipt here: ${appUrl('/track/' + order.code)}\n\n— Paylo` } : undefined,
-      sms: { to: order.buyer_phone, body: `Paylo: we could not match your transfer for ${order.code}. See ${appUrl('/track/' + order.code)}` } });
+    const m = buyerTransferRejected(buyerLang(), { name: order.buyer_name, code: order.code, note, track: appUrl('/track/' + order.code) });
+    await notify({ event: 'transfer.rejected', email: order.buyer_email ? { to: order.buyer_email, ...m.email } : undefined, sms: { to: order.buyer_phone, body: m.sms } });
   }
 }
 
@@ -335,10 +326,8 @@ async function autoDeliverDigital(order: Order) {
   const product = getDb().prepare('SELECT digital_note FROM products WHERE id = ?').get(order.product_id) as { digital_note: string | null } | undefined;
   transition(order, 'delivered', 'system', 'Digital delivery', { delivered_at: nowIso(), handed_off_at: nowIso(), closed_at: nowIso() });
   const fresh = getOrder(order.id)!;
-  await notify({ event: 'order.delivered', email: fresh.buyer_email ? { to: fresh.buyer_email,
-    subject: `Paylo — your download for ${fresh.code}`,
-    body: `Hi ${fresh.buyer_name},\n\nYour order ${fresh.code} is ready.\n\n${product?.digital_note || 'The seller will contact you with the files.'}\n\n${appUrl('/track/' + fresh.code)}\n\n— Paylo` } : undefined,
-    sms: { to: fresh.buyer_phone, body: `Paylo: order ${fresh.code} delivered. ${appUrl('/track/' + fresh.code)}` } });
+  const m = buyerDigitalReady(buyerLang(), { name: fresh.buyer_name, code: fresh.code, digitalNote: product?.digital_note ?? null, track: appUrl('/track/' + fresh.code) });
+  await notify({ event: 'order.delivered', email: fresh.buyer_email ? { to: fresh.buyer_email, ...m.email } : undefined, sms: { to: fresh.buyer_phone, body: m.sms } });
   await emitWebhook('order.closed', publicOrder(fresh), fresh.seller_id);
 }
 
@@ -348,13 +337,8 @@ export async function sellerHandOff(order: Order, sellerId: string, ref: string,
   if (order.payment_method === 'bank_transfer' && order.payment_status !== 'confirmed') throw new OrderError('Payment is not confirmed yet');
   transition(order, 'handed_off', 'seller', ref || null, { handed_off_at: nowIso(), fulfillment_ref: ref || null, tracking_number: tracking || null });
   const fresh = getOrder(order.id)!;
-  const how = fresh.fulfillment_method === 'logistics_pickup'
-    ? 'It is with our logistics partner. We will tell you when it is ready to collect.'
-    : 'It is on its way with a courier in Damascus.';
-  await notify({ event: 'order.shipped', email: fresh.buyer_email ? { to: fresh.buyer_email,
-    subject: `Paylo — order ${fresh.code} is on its way`,
-    body: `Hi ${fresh.buyer_name},\n\nOrder ${fresh.code} has left the seller. ${how}${tracking ? `\nTracking: ${tracking}` : ''}\n\n${appUrl('/track/' + fresh.code)}\n\n— Paylo` } : undefined,
-    sms: { to: fresh.buyer_phone, body: `Paylo: order ${fresh.code} shipped.${tracking ? ' Tracking ' + tracking : ''} ${appUrl('/track/' + fresh.code)}` } });
+  const m = buyerShipped(buyerLang(), { name: fresh.buyer_name, code: fresh.code, viaPickupPartner: fresh.fulfillment_method === 'logistics_pickup', tracking: tracking || null, track: appUrl('/track/' + fresh.code) });
+  await notify({ event: 'order.shipped', email: fresh.buyer_email ? { to: fresh.buyer_email, ...m.email } : undefined, sms: { to: fresh.buyer_phone, body: m.sms } });
   await emitWebhook('order.closed', publicOrder(fresh), fresh.seller_id);
 }
 
@@ -376,10 +360,8 @@ export async function adminSetReadyForPickup(order: Order, pickupLocation: strin
   if (!pickupLocation.trim()) throw new OrderError('Pickup location is required');
   transition(order, 'ready_for_pickup', 'admin', pickupLocation, { pickup_location: pickupLocation });
   const fresh = getOrder(order.id)!;
-  await notify({ event: 'order.ready_for_pickup', email: fresh.buyer_email ? { to: fresh.buyer_email,
-    subject: `Paylo — order ${fresh.code} is ready for pickup`,
-    body: `Hi ${fresh.buyer_name},\n\nOrder ${fresh.code} is ready. Collect it from:\n${pickupLocation}\n\nBring your order code and phone number.\n\n— Paylo` } : undefined,
-    sms: { to: fresh.buyer_phone, body: `Paylo: order ${fresh.code} ready for pickup at ${pickupLocation}` } });
+  const m = buyerReadyForPickup(buyerLang(), { name: fresh.buyer_name, code: fresh.code, location: pickupLocation });
+  await notify({ event: 'order.ready_for_pickup', email: fresh.buyer_email ? { to: fresh.buyer_email, ...m.email } : undefined, sms: { to: fresh.buyer_phone, body: m.sms } });
   await emitWebhook('order.updated', publicOrder(fresh), fresh.seller_id);
 }
 
@@ -411,8 +393,7 @@ export async function applyCourierEvent(order: Order, event: CourierEvent, couri
   if (order.status === 'confirmed') {
     transition(order, 'handed_off', 'system', `Collected by ${note}`, { handed_off_at: nowIso(), fulfillment_ref: reference ?? order.fulfillment_ref });
     const su = sellerEmail(order.seller_id);
-    if (su) await notify({ event: 'order.collected.seller', email: { to: su.email, subject: `Paylo — ${order.code} collected by courier`,
-      body: `The courier collected order ${order.code}. It is marked handed off automatically — no action needed.\n\n— Paylo` } });
+    if (su) await notify({ event: 'order.collected.seller', email: { to: su.email, ...sellerOrderCollected(sellerLang(order.seller_id), { code: order.code }) } });
     // Hand-off is what closes the order (same as sellerHandOff).
     if (target === 1) await emitWebhook('order.closed', publicOrder(getOrder(order.id)!), order.seller_id);
   }
@@ -434,13 +415,10 @@ async function markDelivered(order: Order, actor: Actor, note: string | null) {
   // Cash-on-delivery: delivery is also the moment the money is collected from the buyer.
   if (order.payment_method === 'cod' && order.payment_status === 'pending') markCodCollected(getOrder(order.id)!, 'Collected on delivery');
   const fresh = getOrder(order.id)!;
-  await notify({ event: 'order.delivered', email: fresh.buyer_email ? { to: fresh.buyer_email,
-    subject: `Paylo — order ${fresh.code} delivered`,
-    body: `Hi ${fresh.buyer_name},\n\nOrder ${fresh.code} is marked delivered. If something is wrong, open a return from ${appUrl('/track/' + fresh.code)}\n\n— Paylo` } : undefined,
-    sms: { to: fresh.buyer_phone, body: `Paylo: order ${fresh.code} delivered.` } });
+  const m = buyerDelivered(buyerLang(), { name: fresh.buyer_name, code: fresh.code, track: appUrl('/track/' + fresh.code) });
+  await notify({ event: 'order.delivered', email: fresh.buyer_email ? { to: fresh.buyer_email, ...m.email } : undefined, sms: { to: fresh.buyer_phone, body: m.sms } });
   const su = sellerEmail(fresh.seller_id);
-  if (su) await notify({ event: 'order.delivered.seller', email: { to: su.email, subject: `Paylo — order ${fresh.code} delivered`,
-    body: `Order ${fresh.code} was delivered and joins the next payout run unless a return is opened.\n\n— Paylo` } });
+  if (su) await notify({ event: 'order.delivered.seller', email: { to: su.email, ...sellerOrderDelivered(sellerLang(fresh.seller_id), { code: fresh.code }) } });
   await emitWebhook('order.closed', publicOrder(fresh), fresh.seller_id);
 }
 
@@ -453,9 +431,8 @@ export async function cancelOrder(order: Order, actor: Actor, reason: string) {
     releaseCouponUse(order.seller_id, order.coupon_code);
   })();
   const fresh = getOrder(order.id)!;
-  await notify({ event: 'order.cancelled', email: fresh.buyer_email ? { to: fresh.buyer_email,
-    subject: `Paylo — order ${fresh.code} cancelled`, body: `Order ${fresh.code} has been cancelled.${reason ? '\n\n' + reason : ''}\n\n— Paylo` } : undefined,
-    sms: { to: fresh.buyer_phone, body: `Paylo: order ${fresh.code} cancelled.` } });
+  const m = buyerCancelled(buyerLang(), { code: fresh.code, reason: reason || null });
+  await notify({ event: 'order.cancelled', email: fresh.buyer_email ? { to: fresh.buyer_email, ...m.email } : undefined, sms: { to: fresh.buyer_phone, body: m.sms } });
   await emitWebhook('order.updated', publicOrder(fresh), fresh.seller_id);
 }
 
@@ -490,10 +467,8 @@ export async function reviewAddressChange(order: Order, approve: boolean, note: 
   }
   audit('admin', null, 'admin', 'order', order.id, approve ? 'address_change.approved' : 'address_change.rejected', note);
   const fresh = getOrder(order.id)!;
-  await notify({ event: 'address_change.reviewed', email: fresh.buyer_email ? { to: fresh.buyer_email,
-    subject: `Paylo — address change for ${fresh.code}`,
-    body: `Your address change for order ${fresh.code} was ${approve ? 'applied' : 'not applied'}.${note ? '\n\n' + note : ''}\n\n${appUrl('/track/' + fresh.code)}\n\n— Paylo` } : undefined,
-    sms: { to: fresh.buyer_phone, body: `Paylo: address change for ${fresh.code} ${approve ? 'applied' : 'declined'}.` } });
+  const m = buyerAddressReviewed(buyerLang(), { code: fresh.code, approved: approve, note, track: appUrl('/track/' + fresh.code) });
+  await notify({ event: 'address_change.reviewed', email: fresh.buyer_email ? { to: fresh.buyer_email, ...m.email } : undefined, sms: { to: fresh.buyer_phone, body: m.sms } });
 }
 
 /* --------------------------- returns & refunds ----------------------- */
@@ -512,8 +487,7 @@ export async function openDispute(order: Order, reason: string, description: str
   })();
   audit('buyer', null, order.buyer_name, 'dispute', id, 'opened', { order: order.code, reason });
   const su = sellerEmail(order.seller_id);
-  if (su) await notify({ event: 'refund.created', email: { to: su.email, subject: `Paylo — return opened on ${order.code}`,
-    body: `The buyer opened a return request on order ${order.code} (${reason}). Paylo is reviewing it.\n\n— Paylo` } });
+  if (su) await notify({ event: 'refund.created', email: { to: su.email, ...sellerReturnOpened(sellerLang(order.seller_id), { code: order.code, reason }) } });
   const d = db.prepare('SELECT * FROM disputes WHERE id = ?').get(id) as Dispute;
   await emitWebhook('refund.created', { order: publicOrder(getOrder(order.id)!), dispute: d }, order.seller_id);
   return d;
@@ -556,11 +530,9 @@ export async function adminResolveDispute(dispute: Dispute, resolution: 'refund'
   }
   audit('admin', null, 'admin', 'dispute', dispute.id, 'resolved:' + resolution, { liability, note, amount: refunded || undefined });
   const fresh = getOrder(order.id)!;
-  const outcome = resolution === 'refund' ? 'a full refund has been issued' : resolution === 'partial_refund' ? `a partial refund of ${refunded} SYP has been issued` : resolution === 'found' ? 'the shipment was located and delivery continues' : 'no refund will be issued';
-  await notify({ event: 'refund.updated', email: fresh.buyer_email ? { to: fresh.buyer_email,
-    subject: `Paylo — your return request for ${fresh.code}`,
-    body: `Hi ${fresh.buyer_name},\n\nYour return request on order ${fresh.code} is resolved: ${outcome}.${note ? '\n\nNote: ' + note : ''}\n\n— Paylo` } : undefined,
-    sms: { to: fresh.buyer_phone, body: `Paylo: return on ${fresh.code} resolved — ${outcome}.` } });
+  const outcome: ReturnOutcome = resolution === 'refund' || resolution === 'partial_refund' || resolution === 'found' ? resolution : 'dismissed';
+  const m = buyerReturnResolved(buyerLang(), { name: fresh.buyer_name, code: fresh.code, outcome, amount: refunded, note });
+  await notify({ event: 'refund.updated', email: fresh.buyer_email ? { to: fresh.buyer_email, ...m.email } : undefined, sms: { to: fresh.buyer_phone, body: m.sms } });
   await emitWebhook('refund.updated', { order: publicOrder(fresh), dispute: db.prepare('SELECT * FROM disputes WHERE id = ?').get(dispute.id) }, fresh.seller_id);
 }
 
@@ -604,11 +576,8 @@ export async function refundOrder(order: Order, actor: Actor, note: string, liab
   })();
   audit(actor, null, actor, 'order', order.id, 'refunded', { note, amount: remaining, liability });
   const fresh = getOrder(order.id)!;
-  const how = captured?.method === 'card' ? `to your card ending ${captured.card_last4 ?? '••••'}` : 'by the method you paid with';
-  await notify({ event: 'refund.issued', email: fresh.buyer_email ? { to: fresh.buyer_email,
-    subject: `Paylo — refund for order ${fresh.code}`,
-    body: `Hi ${fresh.buyer_name},\n\n${remaining} SYP will be refunded ${how}.\n\n— Paylo` } : undefined,
-    sms: { to: fresh.buyer_phone, body: `Paylo: refund issued for order ${fresh.code}.` } });
+  const m = buyerRefundFull(buyerLang(), { name: fresh.buyer_name, code: fresh.code, amount: remaining, cardLast4: captured?.method === 'card' ? captured.card_last4 ?? null : undefined });
+  await notify({ event: 'refund.issued', email: fresh.buyer_email ? { to: fresh.buyer_email, ...m.email } : undefined, sms: { to: fresh.buyer_phone, body: m.sms } });
 }
 
 /**
@@ -651,14 +620,11 @@ export async function partialRefund(order: Order, amount: number, liability: Lia
   })();
   audit(actor, null, actor, 'order', order.id, 'refund.partial', { amount: amt, liability, seller_net_delta: netDelta, note });
   const fresh = getOrder(order.id)!;
-  const how = captured?.method === 'card' ? `to your card ending ${captured.card_last4 ?? '••••'}` : 'by the method you paid with';
-  await notify({ event: 'refund.issued', email: fresh.buyer_email ? { to: fresh.buyer_email,
-    subject: `Paylo — partial refund for order ${fresh.code}`,
-    body: `Hi ${fresh.buyer_name},\n\n${amt} SYP of order ${fresh.code} will be refunded ${how}.\n\n— Paylo` } : undefined,
-    sms: { to: fresh.buyer_phone, body: `Paylo: ${amt} SYP refunded on order ${fresh.code}.` } });
+  const m = buyerRefundPartial(buyerLang(), { name: fresh.buyer_name, code: fresh.code, amount: amt, cardLast4: captured?.method === 'card' ? captured.card_last4 ?? null : undefined });
+  await notify({ event: 'refund.issued', email: fresh.buyer_email ? { to: fresh.buyer_email, ...m.email } : undefined, sms: { to: fresh.buyer_phone, body: m.sms } });
   const su = sellerEmail(order.seller_id);
-  if (su) await notify({ event: 'refund.partial.seller', email: { to: su.email, subject: `Paylo — partial refund on ${fresh.code}`,
-    body: `A partial refund of ${amt} SYP was issued on order ${fresh.code}. ${liability === 'seller' ? `Your payout for this order is reduced by ${-netDelta} SYP (commission on the refunded amount is returned to you).` : 'Your payout for this order is unchanged.'}\n\n— Paylo` } });
+  if (su) await notify({ event: 'refund.partial.seller', email: { to: su.email,
+    ...sellerRefundPartial(sellerLang(order.seller_id), { code: fresh.code, amount: amt, sellerLiable: liability === 'seller', reduction: -netDelta }) } });
   return db.prepare('SELECT * FROM refunds WHERE id = ?').get(id) as Refund;
 }
 
@@ -749,8 +715,7 @@ export async function markPayoutPaid(payoutId: string, reference: string | null)
     .get(payoutId) as (Payout & { email: string; store_name: string }) | undefined;
   if (!p) return;
   audit('admin', null, 'admin', 'payout', payoutId, 'paid', { reference, amount: p.amount });
-  await notify({ event: 'payout.sent', email: { to: p.email, subject: `Paylo — payout sent (${p.period_label})`,
-    body: `Hi ${p.store_name},\n\nA payout of ${p.amount} SYP has been sent${reference ? ' (ref: ' + reference + ')' : ''}.\n\n— Paylo` } });
+  await notify({ event: 'payout.sent', email: { to: p.email, ...sellerPayoutSent(sellerLang(p.seller_id), { store: p.store_name, amount: p.amount, reference: reference || null, period: p.period_label }) } });
   await emitWebhook('payout.sent', { id: p.id, seller_id: p.seller_id, amount: p.amount, reference, period: p.period_label }, p.seller_id);
 }
 

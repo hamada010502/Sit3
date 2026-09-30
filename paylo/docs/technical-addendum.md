@@ -294,10 +294,25 @@ devices, push failures, failed email/SMS/WhatsApp, webhooks delivered/retrying/o
 and lists of dead-letter webhooks, recent push failures and failed messages. Running it in
 production: `docs/deployment.md`.
 
+## 7h. Email / SMS / WhatsApp language
+
+Every outgoing message is built by `lib/notify-templates.ts` from i18n keys `nt_*`, so the
+Arabic and English texts are type-checked for parity like the UI (`Dict`). No English text
+remains in `lib/orders.ts`, `lib/registration.ts`, `lib/customer.ts` or the admin seller
+actions.
+
+- **Buyers and registration applicants: Arabic.** They have no account setting to read.
+- **Sellers: the language of their most recently registered push device**
+  (`push_subscriptions.lang`, captured from the UI language at subscribe time), otherwise
+  Arabic. This is a proxy: a seller who never enables push always gets Arabic.
+- Amounts use `formatSYP` in the message language (Arabic digits and «ل.س» in Arabic).
+- Web Push already used per-device language (§7d).
+
 ## 8. Known gaps
 
-- **Buyer and seller emails/SMS are English only.** Nothing stores a language per user, so
-  `lib/notify.ts` templates are written in English. Push alerts are localised (per device).
+- **No explicit language preference.** Seller language is inferred from their latest push
+  device, and buyers always get Arabic. A per-user setting would replace the inference.
+
 
 - **Cash reconciliation is a single click,** not a courier manifest.
 - **Single-item orders.** The link-based model implies one product per order; a cart would

@@ -1,4 +1,5 @@
 import { createHash, randomInt } from 'crypto';
+import { buyerClaimCode, buyerLang } from './notify-templates';
 import { getDb, newId, nowIso } from './db';
 import { hashPassword } from './auth';
 import { audit } from './audit';
@@ -120,11 +121,11 @@ export async function requestOrderClaim(userId: string, orderCode: string, conta
   db.prepare('INSERT INTO order_claims (id, order_id, user_id, channel, contact, code_hash, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .run(id, order.id, userId, channel, contact.trim(), hashCode(code), expiresAt);
 
+  const m = buyerClaimCode(buyerLang(), { code: order.code, otp: code });
   await notify({
     event: 'order.claim_code',
-    email: channel === 'email' ? { to: email!, subject: `Paylo — verification code for order ${order.code}`,
-      body: `Your verification code to link order ${order.code} to your account is ${code}. It expires in 10 minutes.\n\n— Paylo` } : undefined,
-    sms: channel === 'sms' ? { to: phone, body: `Paylo: code ${code} to link order ${order.code} to your account. Expires in 10 minutes.` } : undefined,
+    email: channel === 'email' ? { to: email!, ...m.email } : undefined,
+    sms: channel === 'sms' ? { to: phone, body: m.sms } : undefined,
   });
 }
 
