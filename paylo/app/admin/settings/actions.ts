@@ -25,7 +25,7 @@ export async function saveAdminSettingsAction(_prev: { ok?: boolean } | null, fo
   num('address_change_window_hours', 0, 720);
   setSetting('payout_eligibility', String(formData.get('payout_eligibility')) === 'on_delivery' ? 'on_delivery' : 'on_close');
   text('logistics_partner_name'); text('bank_name'); text('bank_account_name'); text('bank_iban'); text('bank_note');
-  flag('yalla_go_enabled'); flag('pay_cod_enabled'); flag('pay_bank_transfer_enabled'); flag('pay_card_enabled');
+  flag('yalla_go_enabled'); /* pay_cod_enabled is policy-locked off: never written from this form */ flag('pay_bank_transfer_enabled'); flag('pay_card_enabled');
   flag('notify_email'); flag('notify_sms');
   setSetting('text_channel', formData.get('text_channel') === 'whatsapp' ? 'whatsapp' : 'sms');
 

@@ -19,7 +19,7 @@ export function ApplyForm() {
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <Field label={t('phone')}><input name="phone" className="input" dir="ltr" required placeholder="09xxxxxxxx" /></Field>
-        <Field label={t('national_id')} hint={t('national_id_hint')}><input name="national_id" className="input" dir="ltr" required /></Field>
+        <Field label={t('national_id')} hint={t('national_id_hint')}><input name="national_id" className="input" dir="ltr" required inputMode="numeric" autoComplete="off" /></Field>
       </div>
       <Field label={t('password')} hint={t('password_hint')}><input name="password" type="password" className="input" required minLength={8} /></Field>
       <div className="grid sm:grid-cols-2 gap-4">

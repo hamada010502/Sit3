@@ -24,6 +24,10 @@ let passed = 0;
 const ok = (c, m) => { if (!c) throw new Error('ASSERT FAILED: ' + m); passed++; console.log('  ✓ ' + m); };
 const step = (m) => console.log('\n' + m);
 
+// Legacy COD fixture: these suites run with COD re-enabled (scripts/run-e2e.sh) to keep the
+// retained cash-on-delivery branches covered; checkout itself now defaults to bank transfer.
+const pickCod = (p) => p.evaluate(() => document.querySelector('input[name=payment_method][value=cod]')?.click());
+
 /* --- TOTP, so the test can satisfy the mandatory second factor --- */
 const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 function b32decode(s) {
@@ -62,6 +66,7 @@ const upload = (name) => ({ name, mimeType: 'image/png', buffer: PNG });
   const shot = (p, n) => p.screenshot({ path: path.join(SHOTS, n + '.png'), fullPage: true });
   const tag = Date.now().toString(36);
   const slug = 'e2e-' + tag;
+  const nationalId = '99880' + String(Date.now()).slice(-6); // 11 digits
   const email = slug + '@test.sy';
   const store = 'E2E Store ' + tag;
 
@@ -70,7 +75,7 @@ const upload = (name) => ({ name, mimeType: 'image/png', buffer: PNG });
   await seller.fill('input[name=name]', 'E2E Seller');
   await seller.fill('input[name=email]', email);
   await seller.fill('input[name=phone]', '0912345678');
-  await seller.fill('input[name=national_id]', '9988' + tag.slice(-6));
+  await seller.fill('input[name=national_id]', nationalId);
   await seller.fill('input[name=password]', 'password123');
   await seller.fill('input[name=store_name]', store);
   await seller.fill('input[name=slug]', slug);
@@ -111,7 +116,10 @@ const upload = (name) => ({ name, mimeType: 'image/png', buffer: PNG });
   await owner.goto(BASE + '/owner/registrations');
   ok(await seen(owner, store), 'new registration listed for the owner');
   await owner.locator('tr', { hasText: email }).getByRole('link', { name: 'View' }).click();
-  ok(await seen(owner, '9988' + tag.slice(-6)), 'full national ID visible on the protected detail screen');
+  ok(await seen(owner, nationalId), 'full national ID visible on the protected detail screen');
+  for (const k of ['photo_readable', 'name_matches', 'id_matches', 'face_visible', 'not_duplicate']) await owner.locator(`[data-testid=review-checklist] input[name=${k}][value=yes]`).check();
+  await owner.getByRole('button', { name: 'Save checklist' }).click();
+  await owner.locator('[data-testid=review-checklist] .alert-success').waitFor();
   await owner.getByRole('button', { name: 'Approve & create store' }).click();
   await owner.waitForSelector('span.badge:has-text("Approved")');
   ok(true, 'owner approved the registration; store is created and live immediately');
@@ -192,6 +200,7 @@ const upload = (name) => ({ name, mimeType: 'image/png', buffer: PNG });
   ok(await seen(buyer, 'Cash on delivery'), 'step two lists the phase-appropriate methods');
   ok(await buyer.getByText('Card', { exact: true }).count() === 0, 'card is hidden while the rail is unconfirmed');
   await shot(buyer, '06-checkout-step2');
+  await pickCod(buyer);
   await buyer.getByRole('button', { name: /Place order/ }).click();
   await buyer.waitForURL('**/track/PL-*');
   const code = buyer.url().match(/PL-[A-Z0-9]+/)[0];
@@ -379,6 +388,7 @@ const upload = (name) => ({ name, mimeType: 'image/png', buffer: PNG });
   await buyer.selectOption('select[name=governorate]', 'Damascus');
   await buyer.fill('textarea[name=address]', 'Malki street 1');
   await buyer.getByRole('button', { name: 'Continue to payment' }).click();
+  await pickCod(buyer);
   await buyer.getByRole('button', { name: /Place order/ }).click();
   await buyer.waitForURL('**/track/PL-*');
 

@@ -2,6 +2,7 @@
 import { redirect } from 'next/navigation';
 import { RegistrationError, submitRegistration } from '@/lib/registration';
 import { GOVERNORATES } from '@/lib/types';
+import { clientIp, hashIp } from '@/lib/request-meta';
 
 function slugify(s: string) {
   return s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
@@ -26,17 +27,21 @@ export async function applyAction(_prev: { error?: string } | null, formData: Fo
   const governorate = String(formData.get('governorate') || '');
   const bio = String(formData.get('bio') || '').trim();
 
-  if (!name || !email.includes('@') || !/^\+?[0-9\s-]{8,15}$/.test(phone) || nationalId.length < 4
+  if (!name || !email.includes('@') || !phone || !nationalId
       || password.length < 8 || !storeName || !slug || !(GOVERNORATES as readonly string[]).includes(governorate)) {
     return { error: 'apply_error_generic' };
   }
 
   try {
-    await submitRegistration({ fullName: name, phone, email, nationalId, storeName, slug, instagram, governorate, bio, password });
+    await submitRegistration({ fullName: name, phone, email, nationalId, storeName, slug, instagram, governorate, bio, password }, hashIp(clientIp()));
   } catch (e) {
-    // Same generic message whether the conflict was phone, national ID, or both — never
-    // reveal which field matched or anything about the existing account (spec §3).
-    if (e instanceof RegistrationError) return { error: 'apply_error_duplicate' };
+    // Email and phone collisions are named (email_taken / phone_taken). A national-ID clash
+    // stays the generic duplicate message: the form never confirms an ID is on file.
+    if (e instanceof RegistrationError) {
+      const known: Record<string, string> = { email_taken: 'email_taken', phone_taken: 'phone_taken', phone_invalid: 'phone_invalid',
+        national_id_invalid: 'national_id_invalid', name_invalid: 'name_invalid', rate_limited: 'registration_rate_limited' };
+      return { error: known[e.message] ?? 'apply_error_duplicate' };
+    }
     throw e;
   }
   redirect('/apply/confirmation');

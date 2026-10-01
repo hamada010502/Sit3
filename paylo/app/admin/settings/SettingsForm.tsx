@@ -34,7 +34,7 @@ export function AdminSettingsForm({ s, cardEnvEnabled }: { s: Record<string, str
       <div className="card-pad space-y-4">
         <h2 className="font-bold">{t('payment_methods')}</h2>
         <p className="text-xs text-ink-soft">{t('pay_toggle_note')}</p>
-        <Check name="pay_cod_enabled" label={t('cod_enabled')} />
+        <Check name="pay_cod_enabled" label={t('cod_enabled')} disabled hint={t('pay_cod_policy')} />
         <Check name="pay_bank_transfer_enabled" label={t('bank_transfer_enabled')} hint={t('pay_bank_default_note')} />
         <Check name="pay_card_enabled" label={t('card_enabled')} disabled={!cardEnvEnabled} hint={t('card_gate_note')} />
         <div className="grid sm:grid-cols-2 gap-4 pt-2">

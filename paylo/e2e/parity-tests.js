@@ -15,6 +15,10 @@ let passed = 0;
 const ok = (c, m) => { if (!c) throw new Error('ASSERT FAILED: ' + m); passed++; console.log('  ✓ ' + m); };
 const step = (m) => console.log('\n' + m);
 
+// Legacy COD fixture: these suites run with COD re-enabled (scripts/run-e2e.sh) to keep the
+// retained cash-on-delivery branches covered; checkout itself now defaults to bank transfer.
+const pickCod = (p) => p.evaluate(() => document.querySelector('input[name=payment_method][value=cod]')?.click());
+
 // Local SMS/WhatsApp gateway stand-in: records every message; can be told to fail.
 const http = require('http');
 const gateway = { hits: [], failNext: false };
@@ -260,6 +264,7 @@ const gatewayServer = http.createServer((req, res) => {
     await page.fill('textarea[name=address]', 'Shaalan, Damascus');
     await page.locator('input[name=quantity]').fill(String(qty));
     await page.click('button:has-text("Continue")');
+    await pickCod(page);
     if (code) {
       await page.getByLabel('Discount code').fill(code);
       await page.getByRole('button', { name: 'Apply' }).click();
@@ -665,6 +670,7 @@ const gatewayServer = http.createServer((req, res) => {
   await tyBuyer.fill('input[name=buyer_email]', 'ty-buyer@example.com');
   await tyBuyer.fill('textarea[name=address]', 'Mezzeh, Damascus');
   await tyBuyer.click('button:has-text("Continue")');
+  await pickCod(tyBuyer);
   const tyOrder = await place(tyBuyer);
   const tyBox = tyBuyer.locator('[data-testid=thank-you]');
   ok(await tyBox.count() === 1 && (await tyBox.innerText()).includes('Ground fresh the morning it ships'), 'confirmation page shows the seller’s message');

@@ -20,7 +20,7 @@ export async function registerAction(_prev: RegisterState | null, formData: Form
   try {
     user = await createCustomerAccount({ name, email, phone, password });
   } catch (e) {
-    if (e instanceof CustomerError && e.message === 'email_taken') return { error: 'register_error_taken' };
+    if (e instanceof CustomerError) return { error: e.message === 'email_taken' ? 'email_taken' : e.message === 'phone_taken' ? 'phone_taken' : 'phone_invalid' };
     throw e;
   }
   await createSession(user);

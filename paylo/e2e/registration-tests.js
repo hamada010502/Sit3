@@ -47,6 +47,9 @@ const OWNER_TOTP = 'KRSXG5CTMVRXEZLUKN2XAZLSEBB2EWDN';
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
   const vp = { viewport: { width: 1280, height: 900 } };
   const tag = Date.now().toString().slice(-8);
+  // Phones are stored canonical (+9639XXXXXXXX); national numbers are 11 digits.
+  const norm = (p) => '+963' + p.replace(/^0/, '');
+  const nid = (n) => '1' + tag + n;
 
   const fillApply = async (page, { name, email, phone, nid, store }) => {
     await page.goto(BASE + '/apply');
@@ -63,25 +66,25 @@ const OWNER_TOTP = 'KRSXG5CTMVRXEZLUKN2XAZLSEBB2EWDN';
   step('1. New phone + new national ID');
   const ctx1 = await browser.newContext(vp);
   const p1 = await ctx1.newPage();
-  const phoneA = '0900' + tag.slice(-6), nidA = 'NIDA' + tag.slice(-6);
+  const phoneA = '0900' + tag.slice(-6), nidA = nid('01');
   await fillApply(p1, { name: 'Applicant A', email: 'a-' + tag + '@test.sy', phone: phoneA, nid: nidA, store: 'Store A ' + tag });
   await p1.click('button[type=submit]');
   await p1.waitForURL('**/apply/confirmation');
   ok(await p1.getByText('24').count() >= 1 || (await p1.content()).includes('24'), '24-hour response message shown');
   ok(await p1.getByText('Your store is not active yet').count() === 1, 'store not active yet stated');
-  const rowA = db.prepare('SELECT status FROM store_registration_requests WHERE phone = ?').get(phoneA);
+  const rowA = db.prepare('SELECT status FROM store_registration_requests WHERE phone = ?').get(norm(phoneA));
   ok(!!rowA && rowA.status === 'PENDING_REVIEW', 'request created with PENDING_REVIEW status');
 
   // ---- Test 2: existing phone -> rejected, generic message, no new row ----
   step('2. Existing phone is rejected without creating a request');
   const before2 = regCount();
   const p2 = await ctx1.newPage();
-  const nidB = 'NIDB' + tag.slice(-6);
+  const nidB = nid('02');
   await fillApply(p2, { name: 'Applicant B', email: 'b-' + tag + '@test.sy', phone: phoneA, nid: nidB, store: 'Store B ' + tag });
   await p2.click('button[type=submit]');
   await p2.waitForSelector('.alert-error');
   const msg2 = (await p2.locator('.alert-error').innerText()).trim();
-  ok(msg2 === 'The information you entered is already associated with an existing account.', 'exact generic duplicate message shown (phone match)');
+  ok(msg2 === 'An account or application already uses this phone number.', 'phone collision is named (phone_taken)');
   ok(regCount() === before2, 'no new request row created for a duplicate phone');
 
   // ---- Test 3: existing national ID -> rejected, generic message, no new row ----
@@ -93,7 +96,7 @@ const OWNER_TOTP = 'KRSXG5CTMVRXEZLUKN2XAZLSEBB2EWDN';
   await p3.click('button[type=submit]');
   await p3.waitForSelector('.alert-error');
   const msg3 = (await p3.locator('.alert-error').innerText()).trim();
-  ok(msg3 === 'The information you entered is already associated with an existing account.', 'exact generic duplicate message shown (national ID match)');
+  ok(msg3 === 'The information you entered is already associated with an existing account.', 'national-ID clash stays the generic message (an ID on file is never confirmed)');
   ok(regCount() === before3, 'no new request row created for a duplicate national ID');
 
   // ---- Test 4: both existing -> rejected, generic message, no new row ----
@@ -104,12 +107,12 @@ const OWNER_TOTP = 'KRSXG5CTMVRXEZLUKN2XAZLSEBB2EWDN';
   await p4.click('button[type=submit]');
   await p4.waitForSelector('.alert-error');
   const msg4 = (await p4.locator('.alert-error').innerText()).trim();
-  ok(msg4 === 'The information you entered is already associated with an existing account.', 'exact generic duplicate message shown (both match)');
+  ok(msg4 === 'An account or application already uses this phone number.', 'phone + ID both taken → the phone is named, the ID never confirmed');
   ok(regCount() === before4, 'no new request row created when both fields match');
 
   // ---- Test 5: real concurrent race, same phone/national ID, two different browser contexts ----
   step('5. Concurrent submissions with the same identity -> only one record created');
-  const phoneR = '0902' + tag.slice(-6), nidR = 'NIDR' + tag.slice(-6);
+  const phoneR = '0902' + tag.slice(-6), nidR = nid('03');
   const ctxR1 = await browser.newContext(vp), ctxR2 = await browser.newContext(vp);
   const pr1 = await ctxR1.newPage(), pr2 = await ctxR2.newPage();
   await fillApply(pr1, { name: 'Racer 1', email: 'r1-' + tag + '@test.sy', phone: phoneR, nid: nidR, store: 'Store R1 ' + tag });
@@ -122,7 +125,7 @@ const OWNER_TOTP = 'KRSXG5CTMVRXEZLUKN2XAZLSEBB2EWDN';
       .catch(() => pr2.waitForSelector('.alert-error', { timeout: 15000 }).then(() => 'rejected'))),
   ]);
   const outcomes = [res1, res2].map((r) => (r.status === 'fulfilled' ? r.value : 'error'));
-  const rowsR = db.prepare('SELECT count(*) c FROM store_registration_requests WHERE phone = ? OR national_id = ?').get(phoneR, nidR).c;
+  const rowsR = db.prepare('SELECT count(*) c FROM store_registration_requests WHERE phone = ? OR national_id = ?').get(norm(phoneR), nidR).c;
   ok(regCount() === beforeR + 1, `exactly one row created from two concurrent submissions (outcomes: ${outcomes.join(', ')})`);
   ok(rowsR === 1, 'exactly one row exists for the raced phone/national ID');
   ok(outcomes.filter((o) => o === 'confirmed').length === 1, 'exactly one of the two concurrent submissions was confirmed');
@@ -135,7 +138,7 @@ const OWNER_TOTP = 'KRSXG5CTMVRXEZLUKN2XAZLSEBB2EWDN';
     db.prepare(`INSERT INTO store_registration_requests
         (id, full_name, phone, email, national_id, store_name, slug, governorate, password_hash)
       VALUES (?, 'Direct Insert', ?, 'direct-' || ? || '@test.sy', ?, 'Direct Store', 'direct-' || ?, 'Damascus', 'x')`)
-      .run('direct' + tag, phoneA, tag, nidA, tag);
+      .run('direct' + tag, norm(phoneA), tag, nidA, tag);
   } catch (e) {
     dbRejected = /UNIQUE constraint failed/.test(e.message);
   }
@@ -155,7 +158,7 @@ const OWNER_TOTP = 'KRSXG5CTMVRXEZLUKN2XAZLSEBB2EWDN';
   await owner.waitForURL('**/owner');
 
   // 7a. Reject requires a note, and only then updates status; no seller row is ever created.
-  const idA = db.prepare('SELECT id FROM store_registration_requests WHERE phone = ?').get(phoneA).id;
+  const idA = db.prepare('SELECT id FROM store_registration_requests WHERE phone = ?').get(norm(phoneA)).id;
   await owner.goto(BASE + `/owner/registrations/${idA}`);
   const rejectForm = owner.locator('form', { has: owner.locator('textarea[name=note]') }).last();
   // The textarea has a client-side `required` attribute; strip it so an empty submit actually
@@ -175,12 +178,12 @@ const OWNER_TOTP = 'KRSXG5CTMVRXEZLUKN2XAZLSEBB2EWDN';
   ok(!afterReject.created_seller_id, 'a rejected request never creates a seller/store');
 
   // 7b. Request more information updates status and always notifies.
-  const phoneE = '0903' + tag.slice(-6), nidE = 'NIDE' + tag.slice(-6);
+  const phoneE = '0903' + tag.slice(-6), nidE = nid('04');
   const pE = await ctx1.newPage();
   await fillApply(pE, { name: 'Applicant E', email: 'e-' + tag + '@test.sy', phone: phoneE, nid: nidE, store: 'Store E ' + tag });
   await pE.click('button[type=submit]');
   await pE.waitForURL('**/apply/confirmation');
-  const idB = db.prepare('SELECT id FROM store_registration_requests WHERE phone = ?').get(phoneE).id;
+  const idB = db.prepare('SELECT id FROM store_registration_requests WHERE phone = ?').get(norm(phoneE)).id;
   await owner.goto(BASE + `/owner/registrations/${idB}`);
   const infoForm = owner.locator('form', { has: owner.locator('textarea[name=note]') }).first();
   await infoForm.locator('textarea[name=note]').fill('Please resend a clearer ID photo.');
@@ -190,10 +193,28 @@ const OWNER_TOTP = 'KRSXG5CTMVRXEZLUKN2XAZLSEBB2EWDN';
   ok(afterInfo.status === 'MORE_INFORMATION_REQUIRED', 'request-more-info moves status to MORE_INFORMATION_REQUIRED');
 
   // 7c. Approve creates the seller/store and only now does it become live.
-  const idC = db.prepare('SELECT id, phone FROM store_registration_requests WHERE phone = ?').get(phoneR).id;
-  const sellerBefore = db.prepare('SELECT count(*) c FROM sellers WHERE phone = ?').get(phoneR).c;
+  const idC = db.prepare('SELECT id, phone FROM store_registration_requests WHERE phone = ?').get(norm(phoneR)).id;
+  const sellerBefore = db.prepare('SELECT count(*) c FROM sellers WHERE phone = ?').get(norm(phoneR)).c;
   ok(sellerBefore === 0, 'no seller/store exists before approval');
   await owner.goto(BASE + `/owner/registrations/${idC}`);
+  // Approval is refused until the reviewer checklist is complete.
+  await owner.click('button:has-text("Approve")');
+  await owner.getByText('Approval refused: the reviewer checklist is not complete').waitFor();
+  ok(db.prepare('SELECT status FROM store_registration_requests WHERE id = ?').get(idC).status === 'PENDING_REVIEW', 'approve without a completed checklist is refused server-side');
+  const cl = owner.locator('[data-testid=review-checklist]');
+  for (const k of ['photo_readable', 'name_matches', 'id_matches', 'not_duplicate']) await cl.locator(`input[name=${k}][value=yes]`).check();
+  await cl.locator('input[name=face_visible][value=no]').check();
+  await cl.locator('textarea[name=review_notes]').fill('Face not visible on the copy sent.');
+  await cl.getByRole('button', { name: 'Save checklist' }).click();
+  await cl.locator('.alert-success').waitFor();
+  await owner.click('button:has-text("Approve")');
+  await owner.getByText('Approval refused').waitFor();
+  ok(db.prepare('SELECT status FROM store_registration_requests WHERE id = ?').get(idC).status === 'PENDING_REVIEW', 'an item marked No still blocks approval');
+  await cl.locator('input[name=face_visible][value=na]').check();
+  await cl.getByRole('button', { name: 'Save checklist' }).click();
+  for (let i = 0; i < 40 && JSON.parse(db.prepare('SELECT checks FROM registration_reviews WHERE request_id = ?').get(idC).checks).face_visible !== 'na'; i++) await new Promise((r) => setTimeout(r, 150));
+  const rv = db.prepare('SELECT checks, notes FROM registration_reviews WHERE request_id = ?').get(idC);
+  ok(JSON.parse(rv.checks).face_visible === 'na' && rv.notes === 'Face not visible on the copy sent.', 'checklist answers and review notes are stored');
   await owner.click('button:has-text("Approve")');
   await owner.waitForSelector('text=Approved');
   const afterApprove = db.prepare('SELECT status, created_seller_id FROM store_registration_requests WHERE id = ?').get(idC);

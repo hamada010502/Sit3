@@ -19,6 +19,11 @@ FAIL=0
 for s in "${SUITES[@]}"; do
   stop
   npm run db:reset > /dev/null 2>&1
+  # Legacy COD fixture: suites written before "transfers only" re-enable COD so the retained
+  # cash-on-delivery branches (old orders) stay covered. phase-tests runs with policy defaults.
+  if [ "$s" != phase-tests ]; then
+    node -e "require('better-sqlite3')('data/paylo.db').prepare(\"UPDATE settings SET value='1' WHERE key='pay_cod_enabled'\").run()"
+  fi
   # parity-tests exercises real SMS/WhatsApp HTTP delivery against a local receiver.
   unset SMS_TRANSPORT SMS_HTTP_URL SMS_HTTP_TOKEN WHATSAPP_TRANSPORT WHATSAPP_HTTP_URL WHATSAPP_HTTP_TOKEN NODE_TLS_REJECT_UNAUTHORIZED
   if [ "$s" = parity-tests ] || [ "$s" = sprint-tests ]; then

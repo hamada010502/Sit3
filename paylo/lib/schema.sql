@@ -477,3 +477,23 @@ CREATE TABLE IF NOT EXISTS push_failures (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_push_failures_created ON push_failures(created_at);
+
+-- Seller-application attempts, for per-day limits per normalised phone and hashed IP.
+CREATE TABLE IF NOT EXISTS registration_attempts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL DEFAULT (datetime('now')),
+  phone TEXT,
+  ip_hash TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_reg_attempts_phone ON registration_attempts(phone, at);
+CREATE INDEX IF NOT EXISTS idx_reg_attempts_ip ON registration_attempts(ip_hash, at);
+
+-- Owner's manual review of a seller application (one row per application).
+-- checks: JSON {photo_readable, name_matches, id_matches, face_visible, not_duplicate}: 'yes'|'no'|'na'
+CREATE TABLE IF NOT EXISTS registration_reviews (
+  request_id TEXT PRIMARY KEY REFERENCES store_registration_requests(id) ON DELETE CASCADE,
+  checks TEXT NOT NULL DEFAULT '{}',
+  notes TEXT,
+  reviewer_id TEXT,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

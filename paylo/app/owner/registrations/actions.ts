@@ -1,7 +1,7 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { requireOwner } from '@/lib/guards';
-import { approveRegistrationRequest, getRegistration, RegistrationError, rejectRegistrationRequest, requestMoreInformation } from '@/lib/registration';
+import { approveRegistrationRequest, getRegistration, REVIEW_CHECKS, RegistrationError, rejectRegistrationRequest, requestMoreInformation, saveReview, type ReviewAnswer } from '@/lib/registration';
 
 export interface RegActionState { error?: string }
 
@@ -35,4 +35,14 @@ export async function requestInfoAction(id: string, _prev: RegActionState | null
   const owner = requireOwner();
   const note = String(formData.get('note') || '').trim();
   return withRequest(id, async (req) => { await requestMoreInformation(req, owner.id, note); });
+}
+
+export async function saveReviewAction(id: string, _prev: RegActionState | null, formData: FormData): Promise<RegActionState & { ok?: boolean }> {
+  const owner = requireOwner();
+  if (!getRegistration(id)) return { error: 'Not found' };
+  const checks: Partial<Record<(typeof REVIEW_CHECKS)[number], ReviewAnswer>> = {};
+  for (const k of REVIEW_CHECKS) { const v = String(formData.get(k) || ''); if (v === 'yes' || v === 'no' || v === 'na') checks[k] = v; }
+  saveReview(id, owner.id, checks, String(formData.get('review_notes') || '').trim() || null);
+  revalidatePath(`/owner/registrations/${id}`);
+  return { ok: true };
 }

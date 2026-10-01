@@ -1,5 +1,6 @@
 import { createHash, randomInt } from 'crypto';
 import { buyerClaimCode, buyerLang } from './notify-templates';
+import { normalizePhone } from './id-validate';
 import { getDb, newId, nowIso } from './db';
 import { hashPassword } from './auth';
 import { audit } from './audit';
@@ -16,22 +17,38 @@ export interface NewCustomerInput { name: string; email: string; phone: string; 
  * account only ever comes from someone explicitly choosing "Create account". */
 export async function createCustomerAccount(input: NewCustomerInput): Promise<User> {
   const db = getDb();
-  const existing = db.prepare('SELECT id FROM users WHERE lower(email) = lower(?)').get(input.email);
-  if (existing) throw new CustomerError('email_taken');
+  const email = input.email.trim().toLowerCase();
+  // Phone is optional on a customer account, but when given it must be a valid Syrian mobile
+  // and unique (canonical +9639XXXXXXXX). Guest orders are never checked against this.
+  const phone = input.phone.trim() ? normalizePhone(input.phone) : null;
+  if (input.phone.trim() && !phone) throw new CustomerError('phone_invalid');
+  if (db.prepare('SELECT 1 FROM users WHERE lower(email) = lower(?)').get(email)
+    || db.prepare("SELECT 1 FROM store_registration_requests WHERE lower(email) = lower(?) AND status IN ('PENDING_REVIEW','MORE_INFORMATION_REQUIRED')").get(email)) throw new CustomerError('email_taken');
+  if (phone && (db.prepare('SELECT 1 FROM users WHERE phone = ?').get(phone)
+    || db.prepare("SELECT 1 FROM store_registration_requests WHERE phone = ? AND status IN ('PENDING_REVIEW','MORE_INFORMATION_REQUIRED')").get(phone))) throw new CustomerError('phone_taken');
 
   const id = newId();
   const passwordHash = await hashPassword(input.password);
-  db.prepare("INSERT INTO users (id, email, password_hash, role, name, phone) VALUES (?, ?, ?, 'customer', ?, ?)")
-    .run(id, input.email.trim(), passwordHash, input.name.trim(), input.phone.trim() || null);
-  audit('buyer', id, input.email, 'user', id, 'customer.registered');
+  try {
+    db.prepare("INSERT INTO users (id, email, password_hash, role, name, phone) VALUES (?, ?, ?, 'customer', ?, ?)")
+      .run(id, email, passwordHash, input.name.trim(), phone);
+  } catch (e) {
+    // The unique indexes / triggers caught a race: same codes as the checks above.
+    throw new CustomerError(/phone/.test(String((e as Error).message)) ? 'phone_taken' : 'email_taken');
+  }
+  audit('buyer', id, email, 'user', id, 'customer.registered');
   return db.prepare('SELECT * FROM users WHERE id = ?').get(id) as User;
 }
 
 export function updateCustomerProfile(userId: string, input: { name: string; phone: string }): void {
-  getDb().prepare('UPDATE users SET name = ?, phone = ? WHERE id = ?').run(input.name.trim(), input.phone.trim() || null, userId);
+  const phone = input.phone.trim() ? normalizePhone(input.phone) : null;
+  if (input.phone.trim() && !phone) throw new CustomerError('phone_invalid');
+  const db = getDb();
+  if (phone && db.prepare('SELECT 1 FROM users WHERE phone = ? AND id != ?').get(phone, userId)) throw new CustomerError('phone_taken');
+  try {
+    db.prepare('UPDATE users SET name = ?, phone = ? WHERE id = ?').run(input.name.trim(), phone, userId);
+  } catch { throw new CustomerError('phone_taken'); }
 }
-
-/* ---------------------------- addresses ------------------------------- */
 
 export interface AddressInput { label?: string; fullName: string; phone: string; governorate: string; address: string; makeDefault?: boolean }
 

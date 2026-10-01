@@ -19,6 +19,10 @@ let passed = 0;
 const ok = (c, m) => { if (!c) throw new Error('ASSERT FAILED: ' + m); passed++; console.log('  ✓ ' + m); };
 const step = (m) => console.log('\n' + m);
 
+// Legacy COD fixture: these suites run with COD re-enabled (scripts/run-e2e.sh) to keep the
+// retained cash-on-delivery branches covered; checkout itself now defaults to bank transfer.
+const pickCod = (p) => p.evaluate(() => document.querySelector('input[name=payment_method][value=cod]')?.click());
+
 const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 function b32decode(s) {
   let bits = 0, value = 0; const out = [];
@@ -75,6 +79,7 @@ const DEMO_TOTP = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
   await guest.fill('input[name=buyer_email]', guestEmail);
   await guest.fill('textarea[name=address]', 'Guest street 12, Damascus');
   await guest.click('button:has-text("Continue")');
+  await pickCod(guest);
   await guest.click('button[type=submit]');
   await guest.waitForURL('**/track/**', { timeout: 15000 });
   const guestOrderCode = decodeURIComponent(new URL(guest.url()).pathname.split('/').pop());
@@ -143,6 +148,7 @@ const DEMO_TOTP = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
   ok(prefilledAddress === 'First address, Damascus', "the default address pre-fills the shipping address field");
 
   await cust.click('button:has-text("Continue")');
+  await pickCod(cust);
   await cust.click('button[type=submit]');
   await cust.waitForURL('**/track/**', { timeout: 15000 });
   const custOrderCode = decodeURIComponent(new URL(cust.url()).pathname.split('/').pop());

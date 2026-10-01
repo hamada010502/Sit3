@@ -35,7 +35,7 @@ const step = (m) => console.log('\n' + m);
   await login(admin, 'admin@paylo.sy', 'admin1234'); await admin.waitForURL('**/admin**');
   const saveToggles = async (on) => {
     await admin.goto(BASE + '/admin/settings');
-    for (const m of ['cod', 'bank_transfer']) await admin.locator(`input[name=pay_${m}_enabled]`).setChecked(on.includes(m));
+    await admin.locator('input[name=pay_bank_transfer_enabled]').setChecked(on.includes('bank_transfer'));
     await admin.getByRole('button', { name: 'Save' }).click();
     await admin.waitForSelector('.alert-success');
   };
@@ -48,31 +48,45 @@ const step = (m) => console.log('\n' + m);
   const methodsShown = (p) => p.locator('input[name=payment_method]').evaluateAll((els) => els.map((e) => e.value));
 
   if (ONLY.includes('1')) {
-    step('1.1 Defaults: COD and bank transfer on, card off');
-    ok(setting('pay_cod_enabled') === '1' && setting('pay_bank_transfer_enabled') === '1' && setting('pay_card_enabled') === '0', 'settings default to COD on, bank transfer ON, card off');
+    step('1.1 Policy defaults: transfers only — COD off, bank transfer on, card off');
+    ok(setting('pay_cod_enabled') === '0' && setting('pay_bank_transfer_enabled') === '1' && setting('pay_card_enabled') === '0', 'settings: COD off, bank transfer ON, card off');
+    ok(!!setting('migr_cod_off_v1'), 'the one-time COD-off migration is recorded');
     ok(!setting('cod_enabled') && !setting('bank_transfer_enabled') && !setting('card_enabled'), 'old keys were migrated away (no duplicates)');
     const bCtx = await ctx(); const b = await bCtx.newPage();
     await fillBuyer(b);
-    ok(JSON.stringify(await methodsShown(b)) === JSON.stringify(['cod', 'bank_transfer']), 'checkout offers COD and bank transfer by default, no card');
+    ok(JSON.stringify(await methodsShown(b)) === JSON.stringify(['bank_transfer']), 'checkout offers bank transfer only — COD absent, card hidden');
+    ok(await b.locator('input[name=payment_method][value=bank_transfer]').isChecked(), 'bank transfer is preselected');
+    ok(await b.getByText('Cash on delivery').count() === 0, 'no cash-on-delivery wording on the product page');
 
-    step('1.1/2.5 Only COD enabled → others hidden in the UI AND refused by the server');
-    const openBefore = db.prepare("SELECT count(*) c FROM orders WHERE payment_method = 'bank_transfer' AND status = 'awaiting_payment'").get().c;
-    await saveToggles(['cod']);
-    ok(setting('pay_bank_transfer_enabled') === '0', 'admin saved bank transfer off');
-    await fillBuyer(b);
-    ok(JSON.stringify(await methodsShown(b)) === JSON.stringify(['cod']), 'checkout now lists only COD');
-    // Post bank_transfer anyway: forge the radio's value before submitting.
-    await b.locator('input[name=payment_method][value=cod]').evaluate((el) => { el.value = 'bank_transfer'; });
+    step('1.1/2.5 COD posted anyway → refused server-side, no order created');
     const ordersBefore = db.prepare('SELECT count(*) c FROM orders').get().c;
+    await b.locator('input[name=payment_method][value=bank_transfer]').evaluate((el) => { el.value = 'cod'; });
     await b.locator('button[type=submit]').click();
     await b.waitForSelector('text=That payment method is not available.');
-    ok(db.prepare('SELECT count(*) c FROM orders').get().c === ordersBefore, 'a forged bank-transfer post is refused server-side with a clear message; no order created');
+    ok(db.prepare('SELECT count(*) c FROM orders').get().c === ordersBefore, 'a forged COD post is refused with a clear message; no order created');
     await fillBuyer(b);
-    await b.locator('input[name=payment_method][value=cod]').evaluate((el) => { el.value = 'card'; });
+    await b.locator('input[name=payment_method][value=bank_transfer]').evaluate((el) => { el.value = 'card'; });
     await b.locator('button[type=submit]').click();
     await b.waitForSelector('text=That payment method is not available.');
     ok(db.prepare('SELECT count(*) c FROM orders').get().c === ordersBefore, 'a forged card post is refused too');
+
+    step('1.1 Admin: COD toggle visible but locked by policy; saving never re-enables it');
+    await admin.goto(BASE + '/admin/settings');
+    const codBox = admin.locator('input[name=pay_cod_enabled]');
+    ok(await codBox.count() === 1 && await codBox.isDisabled() && !(await codBox.isChecked()), 'COD checkbox is shown, unchecked and disabled');
+    ok(await admin.getByText('Disabled by policy').count() >= 1, 'labelled "disabled by policy"');
+    await codBox.evaluate((el) => { el.disabled = false; el.checked = true; });
+    await admin.getByRole('button', { name: 'Save' }).click();
+    await admin.waitForSelector('.alert-success');
+    ok(setting('pay_cod_enabled') === '0', 'even a forged form post does not switch COD back on');
+
+    step('1.1 Bank transfer switched off → nothing to pay with; existing orders unaffected');
+    const openBefore = db.prepare("SELECT count(*) c FROM orders WHERE payment_method = 'bank_transfer' AND status = 'awaiting_payment'").get().c;
+    await saveToggles([]);
+    await b.goto(BASE + '/p/' + zaatar.id);
+    ok(await b.getByText('That payment method is not available.').count() === 1, 'checkout says no payment method is available');
     ok(db.prepare("SELECT count(*) c FROM orders WHERE payment_method = 'bank_transfer' AND status = 'awaiting_payment'").get().c === openBefore, 'existing open bank-transfer orders are untouched by the toggle');
+    await saveToggles(['bank_transfer']);
 
     step('1.1 Card needs the env flag and a configured provider, not just the admin toggle');
     db.prepare("UPDATE settings SET value = '1' WHERE key = 'pay_card_enabled'").run();
@@ -82,17 +96,15 @@ const step = (m) => console.log('\n' + m);
     step('1.4 Admin sees the live state without secrets');
     await admin.goto(BASE + '/admin/settings');
     const row = (m) => admin.locator(`[data-testid=payment-status] tr[data-method=${m}]`);
-    ok(await row('cod').getAttribute('data-live') === '1' && await row('bank_transfer').getAttribute('data-live') === '0' && await row('card').getAttribute('data-live') === '0', 'status panel: COD on, bank transfer off, card off');
+    ok(await row('cod').getAttribute('data-live') === '0' && await row('bank_transfer').getAttribute('data-live') === '1' && await row('card').getAttribute('data-live') === '0', 'status panel: COD off, bank transfer on, card off');
     ok(/PAYMENT_CARD_ENABLED=1/.test(await row('card').innerText()), 'card row says exactly what is missing');
     await admin.goto(BASE + '/admin/ops');
     ok(await admin.locator('[data-testid=ops-health] tr[data-check="Payment: card"]').getAttribute('data-level') === 'error', 'System health flags card turned on but blocked');
-    ok(await admin.locator('[data-testid=ops-health] tr[data-check="Payment: cod"]').getAttribute('data-level') === 'ok', 'System health shows COD on');
+    ok(await admin.locator('[data-testid=ops-health] tr[data-check="Payment: bank_transfer"]').getAttribute('data-level') === 'ok', 'System health shows bank transfer on');
     db.prepare("UPDATE settings SET value = '0' WHERE key = 'pay_card_enabled'").run();
 
-    step('1.2 Bank transfer back on → visible and the proof flow still works');
-    await saveToggles(['cod', 'bank_transfer']);
+    step('1.2 Bank transfer: the proof flow works end to end');
     await fillBuyer(b, 'Transfer Buyer');
-    await b.getByText('Bank transfer', { exact: true }).click();
     ok(await b.getByText('Our bank details').isVisible(), 'bank details shown again');
     await b.locator('button[type=submit]').click();
     await b.waitForURL('**/track/**');
@@ -105,12 +117,12 @@ const step = (m) => console.log('\n' + m);
     await b.waitForLoadState('networkidle');
     ok(db.prepare("SELECT status FROM bank_transfers WHERE order_id = ?").get(tOrder.id).status === 'submitted', 'buyer uploads the receipt');
     // Turning bank transfer off now must not strand this buyer.
-    await saveToggles(['cod']);
+    await saveToggles([]);
     await admin.goto(BASE + '/admin/orders/' + tOrder.id);
     await admin.getByRole('button', { name: 'Confirm payment' }).click();
     await admin.waitForSelector('span.badge:has-text("Ready to fulfil")');
     ok(db.prepare('SELECT status FROM orders WHERE id = ?').get(tOrder.id).status === 'confirmed', 'admin confirms the transfer even after the method was switched off (existing orders unaffected)');
-    await saveToggles(['cod', 'bank_transfer']);
+    await saveToggles(['bank_transfer']);
     await bCtx.close();
 
     step('1.3 check:env guards card payments');
@@ -223,7 +235,7 @@ const step = (m) => console.log('\n' + m);
 
     step('3.x System health still accurate after all phases');
     const levels = await admin.locator('[data-testid=ops-health] tr').evaluateAll((trs) => Object.fromEntries(trs.map((tr) => [tr.dataset.check, tr.dataset.level])));
-    ok(levels['Payment: cod'] === 'ok' && levels['Payment: bank_transfer'] === 'ok' && levels['Payment: card'] === 'warn', 'payment rows: COD on, bank transfer on, card off (not an error while untouched)');
+    ok(levels['Payment: cod'] === 'warn' && levels['Payment: bank_transfer'] === 'ok' && levels['Payment: card'] === 'warn', 'payment rows: bank transfer on; COD and card off (not errors)');
     ok(levels['WEBHOOK_RETRY_SECRET'] === 'ok' && levels['SESSION_SECRET'] !== undefined, 'the earlier config checks are all still listed');
   }
 

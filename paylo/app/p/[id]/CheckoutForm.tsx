@@ -59,7 +59,7 @@ export function CheckoutForm({ productId, basePrice, stock, isDigital, variants,
   const [qty, setQty] = useState(1);
   const [gov, setGov] = useState<string>(account?.address?.governorate ?? DAMASCUS);
   const [variantId, setVariantId] = useState(variants[0]?.id ?? '');
-  const [method, setMethod] = useState<PaymentMethod>(methods[0] ?? 'cod');
+  const [method, setMethod] = useState<PaymentMethod>(methods.includes('bank_transfer') ? 'bank_transfer' : methods[0] ?? 'bank_transfer');
 
   const variant = variants.find((v) => v.id === variantId);
   const unit = variant ? variant.price : basePrice;

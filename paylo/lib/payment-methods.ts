@@ -6,7 +6,8 @@ import type { PaymentMethod } from './types';
  * The single source of truth for which payment methods a buyer may use. The checkout page
  * lists exactly availablePaymentMethods(); checkout() rejects anything else server-side.
  *
- *   cod           — admin toggle pay_cod_enabled (default on); never for digital goods.
+ *   cod           — pay_cod_enabled, OFF by policy (transfers only) and locked in the admin
+ *                   form; never for digital goods. Kept so pre-policy COD orders still work.
  *   bank_transfer — admin toggle pay_bank_transfer_enabled (default ON: it needs no bank API,
  *                   only Paylo's own account details and a manual confirm).
  *   card          — admin toggle pay_card_enabled AND PAYMENT_CARD_ENABLED=1 AND a provider
@@ -15,7 +16,8 @@ import type { PaymentMethod } from './types';
  * Toggles only affect new checkouts; existing orders keep the method they were placed with.
  * Sellers have no payment-method settings, so nothing can re-enable a method Paylo turned off.
  */
-export const ALL_METHODS: PaymentMethod[] = ['cod', 'bank_transfer', 'card'];
+// Order = checkout order: bank transfer first (the default), COD last (policy-off).
+export const ALL_METHODS: PaymentMethod[] = ['bank_transfer', 'card', 'cod'];
 
 export type MethodBlock = 'admin_off' | 'env_off' | 'provider_not_configured' | 'digital';
 export interface MethodStatus { method: PaymentMethod; adminOn: boolean; block: MethodBlock | null }

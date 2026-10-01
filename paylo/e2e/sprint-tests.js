@@ -19,6 +19,10 @@ let passed = 0;
 const ok = (c, m) => { if (!c) throw new Error('ASSERT FAILED: ' + m); passed++; console.log('  ✓ ' + m); };
 const step = (m) => console.log('\n' + m);
 
+// Legacy COD fixture: these suites run with COD re-enabled (scripts/run-e2e.sh) to keep the
+// retained cash-on-delivery branches covered; checkout itself now defaults to bank transfer.
+const pickCod = (p) => p.evaluate(() => document.querySelector('input[name=payment_method][value=cod]')?.click());
+
 /* ---- local stand-ins: SMS/WhatsApp gateway (HTTP) and a push service (HTTPS) ---- */
 const gateway = { hits: [] };
 const gatewayServer = http.createServer((req, res) => {
@@ -82,6 +86,7 @@ function decryptPush(sub, body) {
     await page.fill('input[name=buyer_phone]', '0912000222');
     await page.fill('textarea[name=address]', 'Mezzeh, Damascus');
     await page.click('button:has-text("Continue")');
+    await pickCod(page);
     await page.locator('button[type=submit]').click();
     await page.waitForURL('**/track/**', { timeout: 15000 });
     return db.prepare('SELECT * FROM orders WHERE code = ?').get(decodeURIComponent(new URL(page.url()).pathname.split('/').pop()));
@@ -389,15 +394,18 @@ function decryptPush(sub, body) {
   await co.goto(BASE + '/p/' + zaatar.id);
   await co.fill('input[name=buyer_name]', 'Skips Phone');
   await co.click('button:has-text("Continue")');
+  await pickCod(co);
   ok(!(await co.locator('button[type=submit]').isVisible()) && await co.evaluate(() => document.activeElement?.getAttribute('name')) === 'buyer_phone',
     'Continue with an empty phone stays on step 1 and puts the cursor on the phone field (before: it advanced, then "Place order" silently did nothing)');
   await co.fill('input[name=buyer_phone]', '12');
   await co.fill('textarea[name=address]', 'Mezzeh, Damascus');
   await co.click('button:has-text("Continue")');
+  await pickCod(co);
   ok(!(await co.locator('button[type=submit]').isVisible()), 'a malformed phone is caught at Continue, using the same rule as the server');
   // Force a server-side rejection by removing the browser checks.
   await co.locator('input[name=buyer_phone]').evaluate((el) => { el.removeAttribute('pattern'); });
   await co.click('button:has-text("Continue")');
+  await pickCod(co);
   await co.locator('button[type=submit]').click();
   await co.waitForFunction(() => document.activeElement?.getAttribute('name') === 'buyer_phone');
   ok(await co.locator('input[name=buyer_phone]').isVisible(), 'a server-side field error sends the buyer back to step 1 with the field focused (before: stuck on step 2, field hidden)');
@@ -496,6 +504,7 @@ function decryptPush(sub, body) {
   await lb.fill('input[name=buyer_email]', 'arabic-buyer@example.com');
   await lb.fill('textarea[name=address]', 'Mezzeh, Damascus');
   await lb.click('button:has-text("Continue")');
+  await pickCod(lb);
   await lb.locator('button[type=submit]').click();
   await lb.waitForURL('**/track/**', { timeout: 15000 });
   const lOrder = db.prepare('SELECT * FROM orders WHERE code = ?').get(decodeURIComponent(new URL(lb.url()).pathname.split('/').pop()));
@@ -533,7 +542,7 @@ function decryptPush(sub, body) {
   await li.goto(BASE + '/p/' + linaProduct.id);
   await li.fill('input[name=buyer_name]', 'Fallback Buyer'); await li.fill('input[name=buyer_phone]', '0912000444');
   await li.fill('textarea[name=address]', 'Mezzeh, Damascus');
-  await li.click('button:has-text("Continue")'); await li.locator('button[type=submit]').click();
+  await li.click('button:has-text("Continue")'); await pickCod(li); await li.locator('button[type=submit]').click();
   await li.waitForURL('**/track/**', { timeout: 15000 });
   const liCode = decodeURIComponent(new URL(li.url()).pathname.split('/').pop()); await liCtx.close();
   const linaMail = db.prepare("SELECT subject FROM notifications WHERE event = 'order.placed.seller' AND channel = 'email' AND subject LIKE ?").get(`%${liCode}%`);

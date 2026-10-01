@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { normalizePhone } from './id-validate';
 
 const DB_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'paylo.db');
 
@@ -28,6 +29,7 @@ function migrate(db: Database.Database) {
   migrateUsersRoleCustomer(db);
   migrateOrdersUserId(db);
   migrateUsersPhone(db);
+  migrateAccountIdentity(db);
   addColumn(db, 'orders', 'refunded_amount', 'INTEGER NOT NULL DEFAULT 0');
   addColumn(db, 'orders', 'discount_amount', 'INTEGER NOT NULL DEFAULT 0');
   addColumn(db, 'orders', 'coupon_code', 'TEXT');
@@ -66,7 +68,9 @@ function migrate(db: Database.Database) {
     // Payment methods (lib/payment-methods.ts). Bank transfer defaults ON: it needs no bank
     // API. Card stays off until a settlement partner signs (v2 §3) and additionally needs
     // PAYMENT_CARD_ENABLED=1 and a configured provider.
-    pay_cod_enabled: '1', pay_bank_transfer_enabled: '1', pay_card_enabled: '0',
+    // Transfers only (policy): no new cash-on-delivery checkouts. COD code paths stay for
+    // orders placed before the policy.
+    pay_cod_enabled: '0', pay_bank_transfer_enabled: '1', pay_card_enabled: '0',
     bank_name: '', bank_account_name: '', bank_iban: '', bank_note: '',
     // Payout calendar (v2 §4.3): cutoff Tuesday 18:00 UTC, transfer Wednesday.
     payout_cutoff_day: '2', payout_cutoff_hour: '18', payout_transfer_day: '3',
@@ -83,6 +87,14 @@ function migrate(db: Database.Database) {
     if (old) { ins.run(`pay_${m}_enabled`, old.value); db.prepare('DELETE FROM settings WHERE key = ?').run(`${m}_enabled`); }
   }
   for (const [k, v] of Object.entries(defaults)) ins.run(k, v);
+  // One-time policy migration: switch COD off on databases created before "transfers only".
+  // Recorded, so it never runs again (tests and any deliberate override keep their value).
+  if (!db.prepare("SELECT 1 FROM settings WHERE key = 'migr_cod_off_v1'").get()) {
+    db.transaction(() => {
+      db.prepare("UPDATE settings SET value = '0' WHERE key = 'pay_cod_enabled'").run();
+      ins.run('migr_cod_off_v1', new Date().toISOString());
+    })();
+  }
 }
 
 /**
@@ -173,6 +185,68 @@ function migrateSellerUniqueIdentity(db: Database.Database) {
   } catch (e) {
     console.warn('[db] Could not enforce unique sellers.kyc_national_id (existing duplicate data?):', (e as Error).message);
   }
+}
+
+/**
+ * One account per email and per phone (accounts + non-rejected seller applications).
+ * 1. One-time: phones in users / registrations / sellers are rewritten to +9639XXXXXXXX where
+ *    they parse as Syrian mobiles (a value that would collide is left as is and reported).
+ * 2. Partial unique indexes inside each table.
+ * 3. Triggers for the rule that spans two tables (an index cannot): an application may not
+ *    reuse an account's email/phone, and an account may not take the email/phone of a pending
+ *    application. RAISE messages are the i18n keys the app shows (email_taken / phone_taken).
+ * Guest orders are untouched: orders.buyer_phone/email are free to repeat.
+ */
+function migrateAccountIdentity(db: Database.Database) {
+  if (!db.prepare("SELECT 1 FROM settings WHERE key = 'migr_phone_norm_v1'").get()) {
+    let skipped = 0;
+    const norm = (table: string, col: string) => {
+      const rows = db.prepare(`SELECT rowid r, ${col} v FROM ${table} WHERE ${col} IS NOT NULL`).all() as { r: number; v: string }[];
+      const upd = db.prepare(`UPDATE ${table} SET ${col} = ? WHERE rowid = ?`);
+      for (const row of rows) {
+        const n = normalizePhone(row.v);
+        if (!n || n === row.v) continue;
+        try { upd.run(n, row.r); } catch { skipped++; }
+      }
+    };
+    db.transaction(() => {
+      norm('users', 'phone'); norm('store_registration_requests', 'phone'); norm('sellers', 'phone');
+      db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)').run('migr_phone_norm_v1', new Date().toISOString());
+    })();
+    if (skipped) console.warn(`[db] ${skipped} phone number(s) left un-normalised because the canonical form already exists (duplicate data).`);
+  }
+  const idx = [
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_ci ON users(lower(email))',
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone_unique ON users(phone) WHERE phone IS NOT NULL',
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_reg_email_active ON store_registration_requests(lower(email)) WHERE status != 'REJECTED'",
+  ];
+  for (const sql of idx) {
+    try { db.exec(sql); } catch (e) { console.warn('[db] Could not create unique index (existing duplicate data?):', sql, (e as Error).message); }
+  }
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS trg_reg_identity_ins BEFORE INSERT ON store_registration_requests
+    WHEN NEW.status != 'REJECTED' BEGIN
+      SELECT RAISE(ABORT, 'email_taken') WHERE EXISTS (SELECT 1 FROM users WHERE lower(email) = lower(NEW.email));
+      SELECT RAISE(ABORT, 'phone_taken') WHERE EXISTS (SELECT 1 FROM users WHERE phone = NEW.phone);
+    END;
+    CREATE TRIGGER IF NOT EXISTS trg_reg_identity_upd BEFORE UPDATE OF email, phone ON store_registration_requests
+    WHEN NEW.status != 'REJECTED' BEGIN
+      SELECT RAISE(ABORT, 'email_taken') WHERE lower(NEW.email) != lower(OLD.email) AND EXISTS (SELECT 1 FROM users WHERE lower(email) = lower(NEW.email));
+      SELECT RAISE(ABORT, 'phone_taken') WHERE NEW.phone != OLD.phone AND EXISTS (SELECT 1 FROM users WHERE phone = NEW.phone);
+    END;
+    CREATE TRIGGER IF NOT EXISTS trg_users_identity_ins BEFORE INSERT ON users BEGIN
+      SELECT RAISE(ABORT, 'email_taken') WHERE EXISTS (SELECT 1 FROM store_registration_requests
+        WHERE lower(email) = lower(NEW.email) AND status IN ('PENDING_REVIEW','MORE_INFORMATION_REQUIRED'));
+      SELECT RAISE(ABORT, 'phone_taken') WHERE NEW.phone IS NOT NULL AND EXISTS (SELECT 1 FROM store_registration_requests
+        WHERE phone = NEW.phone AND status IN ('PENDING_REVIEW','MORE_INFORMATION_REQUIRED'));
+    END;
+    CREATE TRIGGER IF NOT EXISTS trg_users_identity_upd BEFORE UPDATE OF email, phone ON users BEGIN
+      SELECT RAISE(ABORT, 'email_taken') WHERE lower(NEW.email) != lower(OLD.email) AND EXISTS (SELECT 1 FROM store_registration_requests
+        WHERE lower(email) = lower(NEW.email) AND status IN ('PENDING_REVIEW','MORE_INFORMATION_REQUIRED'));
+      SELECT RAISE(ABORT, 'phone_taken') WHERE NEW.phone IS NOT NULL AND NEW.phone IS NOT OLD.phone AND EXISTS (SELECT 1 FROM store_registration_requests
+        WHERE phone = NEW.phone AND status IN ('PENDING_REVIEW','MORE_INFORMATION_REQUIRED'));
+    END;
+  `);
 }
 
 /** Same problem, same fix, as migrateUsersRoleOwner — widens the CHECK to include the
