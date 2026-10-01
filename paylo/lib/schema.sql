@@ -497,3 +497,38 @@ CREATE TABLE IF NOT EXISTS registration_reviews (
   reviewer_id TEXT,
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Analytics event log (append-only). props is JSON and never holds national IDs, full
+-- addresses, passwords, emails or card data (lib/analytics-events.ts strips them).
+CREATE TABLE IF NOT EXISTS analytics_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL DEFAULT (datetime('now')),
+  name TEXT NOT NULL,
+  session_id TEXT,
+  actor_type TEXT,
+  actor_id TEXT,
+  seller_id TEXT,
+  product_id TEXT,
+  variant_id TEXT,
+  order_id TEXT,
+  props TEXT NOT NULL DEFAULT '{}',
+  ip_hash TEXT,
+  user_agent TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_ae_at ON analytics_events(at);
+CREATE INDEX IF NOT EXISTS idx_ae_name_at ON analytics_events(name, at);
+CREATE INDEX IF NOT EXISTS idx_ae_seller_at ON analytics_events(seller_id, at);
+CREATE INDEX IF NOT EXISTS idx_ae_session_at ON analytics_events(session_id, at);
+
+-- Every product / variant price change, for price-over-time charts.
+CREATE TABLE IF NOT EXISTS product_price_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL DEFAULT (datetime('now')),
+  product_id TEXT NOT NULL,
+  variant_id TEXT,
+  seller_id TEXT NOT NULL,
+  old_price INTEGER,
+  new_price INTEGER NOT NULL,
+  source TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_pph_product_at ON product_price_history(product_id, at);

@@ -9,7 +9,7 @@ const Database = require('better-sqlite3');
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const DB_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'paylo.db');
-const ONLY = (process.env.PHASES || '1,2,3').split(',');
+const ONLY = (process.env.PHASES || '1,2,3,4').split(',');
 let passed = 0;
 const ok = (c, m) => { if (!c) throw new Error('ASSERT FAILED: ' + m); passed++; console.log('  ✓ ' + m); };
 const step = (m) => console.log('\n' + m);
@@ -18,7 +18,7 @@ const step = (m) => console.log('\n' + m);
   const db = new Database(DB_PATH);
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
   const ctx = (opts = {}) => browser.newContext({ viewport: { width: 1280, height: 900 }, ...opts });
-  const TOTP = { 'spice@paylo.sy': 'MFRGGZDFMZTWQ2LKNNWG23TPOBYXE43U', 'demo@paylo.sy': 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP', 'newbie@paylo.sy': 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' };
+  const TOTP = { 'spice@paylo.sy': 'MFRGGZDFMZTWQ2LKNNWG23TPOBYXE43U', 'demo@paylo.sy': 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP', 'newbie@paylo.sy': 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 'owner@paylo.sy': 'KRSXG5CTMVRXEZLUKN2XAZLSEBB2EWDN' };
   const login = async (p, email, pw = 'seller1234') => {
     await p.goto(BASE + '/login'); await p.fill('input[name=email]', email); await p.fill('input[name=password]', pw);
     await p.click('button[type=submit]');
@@ -237,6 +237,189 @@ const step = (m) => console.log('\n' + m);
     const levels = await admin.locator('[data-testid=ops-health] tr').evaluateAll((trs) => Object.fromEntries(trs.map((tr) => [tr.dataset.check, tr.dataset.level])));
     ok(levels['Payment: cod'] === 'warn' && levels['Payment: bank_transfer'] === 'ok' && levels['Payment: card'] === 'warn', 'payment rows: bank transfer on; COD and card off (not errors)');
     ok(levels['WEBHOOK_RETRY_SECRET'] === 'ok' && levels['SESSION_SECRET'] !== undefined, 'the earlier config checks are all still listed');
+  }
+
+  if (ONLY.includes('4')) {
+    const fs = require('fs'), os = require('os'), { spawn } = require('child_process');
+
+    step('T1. Transfers only: a pre-policy database is migrated, COD switched off on first start');
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'paylo-mig-'));
+    const oldDb = path.join(tmpDir, 'old.db');
+    db.pragma('wal_checkpoint(TRUNCATE)');
+    fs.copyFileSync(DB_PATH, oldDb);
+    const od = new Database(oldDb);
+    od.prepare("UPDATE settings SET value = '1' WHERE key = 'pay_cod_enabled'").run();
+    od.prepare("DELETE FROM settings WHERE key = 'migr_cod_off_v1'").run();
+    od.close();
+    const srv = spawn('npx', ['next', 'start', '-p', '3057'], { env: { ...process.env, DATABASE_PATH: oldDb }, stdio: 'ignore', detached: true });
+    let up = false;
+    for (let i = 0; i < 40 && !up; i++) { await new Promise((r) => setTimeout(r, 500)); up = await fetch('http://localhost:3057/s/spice-house').then((r) => r.ok).catch(() => false); }
+    const od2 = new Database(oldDb, { readonly: true });
+    ok(up && od2.prepare("SELECT value FROM settings WHERE key = 'pay_cod_enabled'").get().value === '0' && !!od2.prepare("SELECT 1 FROM settings WHERE key = 'migr_cod_off_v1'").get(), 'COD is switched off by the migration (not a manual step) and the migration is recorded');
+    ok(od2.prepare("SELECT count(*) c FROM orders WHERE payment_method = 'cod'").get().c > 0, 'old COD orders and their history are untouched');
+    od2.close();
+    try { process.kill(-srv.pid); } catch {}
+
+    step('T2. One account per email and per phone — enforced by the database itself');
+    const dbErr = (fn) => { try { fn(); return null; } catch (e) { return e.message; } };
+    const custPhone = db.prepare("SELECT phone FROM users WHERE email = 'customer@paylo.sy'").get().phone;
+    ok(custPhone === '+963955111222', `existing account phones are stored canonical (${custPhone})`);
+    ok(/UNIQUE|email/.test(dbErr(() => db.prepare("INSERT INTO users (id, email, password_hash, role, name) VALUES ('dup1', 'CUSTOMER@paylo.sy', 'x', 'customer', 'Dup')").run()) || ''), 'raw INSERT of a duplicate email (different case) fails in SQLite');
+    ok(/UNIQUE|phone/.test(dbErr(() => db.prepare("INSERT INTO users (id, email, password_hash, role, name, phone) VALUES ('dup2', 'dup2@x.sy', 'x', 'customer', 'Dup', ?)").run(custPhone)) || ''), 'raw INSERT of a duplicate phone fails in SQLite');
+    ok(/email_taken/.test(dbErr(() => db.prepare(`INSERT INTO store_registration_requests (id, full_name, phone, email, national_id, store_name, slug, governorate, password_hash)
+      VALUES ('dupR', 'Dup Person', '+963999000111', 'customer@paylo.sy', '12345678901', 'Dup', 'dup-r', 'Damascus', 'x')`).run()) || ''), 'an application may not reuse an account email (trigger: email_taken)');
+    ok(/phone_taken/.test(dbErr(() => db.prepare(`INSERT INTO store_registration_requests (id, full_name, phone, email, national_id, store_name, slug, governorate, password_hash)
+      VALUES ('dupR2', 'Dup Person', ?, 'fresh-x@x.sy', '12345678902', 'Dup', 'dup-r2', 'Damascus', 'x')`).run(custPhone)) || ''), 'an application may not reuse an account phone (trigger: phone_taken)');
+    const pendingReg = db.prepare("SELECT email, phone FROM store_registration_requests WHERE status = 'PENDING_REVIEW' LIMIT 1").get();
+    ok(/email_taken/.test(dbErr(() => db.prepare("INSERT INTO users (id, email, password_hash, role, name) VALUES ('dup3', ?, 'x', 'customer', 'Dup')").run(pendingReg.email)) || ''), 'an account may not take the email of a pending application');
+    { // Guest checkout with an account's phone and email: allowed (uniqueness is for accounts only).
+      const gCtx = await ctx(); const gp = await gCtx.newPage();
+      await gp.goto(BASE + '/p/' + zaatar.id);
+      await gp.fill('input[name=buyer_name]', 'Guest Twin'); await gp.fill('input[name=buyer_phone]', '0955111222'); await gp.fill('input[name=buyer_email]', 'customer@paylo.sy');
+      await gp.fill('textarea[name=address]', 'Mezzeh, Damascus'); await gp.click('button:has-text("Continue")');
+      await gp.locator('button[type=submit]').click();
+      ok(await gp.waitForURL('**/track/**', { timeout: 15000 }).then(() => true).catch(() => false), 'guest orders are exempt: an account\'s phone and email can be reused freely at checkout');
+      await gCtx.close();
+    }
+
+    const reg = async (data) => {
+      const c = await ctx(); const p = await c.newPage();
+      await p.goto(BASE + '/apply');
+      await p.fill('input[name=name]', data.name ?? 'Samir Haddad'); await p.fill('input[name=email]', data.email);
+      await p.fill('input[name=phone]', data.phone); await p.fill('input[name=national_id]', data.nid);
+      await p.fill('input[name=password]', 'password123'); await p.fill('input[name=store_name]', 'Store ' + data.email); await p.fill('input[name=slug]', 'st-' + data.email.split('@')[0]);
+      await p.click('button[type=submit]');
+      const res = await Promise.race([p.waitForURL('**/apply/confirmation', { timeout: 15000 }).then(() => 'ok'), p.waitForSelector('.alert-error', { timeout: 15000 }).then(async () => (await p.locator('.alert-error').innerText()).trim())]);
+      await c.close(); return res;
+    };
+    ok(/already uses this email/.test(await reg({ email: 'Customer@Paylo.sy', phone: '0911000101', nid: '11111111101' })), 'application with an account email → email_taken message');
+    ok(/already uses this phone/.test(await reg({ email: 'p1@x.sy', phone: '+963 955 111 222', nid: '11111111102' })), 'application with an account phone in another format → phone_taken message');
+    ok(/Syrian mobile/.test(await reg({ email: 'p2@x.sy', phone: '021 1234567', nid: '11111111103' })), 'a landline / non-Syrian-mobile number is refused with a clear message');
+
+    step('T3. National ID: format, Arabic digits, placeholders, duplicates, rate limit');
+    ok(/exactly 11 digits/.test(await reg({ email: 'n1@x.sy', phone: '0911000201', nid: '1234567890' })), '10 digits → rejected (national_id_invalid)');
+    ok(/exactly 11 digits/.test(await reg({ email: 'n2@x.sy', phone: '0911000202', nid: '1234567890A' })), 'letters → rejected');
+    ok(await reg({ email: 'n3@x.sy', phone: '0911000203', nid: '١٢٣٤٥٦٧٨٩٠١' }) === 'ok', 'Arabic-Indic digits are accepted…');
+    ok(db.prepare("SELECT national_id FROM store_registration_requests WHERE email = 'n3@x.sy'").get().national_id === '12345678901', '…and stored as ASCII digits');
+    ok(/already associated/.test(await reg({ email: 'n4@x.sy', phone: '0911000204', nid: '12345678901' })), 'same national number as an active application → generic duplicate message (never confirms the ID)');
+    for (const nm of ['test', 'asdf', 'x', '12345', 'Test User']) ok(/full name/.test(await reg({ name: nm, email: `nm${nm.length}${nm[0]}@x.sy`, phone: '0911000' + (300 + nm.length), nid: '1999999' + String(1000 + nm.length) })), `placeholder name "${nm}" rejected`);
+    const rp = '0911000999';
+    const results = [];
+    for (let i = 0; i < 6; i++) results.push(await reg({ email: `rl${i}@x.sy`, phone: rp, nid: '12' }));
+    ok(/Too many applications/.test(results[5]) && !results.slice(0, 5).some((r) => /Too many/.test(r)), 'the 6th attempt from one phone in a day is rate-limited');
+    ok(db.prepare('SELECT count(*) c FROM registration_attempts WHERE phone = ?').get('+963911000999').c === 6, 'attempts are counted per normalised phone');
+
+    step('T4. Analytics: order_placed snapshot, funnel events, privacy, never breaks checkout');
+    const evBefore = db.prepare('SELECT max(id) m FROM analytics_events').get().m || 0;
+    const aCtx = await ctx(); const ab = await aCtx.newPage();
+    await ab.goto(BASE + '/p/' + zaatar.id);
+    await ab.fill('input[name=buyer_name]', 'Event Buyer'); await ab.fill('input[name=buyer_phone]', '0912000777');
+    await ab.fill('input[name=buyer_email]', 'event-buyer@example.com');
+    await ab.fill('textarea[name=address]', 'Secret Street 42, Mezzeh, Damascus');
+    await ab.click('button:has-text("Continue")');
+    await ab.locator('button[type=submit]').click();
+    await ab.waitForURL('**/track/**');
+    const evOrder = db.prepare('SELECT * FROM orders WHERE code = ?').get(decodeURIComponent(new URL(ab.url()).pathname.split('/').pop()));
+    await new Promise((r) => setTimeout(r, 400));
+    const evs = db.prepare('SELECT * FROM analytics_events WHERE id > ? ORDER BY id').all(evBefore);
+    const names = evs.map((e) => e.name);
+    ok(['product_view', 'checkout_start', 'checkout_submit', 'order_placed'].every((n) => names.includes(n)), `funnel events recorded: ${[...new Set(names)].join(', ')}`);
+    const placed = evs.find((e) => e.name === 'order_placed');
+    const pp = JSON.parse(placed.props);
+    ok(placed.order_id === evOrder.id && placed.seller_id === spice.id && placed.product_id === zaatar.id, 'order_placed is linked to the order, seller and product');
+    ok(['unit_price', 'qty', 'subtotal', 'delivery_fee', 'discount', 'total', 'method', 'governorate', 'hour_of_day', 'price_at_event'].every((k) => k in pp) && pp.total === evOrder.total && pp.method === 'bank_transfer' && pp.price_at_event === evOrder.unit_price, 'full commercial snapshot with price_at_event');
+    const blob = JSON.stringify(evs);
+    ok(!blob.includes('Secret Street') && !blob.includes('event-buyer@example.com') && !blob.includes('0912000777') && !blob.includes('Event Buyer'), 'no address, email, phone or buyer name in any event');
+    ok(evs.every((e) => !e.ip_hash || /^[0-9a-f]{32}$/.test(e.ip_hash)) && placed.session_id && placed.session_id === evs.find((e) => e.name === 'product_view').session_id, 'IPs hashed; browser and server events share the session id');
+    ok((await fetch(BASE + '/api/analytics/collect', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'order_placed', props: { total: 1 } }) })).status === 400, 'the browser cannot send money events (order_placed refused by /collect)');
+    ok((await fetch(BASE + '/api/analytics/collect', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'product_view', product_id: zaatar.id, props: { national_id: '12345678901', note: '12345678901' } }) })).status === 200
+      && !db.prepare("SELECT props FROM analytics_events ORDER BY id DESC LIMIT 1").get().props.includes('12345678901'), 'a national ID slipped into props is stripped');
+    // Break the event table: checkout must still work.
+    db.exec('ALTER TABLE analytics_events RENAME TO analytics_events_off');
+    await ab.goto(BASE + '/p/' + zaatar.id);
+    await ab.fill('input[name=buyer_name]', 'No Analytics Buyer'); await ab.fill('input[name=buyer_phone]', '0912000778');
+    await ab.fill('textarea[name=address]', 'Mezzeh, Damascus'); await ab.click('button:has-text("Continue")');
+    await ab.locator('button[type=submit]').click();
+    await ab.waitForURL('**/track/**', { timeout: 15000 });
+    db.exec('ALTER TABLE analytics_events_off RENAME TO analytics_events');
+    ok(!!db.prepare("SELECT 1 FROM orders WHERE buyer_name = 'No Analytics Buyer'").get(), 'with the analytics table broken, checkout still completes (track() never throws)');
+    await aCtx.close();
+    const editPrice = zaatar.price + 500;
+    const sCtx = await ctx(); const sp = await sCtx.newPage();
+    await login(sp, 'spice@paylo.sy'); await sp.waitForURL('**/seller');
+    await sp.goto(BASE + '/seller/products/' + zaatar.id);
+    await sp.fill('input[name=price]', String(editPrice));
+    await sp.getByRole('button', { name: /Save/ }).first().click();
+    await sp.waitForURL('**saved=1**');
+    const ph = db.prepare('SELECT * FROM product_price_history WHERE product_id = ? ORDER BY id DESC LIMIT 1').get(zaatar.id);
+    const upd = db.prepare("SELECT props FROM analytics_events WHERE name = 'seller_product_update' AND product_id = ? ORDER BY id DESC LIMIT 1").get(zaatar.id);
+    ok(ph && ph.old_price === zaatar.price && ph.new_price === editPrice && JSON.parse(upd.props).price_at_event === editPrice, 'a price edit lands in product_price_history and the update event carries price_at_event');
+    await sCtx.close();
+
+    step('T5. Owner analytics: aggregates, funnel, CSV exports, owner-only');
+    const oCtx = await ctx(); const ow = await oCtx.newPage();
+    await login(ow, 'owner@paylo.sy', 'owner-change-me-1234'); await ow.waitForURL('**/owner');
+    await ow.goto(BASE + '/owner/analytics');
+    const computeBtn = ow.getByRole('button', { name: /Compute now|Refresh now/ });
+    await computeBtn.click(); await ow.waitForSelector('[data-testid=oa-funnel]');
+    ok(Number(await ow.locator('[data-testid=funnel-orders]').innerText()) >= 1 && Number(await ow.locator('[data-testid=funnel-views]').innerText()) >= 1, 'funnel shows sessions that viewed and ordered');
+    ok(await ow.locator('[data-testid=oa-daily]').count() === 1 && await ow.locator('[data-testid=top-revenue] tbody tr').count() >= 1 && await ow.locator('[data-testid=oa-prices] tbody tr').count() >= 1, 'GMV by day, top products by revenue and price distribution render');
+    ok(await ow.locator('[data-testid=oa-hours] [data-label]').count() === 24 && await ow.locator('[data-testid=oa-weekdays] [data-label]').count() === 7, 'orders by hour (24) and weekday (7)');
+    const oCookie = (await oCtx.cookies()).map((c) => `${c.name}=${c.value}`).join('; ');
+    const daily = await (await fetch(BASE + '/owner/analytics/export?kind=daily&days=90', { headers: { cookie: oCookie } })).text();
+    ok(daily.startsWith('day,gmv,orders,aov') && daily.trim().split('\r\n').length === 91, 'daily CSV: header + 90 days');
+    const raw = await (await fetch(BASE + '/owner/analytics/export?kind=events&days=7', { headers: { cookie: oCookie } })).text();
+    ok(raw.startsWith('id,at,name,session_id') && raw.includes('order_placed') && !raw.includes('Secret Street') && !raw.includes('12345678901'), 'raw events CSV downloads, with no address or national ID');
+    const adminCookie = (await adminCtx.cookies()).map((c) => `${c.name}=${c.value}`).join('; ');
+    ok((await fetch(BASE + '/owner/analytics/export?kind=events', { headers: { cookie: adminCookie } })).status === 404, 'an admin (not owner) gets 404 on the export');
+
+    step('T6. Owner and admin dashboards: live counts, transfer queue first, search, no dead links');
+    await ow.goto(BASE + '/owner');
+    const tile = async (p, id) => p.locator(`[data-testid=${id}]`).getAttribute('data-value');
+    ok(Number(await tile(ow, 'q-registrations')) === db.prepare("SELECT count(*) c FROM store_registration_requests WHERE status IN ('PENDING_REVIEW','MORE_INFORMATION_REQUIRED')").get().c, 'owner: pending-registration count matches the database');
+    ok(Number(await tile(ow, 'q-transfers')) === db.prepare("SELECT count(*) c FROM bank_transfers b JOIN orders o ON o.id = b.order_id WHERE b.status = 'submitted' AND o.status = 'awaiting_payment'").get().c, 'owner: transfers-to-confirm count matches');
+    ok(await ow.locator('[data-testid=ow-latest-regs] tbody tr').count() >= 1, 'owner: latest pending registrations listed with review links');
+    for (const href of ['/owner', '/owner/registrations', '/owner/analytics']) { const r = await ow.goto(BASE + href); ok(r.status() === 200, `owner link ${href} → 200`); }
+    await ow.context().addCookies([{ name: 'paylo_lang', value: 'ar', url: BASE }]);
+    await ow.goto(BASE + '/owner');
+    ok(await ow.getByText('نظرة المالك').count() === 1, 'owner console renders in Arabic');
+    await oCtx.close();
+
+    // A transfer with a receipt, waiting for the admin.
+    const tCtx = await ctx(); const tb = await tCtx.newPage();
+    await tb.goto(BASE + '/p/' + zaatar.id);
+    await tb.fill('input[name=buyer_name]', 'Queue Buyer'); await tb.fill('input[name=buyer_phone]', '0912000779'); await tb.fill('input[name=buyer_email]', 'queue.buyer@example.com');
+    await tb.fill('textarea[name=address]', 'Mezzeh, Damascus'); await tb.click('button:has-text("Continue")');
+    await tb.locator('button[type=submit]').click(); await tb.waitForURL('**/track/**');
+    const qCode = decodeURIComponent(new URL(tb.url()).pathname.split('/').pop());
+    await tb.fill('input[name=reference]', 'TRX-QUEUE');
+    await tb.locator('form:has(input[name=reference]) button[type=submit]').click();
+    await tb.waitForLoadState('networkidle'); await tCtx.close();
+    await admin.goto(BASE + '/admin');
+    const queue = admin.locator('[data-testid=transfer-queue]');
+    ok(await admin.evaluate(() => {
+      const q = document.querySelector('[data-testid=transfer-queue]'), tiles = document.querySelector('[data-testid=admin-queues]');
+      return !!q && !!tiles && !!(q.compareDocumentPosition(tiles) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }), 'admin home: the bank-transfer queue comes before every other queue');
+    ok(await queue.locator(`tr[data-code="${qCode}"]`).count() === 1, 'the new receipt is in the queue');
+    await queue.locator(`tr[data-code="${qCode}"] form`).first().getByRole('button', { name: 'Confirm payment' }).click();
+    await admin.waitForFunction((c) => !document.querySelector(`[data-testid=transfer-queue] tr[data-code="${c}"]`), qCode);
+    ok(db.prepare('SELECT status FROM orders WHERE code = ?').get(qCode).status === 'confirmed', 'confirmed inline from the dashboard (same reviewTransfer path)');
+    for (const [term, label] of [[qCode, 'code'], ['queue.buyer@example.com', 'email'], ['+963 912 000 779', 'phone typed in another format']]) {
+      await admin.goto(BASE + '/admin/orders?q=' + encodeURIComponent(term));
+      ok(await admin.getByText(qCode).count() >= 1, `order search finds it by ${label}`);
+    }
+    await admin.goto(BASE + '/admin/audit?type=sensitive');
+    ok(await admin.locator('tbody tr').count() >= 1 && (await admin.locator('tbody').innerText()).includes('payment.confirmed'), 'audit log: "sensitive actions" filter shows the confirmation');
+    await admin.goto(BASE + '/admin/sellers?status=approved');
+    ok(await admin.locator('tbody tr').count() === db.prepare("SELECT count(*) c FROM sellers WHERE status = 'approved'").get().c, 'seller list filters by status');
+    const navLinks = await admin.locator('header nav').first().locator('a').evaluateAll((as) => [...new Set(as.map((a) => a.getAttribute('href')))]);
+    for (const href of navLinks) { const r = await admin.goto(BASE + href); ok(r.status() === 200 && await admin.getByText('Page not found').count() === 0, `admin link ${href} → 200`); }
+    for (const id of ['a-kyc', 'a-disputes', 'a-payouts', 'a-failed-msgs', 'a-pending-sellers']) {
+      await admin.goto(BASE + '/admin');
+      const href = await admin.locator(`[data-testid=${id}]`).getAttribute('href');
+      const r = await admin.goto(BASE + href); ok(r.status() === 200, `dashboard tile ${id} → ${href} → 200`);
+    }
   }
 
   console.log(`\nALL PASSED — ${passed} assertions`);

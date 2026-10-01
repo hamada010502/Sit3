@@ -94,13 +94,19 @@ client posts it anyway.
 
 | Method | Admin setting | Default | Also needs |
 |---|---|---|---|
-| Cash on delivery | `pay_cod_enabled` | on | — (never offered for digital products) |
+| Cash on delivery | `pay_cod_enabled` | **off — policy** | Locked in the admin form ("disabled by policy"); never for digital products |
 | Bank transfer | `pay_bank_transfer_enabled` | **on** | Paylo's bank details in Admin → Settings |
 | Card | `pay_card_enabled` | off | `PAYMENT_CARD_ENABLED=1` **and** a provider that reports `configured: true` |
 
 - **Toggles affect new checkouts only.** An order keeps the method it was placed with, so
   turning bank transfer off never strands a buyer who has already been sent the details:
   their receipt upload and the admin confirm/reject flow keep working.
+- **Transfers only (policy).** New checkouts offer bank transfer (preselected) and, once
+  live, card. Cash on delivery is off: a one-time migration (`migr_cod_off_v1` in `settings`)
+  switches it off on any database created before the policy, the admin checkbox is shown but
+  locked, and a forged form post cannot turn it back on. The COD code paths are kept: orders
+  placed before the policy keep their history, and their cash can still be recorded from
+  Admin → Operations (bottom of the page, "Delivered, cash not recorded").
 - **Why bank transfer defaults on:** it needs no bank API. The buyer transfers to Paylo's
   account, uploads a receipt on the tracking page, and an admin confirms or rejects it
   (Admin → Operations → Bank transfers to confirm). It works the day the app goes live.
@@ -135,13 +141,57 @@ release to checkout**: the provider adapter is the only code that changes (one f
 covered by tests with the mock adapter. Cash on delivery and bank transfer keep working
 throughout, so the launch never waits on the bank.
 
-### Cash on delivery: when the money counts as collected
+### Cash on delivery (pre-policy orders only)
 
-Marking a COD order *delivered* currently also records its cash as collected
-(`markDelivered()` → `markCodCollected()`), which makes it payable. Admin → Operations lists
-any delivered COD order whose cash is still not recorded, with a one-click confirm. See the
-open decision in the technical addendum if payouts should instead wait for the courier's
-cash handover.
+With COD off, this only concerns orders placed before the policy. Marking such an order
+*delivered* also records its cash as collected (`markDelivered()` → `markCodCollected()`);
+any that are still unrecorded are listed at the bottom of Admin → Operations with a
+one-click confirm. Admin home and Operations lead with **Bank transfers to confirm** —
+the primary daily queue under transfers-only.
+
+## 3b. Identity rules (accounts and seller applications)
+
+- **One account per email and per phone.** Email is unique case-insensitively across
+  `users` and every non-rejected seller application; phone likewise, after normalising to
+  `+9639XXXXXXXX` (`09…`, `9639…`, `+9639…`, `009639…`, spaces/dashes all accepted).
+  Enforced by partial unique indexes plus triggers in SQLite (`lib/db.ts`,
+  `migrateAccountIdentity`), not only by the app. Errors: `email_taken`, `phone_taken`,
+  `phone_invalid`.
+- **Guest checkout is exempt.** Orders keep the buyer's phone/email as typed and may repeat.
+- **Rejected applications free** their email, phone and national number for resubmission.
+- **National number:** 11 digits (Arabic-Indic digits accepted and stored as ASCII). No
+  checksum is applied — no documented public algorithm exists, and an invented one would
+  reject real people. A clash with an approved seller or active application shows a
+  *generic* duplicate message, so the form never confirms that an ID is on file.
+- **Placeholder names** (`test`, `asdf`, `xxx`, digits only, one character…) are refused.
+- **Rate limit:** 5 applications per normalised phone and 20 per hashed IP per day
+  (`registration_attempts`).
+- **Approval stays manual.** The owner fills a reviewer checklist (ID photo readable, name
+  matches, ID number matches, face visible if applicable, not a duplicate) with notes;
+  approval is refused until every item is *Yes* (or *N/A* where allowed). There is no
+  government ID API, and none is faked. Applications do not collect an ID photo: ask for one
+  with "Request more information" when needed.
+- On upgrade, existing phones are normalised once (`migr_phone_norm_v1`); a value whose
+  canonical form already exists is left as is and reported in the server log.
+
+## 3c. Analytics
+
+- Events go to `analytics_events` (append-only). Money events are written server-side only;
+  views, variant selects and checkout starts come from the browser via
+  `POST /api/analytics/collect` (allowlisted names, `seller_id` derived server-side,
+  120 events/min per hashed IP, in-process).
+- `track()` never throws: if the table is missing or locked, the event is dropped and logged;
+  checkout is unaffected (covered by an e2e test).
+- No national ID, address, email, password or card data ever enters `props`; IPs are stored
+  as a salted hash (salt = `SESSION_SECRET`, so changing it also changes the hashes).
+- Price changes are kept in `product_price_history`.
+- Owner dashboards read a cache: refresh with the button or schedule
+  `POST /api/internal/refresh-analytics` (`x-refresh-secret: $ANALYTICS_REFRESH_SECRET`)
+  every 15 minutes. CSV exports (aggregates and raw events, last N ≤ 365 days) are at
+  `/owner/analytics` and are owner-only.
+- Retention: events are not pruned automatically. At pilot volume this is small; if it
+  grows, archive rows older than a year with
+  `DELETE FROM analytics_events WHERE at < datetime('now','-365 days')` after exporting.
 
 ## 4. Backups (SQLite)
 

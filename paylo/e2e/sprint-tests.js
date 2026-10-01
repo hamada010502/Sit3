@@ -189,7 +189,7 @@ function decryptPush(sub, body) {
   await new Promise((r) => setTimeout(r, 500));
   ok(pushSvc.got.length === pushBefore, 'push off → no push sent');
   ok(db.prepare("SELECT count(*) c FROM notifications WHERE event = 'order.placed.seller' AND channel = 'email'").get().c === mailsBefore, 'order email off → no seller email');
-  ok(gateway.hits.some((h) => h.path === '/wa' && h.body.to === spice.phone && h.body.body.includes(o2.code)), 'WhatsApp chosen → new-order message to the store phone');
+  ok(gateway.hits.some((h) => h.path === '/wa' && h.body.to === db.prepare('SELECT phone FROM sellers WHERE id = ?').get(spice.id).phone && h.body.body.includes(o2.code)), 'WhatsApp chosen → new-order message to the store phone');
   await seller.goto(BASE + '/seller');
   ok(await seller.locator('[data-testid=sound-toggle]').getAttribute('aria-pressed') === 'true', 'dashboard sale-sound toggle reflects the saved preference');
 

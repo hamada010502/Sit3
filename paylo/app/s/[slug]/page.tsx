@@ -1,3 +1,4 @@
+import { TrackView } from '@/components/TrackView';
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
 import { Shell } from '@/components/Shell';
@@ -28,6 +29,7 @@ export default function StorePage({ params, searchParams }: { params: { slug: st
 
   return (
     <Shell wide>
+      <TrackView name="search_or_store_view" storeSlug={seller.slug} props={{ kind: 'store', collection: active?.slug ?? null, results: products.length }} />
       <Announcement text={seller.announcement} />
       {seller.banner_path && <img src={seller.banner_path} alt="" className="w-full h-40 sm:h-56 object-cover rounded-2xl mb-4" />}
       <div className="card-pad mb-8 flex flex-col sm:flex-row sm:items-center gap-4">

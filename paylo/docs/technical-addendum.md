@@ -280,11 +280,16 @@ Push takes over (§7d).
 
 ## 7f. Test coverage
 
-`scripts/run-e2e.sh` builds once and runs five suites: smoke, registration, account/checkout,
+`scripts/run-e2e.sh` builds once and runs six suites: smoke, registration, account/checkout,
 parity (Shopier items 1–17 incl. returns, partial refunds, coupons, bulk updates, new-order
 watcher, webhook retry/dead-letter, 2FA hold) and sprint (PWA, encrypted push delivery via a
 local push service, notification prefs, 390px EN/AR audit, empty states, hand-off, photos,
-sales chart, checkout fixes, offline page).
+sales chart, checkout fixes, offline page), plus phase-tests (payment toggles and the
+transfers-only policy, earnings/payout breakdowns, hand-off, onboarding, COD ops queue, the
+COD-off migration on an old database, DB-level email/phone uniqueness, national-ID format,
+placeholder names, rate limit, analytics events and privacy, owner exports, admin queues and
+a dead-link sweep). Suites written before the policy re-enable COD in their own database
+(see `scripts/run-e2e.sh`) so the retained COD branches stay covered.
 
 ## 7g. Operations visibility
 
@@ -330,32 +335,45 @@ needed, this is the shape that keeps every existing rule intact. Nothing below e
 - **Migration:** backfill one `order_items` row per existing order from its product columns,
   then keep the old columns as read-only history.
 
+## 7j. Transfers only, identity rules, analytics
+
+Operational detail is in `docs/deployment.md` §3a–3c. In short:
+
+- **Payments:** bank transfer (default, preselected) and, when live, card. COD is off by
+  policy via a one-time migration; its code paths remain for older orders.
+- **Identity:** one account per email and per canonical phone, across accounts and
+  non-rejected applications, enforced with partial unique indexes and triggers. National
+  numbers are 11 digits with no invented checksum. Seller approval needs a completed reviewer
+  checklist and stays manual.
+- **Analytics:** `analytics_events` + `track()` (never throws, no PII), the
+  view → checkout → order funnel, and `product_price_history`. The owner dashboard shows GMV,
+  orders and AOV by day (30/90 days), hour/weekday (Syria time), top products by revenue
+  and units, price distribution per category (the store collection, else the product
+  type — there is no separate category field), governorates, payment mix and seller
+  growth, with CSV exports.
+- **Roles:** the owner sees registrations, analytics and high-level money; the admin runs
+  day-to-day operations, led by the bank-transfer queue.
+
 ## 8. Known gaps (intentional)
 
 - **Single-item orders.** One product link → one order, by design. A cart would need an
   `order_items` table; the shape is sketched in §7i and nothing of it is built.
 - **SQLite.** Correct for a pilot (v2 §7.1). Writes are serialised; the concrete trigger for
   moving to PostgreSQL is in `docs/deployment.md` §5.
+- **No cash on delivery for new orders** (policy). Older COD orders keep working.
 - **Cash reconciliation is a single click per order,** from Admin → Operations ("Delivered,
   cash not recorded") or the order page — not a courier cash manifest.
 - **No native app.** The PWA (§7d) covers install and push; see §9.
 - **Buyers always get Arabic messages.** Buyers have no account setting to read; sellers
   choose their own language (`sellers.preferred_lang`, §7h).
 
-## 8a. Open decision: when is COD cash "collected"?
+## 8a. COD cash collection (closed by the transfers-only policy)
 
-`markCodCollected()` is documented as "the rider or logistics partner has handed the
-collected cash to Paylo", and it is what makes a COD order payable. But `markDelivered()`
-calls it automatically, so a COD order becomes payable the moment it is marked delivered —
-before anyone confirms the cash reached Paylo. Two options:
-
-1. **Keep as is:** delivery = cash collected (the courier is trusted to remit). Faster
-   payouts; the Operations queue for uncollected cash stays mostly empty.
-2. **Strict:** delivery no longer implies collection; COD orders wait in Operations until an
-   admin confirms the cash handover, and only then enter a payout run. Safer money, but
-   payouts depend on that daily admin step.
-
-Not changed pending a decision, because it moves the moment sellers get paid.
+The open question of when COD cash counts as collected no longer affects new orders: cash on
+delivery is off by policy (`docs/deployment.md` §3a). For orders placed before the policy,
+delivery still records the cash as collected (`markDelivered()` → `markCodCollected()`), and
+any unrecorded ones stay listed at the bottom of Admin → Operations. If COD is ever brought
+back, decide this first.
 
 ## 9. Roadmap (not built)
 

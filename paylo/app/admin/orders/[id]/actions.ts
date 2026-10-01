@@ -15,6 +15,7 @@ async function run(orderId: string, fn: (o: import('@/lib/types').Order) => Prom
   try { await fn(o); } catch (e) { if (!(e instanceof OrderError)) throw e; }
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath('/admin/ops');
+  revalidatePath('/admin');
 }
 
 export async function setFulfillmentAction(orderId: string, method: FulfillmentMethod, formData: FormData) {

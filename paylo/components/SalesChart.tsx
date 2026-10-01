@@ -13,7 +13,7 @@ function niceMax(v: number) {
 }
 
 /** Daily sales, last 30 days. One series: one colour, no legend box; the title names it. */
-export function SalesChart({ data, t, lang }: { data: DaySales[]; t: TFn; lang: Lang }) {
+export function SalesChart({ data, t, lang, title, sub, testId = 'sales-chart', empty }: { data: DaySales[]; t: TFn; lang: Lang; title?: string; sub?: string; testId?: string; empty?: string }) {
   const total = data.reduce((s, d) => s + d.sales, 0);
   const orders = data.reduce((s, d) => s + d.orders, 0);
   const max = niceMax(Math.max(...data.map((d) => d.sales)));
@@ -23,18 +23,18 @@ export function SalesChart({ data, t, lang }: { data: DaySales[]; t: TFn; lang: 
   const ticks = [0, max / 2, max];
 
   return (
-    <section className="card-pad mb-6" data-testid="sales-chart">
+    <section className="card-pad mb-6" data-testid={testId}>
       <div className="flex flex-wrap items-end justify-between gap-2 mb-3">
         <div>
-          <h2 className="font-bold">{t('sales_chart_title')}</h2>
-          <p className="text-xs text-ink-soft">{t('sales_chart_sub')}</p>
+          <h2 className="font-bold">{title ?? t('sales_chart_title')}</h2>
+          <p className="text-xs text-ink-soft">{sub ?? t('sales_chart_sub')}</p>
         </div>
         <div className="text-end">
           <div className="text-2xl font-extrabold" data-testid="sales-total">{formatSYP(total, lang)}</div>
           <div className="text-xs text-ink-soft">{t('sales_chart_orders', { n: orders })}</div>
         </div>
       </div>
-      {orders === 0 ? <p className="text-sm text-ink-soft py-6 text-center">{t('sales_chart_empty')}</p> : (
+      {orders === 0 ? <p className="text-sm text-ink-soft py-6 text-center">{empty ?? t('sales_chart_empty')}</p> : (
         // Bars/gridlines scale with the width; axis labels are HTML so they stay readable at any size.
         <div dir="ltr" className="flex gap-2">
           <div className="relative w-10 shrink-0 text-[11px] text-ink-soft" style={{ height: PLOT_PX }} aria-hidden="true">

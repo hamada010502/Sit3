@@ -63,6 +63,6 @@ const REG_COLORS: Record<RegistrationStatus, string> = {
 const REG_LABEL: Record<RegistrationStatus, string> = {
   PENDING_REVIEW: 'Pending review', MORE_INFORMATION_REQUIRED: 'More info requested', APPROVED: 'Approved', REJECTED: 'Rejected',
 };
-export function RegistrationStatusBadge({ status }: { status: RegistrationStatus }) {
-  return <span className={`badge ${REG_COLORS[status]}`}>{REG_LABEL[status]}</span>;
+export function RegistrationStatusBadge({ status, t }: { status: RegistrationStatus; t?: TFn }) {
+  return <span className={`badge ${REG_COLORS[status]}`}>{t ? t(`reg_st_${status}` as 'reg_st_APPROVED') : REG_LABEL[status]}</span>;
 }

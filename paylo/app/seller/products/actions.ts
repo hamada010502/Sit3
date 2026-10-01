@@ -1,4 +1,5 @@
 'use server';
+import { recordPriceChange, track } from '@/lib/analytics-events';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import fs from 'fs/promises';
@@ -105,6 +106,11 @@ export async function saveProductAction(productId: string | null, _prev: { error
   // With variants, the product's own stock mirrors the sum so storefront availability stays truthful.
   const effectiveStock = variants.length ? variants.reduce((s, v) => s + Number(v.stock), 0) : stock;
 
+  // Prices before the edit, for product_price_history (variants are re-created on save, so
+  // they are matched by label).
+  const before = productId ? db.prepare('SELECT price FROM products WHERE id = ? AND seller_id = ?').get(productId, seller.id) as { price: number } | undefined : undefined;
+  const beforeVariants = productId ? new Map((db.prepare('SELECT label, price FROM product_variants WHERE product_id = ?').all(productId) as { label: string; price: number }[]).map((v) => [v.label, v.price])) : new Map<string, number>();
+
   const write = db.transaction(() => {
     let id = productId;
     if (id) {
@@ -133,6 +139,16 @@ export async function saveProductAction(productId: string | null, _prev: { error
   if (type === 'digital') db.prepare("UPDATE products SET status = CASE WHEN status = 'out_of_stock' THEN 'active' ELSE status END WHERE id = ?").run(id);
   else syncProductStockStatus(id);
   audit('seller', seller.id, seller.store_name, 'product', id, productId ? 'updated' : 'created', { title, type, variants: variants.length });
+  const variantPrices = variants.map((v) => ({ label: [v.option1_value, v.option2_value].filter(Boolean).join(' / '), price: Number(v.price) }));
+  track(productId ? 'seller_product_update' : 'seller_product_create', {
+    price_at_event: price, old_price: before?.price ?? null, price_changed: !!before && before.price !== price, type, variants: variants.length,
+    variant_prices: variantPrices.map((v) => v.price), collection: !!collectionId,
+  }, { actorType: 'seller', actorId: seller.id, sellerId: seller.id, productId: id });
+  recordPriceChange({ productId: id, sellerId: seller.id, oldPrice: before?.price ?? null, newPrice: price, source: productId ? 'seller_edit' : 'created' });
+  for (const v of variantPrices) {
+    const old = beforeVariants.get(v.label);
+    if (old === undefined ? !!productId : old !== v.price) recordPriceChange({ productId: id, sellerId: seller.id, oldPrice: old ?? null, newPrice: v.price, source: `variant:${v.label}` });
+  }
   revalidatePath('/seller/products');
   redirect(`/seller/products/${id}?saved=1`);
 }

@@ -8,6 +8,7 @@ import { configChecks, deliveryStats, workerLastRun } from '@/lib/health';
 import { formatSYP } from '@/lib/money';
 import { SubmitButton } from '@/components/SubmitButton';
 import { codCollectedAction } from '../orders/[id]/actions';
+import { TransferQueue } from '@/components/TransferQueue';
 import type { Order, Payout, Seller } from '@/lib/types';
 
 /**
@@ -22,7 +23,7 @@ export default function AdminOpsPage() {
 
   const awaitingTransfer = q<Order & { bt_status: string }>(
     `SELECT o.*, b.status bt_status FROM orders o JOIN bank_transfers b ON b.order_id = o.id
-     WHERE b.status IN ('awaiting_proof','submitted') ORDER BY b.submitted_at IS NULL, o.created_at ASC`);
+     WHERE b.status IN ('awaiting_proof','submitted') AND o.status = 'awaiting_payment' ORDER BY b.submitted_at IS NULL, o.created_at ASC`);
   const unfulfilled = q<Order>(
     `SELECT * FROM orders WHERE status = 'confirmed' AND created_at <= datetime('now','-2 days') ORDER BY created_at ASC`);
   const stuckTransit = q<Order>(
@@ -85,6 +86,8 @@ export default function AdminOpsPage() {
       </div>
       {total === 0 && <div className="alert-success">{t('ops_all_clear')}</div>}
 
+      <TransferQueue t={t} lang={lang} />
+
       <section className="card overflow-x-auto" data-testid="ops-health">
         <h2 className="font-bold px-5 pt-5">{t('ops_health')}</h2>
         <p className="px-5 pb-2 text-xs text-ink-soft">{t('ops_health_sub')} {t('ops_worker_last', { when: lastRun ? lastRun.replace('T', ' ').slice(0, 19) + ' UTC' : t('ops_never') })}</p>
@@ -146,31 +149,8 @@ export default function AdminOpsPage() {
         </div>
       )}
 
-      <OrderQueue title={t('ops_awaiting_transfer')} rows={awaitingTransfer} />
       <OrderQueue title={t('ops_unfulfilled')} rows={unfulfilled} stamp={(o) => `${age(o.created_at)} ${t('days_open')}`} />
       <OrderQueue title={t('ops_stuck_transit')} rows={stuckTransit} stamp={(o) => `${age(o.handed_off_at)} ${t('days_open')}`} />
-      {codUncollected.length > 0 && (
-        <div className="card overflow-x-auto" data-testid="ops-cod-queue">
-          <h2 className="font-bold px-5 pt-5">{t('ops_cod_uncollected')} <span className="text-ink-soft font-normal">({codUncollected.length})</span></h2>
-          <p className="px-5 pb-2 text-xs text-ink-soft">{t('ops_cod_uncollected_d')}</p>
-          <table className="table">
-            <thead><tr><th>{t('order')}</th><th>{t('buyer')}</th><th>{t('total')}</th><th>{t('date')}</th><th>{t('mark_cod_collected')}</th></tr></thead>
-            <tbody>{codUncollected.map((o) => (
-              <tr key={o.id} data-code={o.code}>
-                <td><Link href={`/admin/orders/${o.id}`} className="tap-inline font-mono font-semibold text-cherry" dir="ltr">{o.code}</Link></td>
-                <td>{o.buyer_name}<div className="text-xs text-ink-soft">{o.governorate}</div></td>
-                <td className="whitespace-nowrap">{formatSYP(o.total, lang)}</td>
-                <td className="text-xs text-ink-soft whitespace-nowrap">{age(o.delivered_at)} {t('days_open')}</td>
-                <td>
-                  <form action={codCollectedAction.bind(null, o.id)} className="flex gap-2 min-w-[14rem]">
-                    <input name="note" className="input" placeholder={t('reference')} aria-label={t('reference')} />
-                    <SubmitButton className="btn-primary btn-sm shrink-0">{t('confirm')}</SubmitButton>
-                  </form>
-                </td>
-              </tr>))}</tbody>
-          </table>
-        </div>
-      )}
       <OrderQueue title={t('ops_address_requests')} rows={addressReqs} />
       <OrderQueue title={t('ops_failed_payments')} rows={failedPayments} />
 
@@ -194,6 +174,28 @@ export default function AdminOpsPage() {
             <tbody>{failedPayouts.map((p) => (
               <tr key={p.id}><td>{p.store_name}</td><td>{formatSYP(p.amount, lang)}</td><td className="text-xs">{p.failure_reason}</td>
                 <td><Link href="/admin/payouts" className="link text-sm">{t('view')}</Link></td></tr>))}</tbody>
+          </table>
+        </div>
+      )}
+      {codUncollected.length > 0 && (
+        <div className="card overflow-x-auto opacity-90" data-testid="ops-cod-queue" id="cod">
+          <h2 className="font-bold px-5 pt-5">{t('ops_cod_uncollected')} <span className="text-ink-soft font-normal">({codUncollected.length})</span></h2>
+          <p className="px-5 pb-2 text-xs text-ink-soft">{t('ops_cod_uncollected_d')}</p>
+          <table className="table">
+            <thead><tr><th>{t('order')}</th><th>{t('buyer')}</th><th>{t('total')}</th><th>{t('date')}</th><th>{t('mark_cod_collected')}</th></tr></thead>
+            <tbody>{codUncollected.map((o) => (
+              <tr key={o.id} data-code={o.code}>
+                <td><Link href={`/admin/orders/${o.id}`} className="tap-inline font-mono font-semibold text-cherry" dir="ltr">{o.code}</Link></td>
+                <td>{o.buyer_name}<div className="text-xs text-ink-soft">{o.governorate}</div></td>
+                <td className="whitespace-nowrap">{formatSYP(o.total, lang)}</td>
+                <td className="text-xs text-ink-soft whitespace-nowrap">{age(o.delivered_at)} {t('days_open')}</td>
+                <td>
+                  <form action={codCollectedAction.bind(null, o.id)} className="flex gap-2 min-w-[14rem]">
+                    <input name="note" className="input" placeholder={t('reference')} aria-label={t('reference')} />
+                    <SubmitButton className="btn-primary btn-sm shrink-0">{t('confirm')}</SubmitButton>
+                  </form>
+                </td>
+              </tr>))}</tbody>
           </table>
         </div>
       )}

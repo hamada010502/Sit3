@@ -1,5 +1,6 @@
 'use server';
 import { isPaymentMethodAvailable } from '@/lib/payment-methods';
+import { track } from '@/lib/analytics-events';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { checkout } from '@/lib/orders';
@@ -41,6 +42,7 @@ export async function checkoutAction(productId: string, _prev: CheckoutState | n
   const user = getCurrentUser();
   const userId = user && user.role === 'customer' ? user.id : null;
 
+  track('checkout_submit', { method: paymentMethod, qty: quantity, governorate, has_coupon: !!f('coupon_code') }, { actorType: userId ? 'customer' : 'buyer', actorId: userId, productId, variantId });
   const result = await checkout({
     productId, variantId, quantity, buyerName, buyerPhone, buyerEmail: buyerEmail || undefined,
     governorate, address, note: f('note') || undefined, paymentMethod, card, userId,

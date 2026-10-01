@@ -1,3 +1,4 @@
+import { recordPriceChange, track } from './analytics-events';
 import { getDb, nowIso } from './db';
 import { audit } from './audit';
 import { syncProductStockStatus } from './orders';
@@ -28,6 +29,7 @@ export function applyBulk(sellerId: string, sellerLabel: string, ids: string[], 
   const hasVariants = new Set((db.prepare(`SELECT DISTINCT product_id FROM product_variants WHERE product_id IN (${unique.map(() => '?').join(',')})`)
     .all(...unique) as { product_id: string }[]).map((r) => r.product_id));
   const res: BulkResult = { updated: 0, skipped: [] };
+  const priceChanges: { productId: string; variantId: string | null; oldPrice: number; newPrice: number }[] = [];
   const pct = (n: number) => Math.max(1, Math.round(n * (1 + value / 100)));
 
   db.transaction(() => {
@@ -36,10 +38,13 @@ export function applyBulk(sellerId: string, sellerLabel: string, ids: string[], 
       if (action === 'price_set') {
         if (v) { res.skipped.push({ title: p.title, reason: 'has_variants' }); continue; }
         db.prepare('UPDATE products SET price = ?, updated_at = ? WHERE id = ?').run(value, nowIso(), p.id);
+        priceChanges.push({ productId: p.id, variantId: null, oldPrice: p.price, newPrice: value });
       } else if (action === 'price_pct') {
         db.prepare('UPDATE products SET price = ?, updated_at = ? WHERE id = ?').run(pct(p.price), nowIso(), p.id);
+        priceChanges.push({ productId: p.id, variantId: null, oldPrice: p.price, newPrice: pct(p.price) });
         for (const row of db.prepare('SELECT id, price FROM product_variants WHERE product_id = ?').all(p.id) as { id: string; price: number }[]) {
           db.prepare('UPDATE product_variants SET price = ? WHERE id = ?').run(pct(row.price), row.id);
+          priceChanges.push({ productId: p.id, variantId: row.id, oldPrice: row.price, newPrice: pct(row.price) });
         }
       } else if (action === 'stock_set') {
         if (p.type === 'digital') { res.skipped.push({ title: p.title, reason: 'digital' }); continue; }
@@ -53,6 +58,12 @@ export function applyBulk(sellerId: string, sellerLabel: string, ids: string[], 
       res.updated++;
     }
   })();
+  // Outside the transaction: analytics can never roll back (or be rolled back with) the update.
+  for (const c of priceChanges) {
+    recordPriceChange({ ...c, sellerId, source: `bulk:${action}` });
+    if (!c.variantId) track('seller_product_update', { price_at_event: c.newPrice, old_price: c.oldPrice, price_changed: true, bulk: action },
+      { actorType: 'seller', actorId: sellerId, sellerId, productId: c.productId });
+  }
   audit('seller', sellerId, sellerLabel, 'product', sellerId, `bulk:${action}`, { value, updated: res.updated, skipped: res.skipped.length, ids: products.map((p) => p.id) });
   return res;
 }

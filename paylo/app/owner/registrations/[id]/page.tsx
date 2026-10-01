@@ -30,7 +30,7 @@ export default function OwnerRegistrationDetailPage({ params }: { params: { id: 
       <Link href="/owner/registrations" className="text-sm text-ink-soft hover:text-cherry">← {t('rg_title')}</Link>
       <div className="flex flex-wrap items-center gap-3 mt-2 mb-6">
         <h1 className="section-title">{req.store_name}</h1>
-        <RegistrationStatusBadge status={req.status} />
+        <RegistrationStatusBadge status={req.status} t={t} />
       </div>
 
       <div className="grid md:grid-cols-2 gap-4 mb-6">

@@ -131,7 +131,18 @@ export interface MarketAnalytics {
   paymentMix: { payment_method: string; orders: number; total: number }[];
   byHour: { hour: number; orders: number }[];
   byWeekday: { weekday: number; orders: number }[];
+  /** Last 90 days, zero-filled; GMV = goods + delivery buyers paid, net of refunds. */
+  daily: { day: string; gmv: number; orders: number; aov: number }[];
+  topByRevenue: ProductRank[];
+  /** Live product prices per category (collection name, else product type). */
+  priceByCategory: { category: string; products: number; min: number; p25: number; median: number; p75: number; max: number; buckets: number[] }[];
+  priceBucketEdges: number[];
+  /** Last 30 days of the event log: distinct sessions per step (orders: placed events). */
+  funnel: { views: number; checkoutStarts: number; ordersPlaced: number; viewSessions: number; startSessions: number; orderSessions: number };
+  growth: { newSellers30d: number; newSellers7d: number; pendingRegistrations: number; approvedSellers: number };
 }
+
+const PRICE_EDGES = [10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000];
 
 /** Orders that meaningfully represent a sale: excludes cancelled and never-paid orders. */
 const SOLD_FILTER = "o.order_state != 'cancelled' AND o.status != 'payment_failed' AND o.status != 'awaiting_payment'";
@@ -164,13 +175,50 @@ export function computeMarketAnalytics(): MarketAnalytics {
 
   const geo = db.prepare(`SELECT governorate, count(*) orders, sum(total) total FROM orders o WHERE ${SOLD_FILTER} GROUP BY governorate ORDER BY orders DESC`).all() as { governorate: string; orders: number; total: number }[];
   const paymentMix = db.prepare(`SELECT payment_method, count(*) orders, sum(total) total FROM orders o WHERE ${SOLD_FILTER} GROUP BY payment_method`).all() as { payment_method: string; orders: number; total: number }[];
-  const byHourRows = db.prepare(`SELECT cast(strftime('%H', created_at) as integer) hour, count(*) orders FROM orders o WHERE ${SOLD_FILTER} GROUP BY hour`).all() as { hour: number; orders: number }[];
-  const byWeekdayRows = db.prepare(`SELECT cast(strftime('%w', created_at) as integer) weekday, count(*) orders FROM orders o WHERE ${SOLD_FILTER} GROUP BY weekday`).all() as { weekday: number; orders: number }[];
+  // created_at is UTC; Syria is UTC+3 all year, so hours and weekdays are shifted to local time.
+  const byHourRows = db.prepare(`SELECT cast(strftime('%H', created_at, '+3 hours') as integer) hour, count(*) orders FROM orders o WHERE ${SOLD_FILTER} GROUP BY hour`).all() as { hour: number; orders: number }[];
+  const byWeekdayRows = db.prepare(`SELECT cast(strftime('%w', created_at, '+3 hours') as integer) weekday, count(*) orders FROM orders o WHERE ${SOLD_FILTER} GROUP BY weekday`).all() as { weekday: number; orders: number }[];
   const byHour = Array.from({ length: 24 }, (_, hour) => ({ hour, orders: byHourRows.find((r) => r.hour === hour)?.orders ?? 0 }));
   const byWeekday = Array.from({ length: 7 }, (_, weekday) => ({ weekday, orders: byWeekdayRows.find((r) => r.weekday === weekday)?.orders ?? 0 }));
+
+  const dailyRows = db.prepare(`SELECT date(created_at, '+3 hours') d, sum(total - refunded_amount) gmv, count(*) n FROM orders o
+    WHERE ${SOLD_FILTER} AND created_at >= datetime('now','-91 days') GROUP BY d`).all() as { d: string; gmv: number; n: number }[];
+  const dmap = new Map(dailyRows.map((r) => [r.d, r]));
+  const today = new Date(Date.now() + 3 * 3600_000);
+  const daily = Array.from({ length: 90 }, (_, i) => {
+    const day = new Date(today.getTime() - (89 - i) * 86400_000).toISOString().slice(0, 10);
+    const r = dmap.get(day);
+    return { day, gmv: r?.gmv ?? 0, orders: r?.n ?? 0, aov: r && r.n ? Math.round(r.gmv / r.n) : 0 };
+  });
+  const topByRevenue = [...productRows].sort((a, b) => b.revenue - a.revenue).slice(0, 20);
+
+  const live = db.prepare(`SELECT p.price, coalesce(c.name, p.type) category FROM products p LEFT JOIN collections c ON c.id = p.collection_id
+    JOIN sellers s ON s.id = p.seller_id WHERE p.status IN ('active','out_of_stock') AND s.status = 'approved'`).all() as { price: number; category: string }[];
+  const byCat = new Map<string, number[]>();
+  for (const r of live) (byCat.get(r.category) ?? byCat.set(r.category, []).get(r.category)!).push(r.price);
+  const q = (xs: number[], f: number) => xs[Math.min(xs.length - 1, Math.max(0, Math.round(f * (xs.length - 1))))];
+  const priceByCategory = [...byCat.entries()].map(([category, xs]) => {
+    xs.sort((a, b) => a - b);
+    const buckets = Array(PRICE_EDGES.length + 1).fill(0);
+    for (const x of xs) buckets[PRICE_EDGES.findIndex((e) => x < e) === -1 ? PRICE_EDGES.length : PRICE_EDGES.findIndex((e) => x < e)]++;
+    return { category, products: xs.length, min: xs[0], p25: q(xs, 0.25), median: q(xs, 0.5), p75: q(xs, 0.75), max: xs[xs.length - 1], buckets };
+  }).sort((a, b) => b.products - a.products);
+
+  const ev = (name: string) => db.prepare(`SELECT count(*) n, count(DISTINCT session_id) s FROM analytics_events WHERE name = ? AND at >= datetime('now','-30 days')`).get(name) as { n: number; s: number };
+  const v = ev('product_view'), c = ev('checkout_start'), o = ev('order_placed');
+  const funnel = { views: v.n, checkoutStarts: c.n, ordersPlaced: o.n, viewSessions: v.s, startSessions: c.s, orderSessions: o.s };
+
+  const one = (sql: string) => (db.prepare(sql).get() as { c: number }).c;
+  const growth = {
+    newSellers30d: one("SELECT count(*) c FROM sellers WHERE status = 'approved' AND created_at >= datetime('now','-30 days')"),
+    newSellers7d: one("SELECT count(*) c FROM sellers WHERE status = 'approved' AND created_at >= datetime('now','-7 days')"),
+    pendingRegistrations: one("SELECT count(*) c FROM store_registration_requests WHERE status IN ('PENDING_REVIEW','MORE_INFORMATION_REQUIRED')"),
+    approvedSellers: one("SELECT count(*) c FROM sellers WHERE status = 'approved'"),
+  };
 
   return {
     topProductsOverall, topProductsByStore, stores, aov: totals.aov, avgSpendPerBuyer, distinctBuyers,
     repeatBuyerRate, avgOrdersPerBuyer, geo, paymentMix, byHour, byWeekday,
+    daily, topByRevenue, priceByCategory, priceBucketEdges: PRICE_EDGES, funnel, growth,
   };
 }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useFormState } from 'react-dom';
 import { checkoutAction, previewCouponAction, type CheckoutState } from './actions';
 import { useI18n } from '@/lib/i18n/client';
+import { sendEvent } from '@/lib/analytics-client';
 import { Field } from '@/components/Field';
 import { SubmitButton } from '@/components/SubmitButton';
 import { formatSYP } from '@/lib/money';
@@ -53,6 +54,7 @@ export function CheckoutForm({ productId, basePrice, stock, isDigital, variants,
     const fields = Array.from(detailsRef.current?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input, textarea, select') ?? []);
     const firstBad = fields.find((f) => !f.checkValidity());
     if (firstBad) { firstBad.reportValidity(); firstBad.focus(); return; }
+    sendEvent('checkout_start', { product_id: productId, variant_id: variantId || null, props: { qty } });
     setStep(2);
   };
   const [step, setStep] = useState<1 | 2>(1);
@@ -121,7 +123,7 @@ export function CheckoutForm({ productId, basePrice, stock, isDigital, variants,
         )}
         {variants.length > 0 && (
           <Field label={`${option1 ?? t('choose_variant')}${option2 ? ' / ' + option2 : ''}`}>
-            <select name="variant_id" className="input" value={variantId} onChange={(e) => setVariantId(e.target.value)}>
+            <select name="variant_id" className="input" value={variantId} onChange={(e) => { setVariantId(e.target.value); sendEvent('variant_select', { product_id: productId, variant_id: e.target.value }); }}>
               {variants.map((v) => <option key={v.id} value={v.id} disabled={v.stock <= 0}>{v.label} — {formatSYP(v.price, lang)}{v.stock <= 0 ? ` (${t('sold_out')})` : ''}</option>)}
             </select>
           </Field>

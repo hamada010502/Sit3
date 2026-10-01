@@ -3,13 +3,15 @@ import { requireAdmin } from '@/lib/guards';
 import { getT } from '@/lib/i18n/server';
 import { recentAudit } from '@/lib/audit';
 
-const TYPES = ['all', 'order', 'seller', 'payout', 'dispute', 'user', 'product', 'webhook', 'api_token'];
+const TYPES = ['all', 'sensitive', 'order', 'seller', 'store_registration_request', 'payout', 'dispute', 'user', 'settings', 'product', 'webhook', 'api_token'];
+/** Money, identity and access decisions — what an auditor looks at first. */
+const SENSITIVE = /approved|rejected|confirm|refund|payout|paid|failed|settings|2fa|totp|kyc|status:|cod\.collected|transfer|review_checklist|login\.fail|suspend|api_token|reset/i;
 
 export default function AdminAuditPage({ searchParams }: { searchParams: { type?: string } }) {
   requireAdmin();
   const { t } = getT();
   const type = searchParams.type && TYPES.includes(searchParams.type) ? searchParams.type : 'all';
-  const rows = recentAudit(300, type === 'all' ? undefined : type);
+  const rows = type === 'sensitive' ? recentAudit(1000).filter((r) => SENSITIVE.test(r.action)).slice(0, 300) : recentAudit(300, type === 'all' ? undefined : type);
   return (
     <div>
       <h1 className="section-title">{t('audit_title')}</h1>
@@ -18,7 +20,7 @@ export default function AdminAuditPage({ searchParams }: { searchParams: { type?
         {TYPES.map((f) => (
           <Link key={f} href={f === 'all' ? '/admin/audit' : `/admin/audit?type=${f}`}
             className={`badge border px-3 py-1 ${type === f ? 'bg-ink text-white border-ink' : 'bg-white border-ink/15 text-ink-soft'}`}>
-            {f === 'all' ? t('all') : f}
+            {f === 'all' ? t('all') : f === 'sensitive' ? t('ad_audit_sensitive') : f}
           </Link>
         ))}
       </div>

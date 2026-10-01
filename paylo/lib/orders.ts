@@ -5,6 +5,7 @@ import { emitWebhook } from './webhooks';
 import { computeFees } from './fees';
 import { isStoreLive } from './store-status';
 import { isPaymentMethodAvailable } from './payment-methods';
+import { track } from './analytics-events';
 import { pushToSeller } from './push';
 import { makeT } from './i18n';
 import {
@@ -223,10 +224,28 @@ export async function checkout(input: CheckoutInput): Promise<CheckoutResult> {
   }
 
   const final = getOrder(id)!;
+  // Full commercial snapshot, frozen at placement. No buyer name, phone, email or address.
+  const category = product.collection_id
+    ? (db.prepare('SELECT name FROM collections WHERE id = ?').get(product.collection_id) as { name: string } | undefined)?.name ?? product.type
+    : product.type;
+  track('order_placed', {
+    code: final.code, unit_price: final.unit_price, price_at_event: final.unit_price, list_price: product.price, qty: final.quantity,
+    subtotal: final.subtotal, delivery_fee: final.delivery_fee, discount: final.discount_amount, total: final.total,
+    commission: final.commission_amount + final.commission_vat, method: final.payment_method, governorate: final.governorate,
+    hour_of_day: damascusHour(), day_of_week: damascusWeekday(), coupon: final.coupon_code, category, product_type: product.type, status: final.status,
+  }, { actorType: input.userId ? 'customer' : 'buyer', actorId: input.userId || null, sellerId: final.seller_id, productId: final.product_id, variantId: final.variant_id, orderId: final.id });
   await emitWebhook('order.created', publicOrder(final), final.seller_id);
   if (isDigital && final.status === 'confirmed') await autoDeliverDigital(final);
   return { ok: true, order: getOrder(id)! };
 }
+
+/** Hour (0–23) and weekday (0 = Sunday) in Syria, for the owner's time-of-day charts. */
+function damascusParts() {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Damascus', hour: 'numeric', hourCycle: 'h23', weekday: 'short' }).formatToParts(new Date());
+  return { hour: Number(parts.find((p) => p.type === 'hour')?.value ?? 0), weekday: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(parts.find((p) => p.type === 'weekday')?.value ?? 'Sun') };
+}
+const damascusHour = () => damascusParts().hour;
+const damascusWeekday = () => damascusParts().weekday;
 
 function reserveStock(productId: string, variantId: string | null, qty: number) {
   const db = getDb();
@@ -278,6 +297,9 @@ export async function markPaymentConfirmed(order: Order, actor: Actor, note: str
   if (order.status === 'awaiting_payment') transition(getOrder(order.id)!, 'confirmed', actor, note);
   audit(actor, null, actor, 'order', order.id, 'payment.confirmed', note);
   const fresh = getOrder(order.id)!;
+  track('payment_confirmed', { code: fresh.code, method: fresh.payment_method, total: fresh.total, by: actor,
+    hours_to_confirm: Math.round((Date.now() - new Date(fresh.created_at.replace(' ', 'T') + 'Z').getTime()) / 36e5) },
+    { actorType: actor, sellerId: fresh.seller_id, productId: fresh.product_id, orderId: fresh.id });
   const m = buyerPaymentConfirmed(buyerLang(), { name: fresh.buyer_name, code: fresh.code, track: appUrl('/track/' + fresh.code) });
   await notify({ event: 'payment.confirmed', email: fresh.buyer_email ? { to: fresh.buyer_email, ...m.email } : undefined, sms: { to: fresh.buyer_phone, body: m.sms } });
   await emitWebhook('order.updated', publicOrder(fresh), fresh.seller_id);
@@ -433,6 +455,8 @@ export async function cancelOrder(order: Order, actor: Actor, reason: string) {
     releaseCouponUse(order.seller_id, order.coupon_code);
   })();
   const fresh = getOrder(order.id)!;
+  track('order_cancelled', { code: fresh.code, method: fresh.payment_method, total: fresh.total, by: actor, from_status: order.status },
+    { actorType: actor, sellerId: fresh.seller_id, productId: fresh.product_id, orderId: fresh.id });
   const m = buyerCancelled(buyerLang(), { code: fresh.code, reason: reason || null });
   await notify({ event: 'order.cancelled', email: fresh.buyer_email ? { to: fresh.buyer_email, ...m.email } : undefined, sms: { to: fresh.buyer_phone, body: m.sms } });
   await emitWebhook('order.updated', publicOrder(fresh), fresh.seller_id);
@@ -578,6 +602,8 @@ export async function refundOrder(order: Order, actor: Actor, note: string, liab
   })();
   audit(actor, null, actor, 'order', order.id, 'refunded', { note, amount: remaining, liability });
   const fresh = getOrder(order.id)!;
+  track('order_refunded', { code: fresh.code, kind: 'full', amount: remaining, liability, by: actor, method: fresh.payment_method },
+    { actorType: actor, sellerId: fresh.seller_id, productId: fresh.product_id, orderId: fresh.id });
   const m = buyerRefundFull(buyerLang(), { name: fresh.buyer_name, code: fresh.code, amount: remaining, cardLast4: captured?.method === 'card' ? captured.card_last4 ?? null : undefined });
   await notify({ event: 'refund.issued', email: fresh.buyer_email ? { to: fresh.buyer_email, ...m.email } : undefined, sms: { to: fresh.buyer_phone, body: m.sms } });
 }
@@ -622,6 +648,8 @@ export async function partialRefund(order: Order, amount: number, liability: Lia
   })();
   audit(actor, null, actor, 'order', order.id, 'refund.partial', { amount: amt, liability, seller_net_delta: netDelta, note });
   const fresh = getOrder(order.id)!;
+  track('order_refunded', { code: fresh.code, kind: 'partial', amount: amt, liability, by: actor, seller_net_delta: netDelta, method: fresh.payment_method },
+    { actorType: actor, sellerId: fresh.seller_id, productId: fresh.product_id, orderId: fresh.id });
   const m = buyerRefundPartial(buyerLang(), { name: fresh.buyer_name, code: fresh.code, amount: amt, cardLast4: captured?.method === 'card' ? captured.card_last4 ?? null : undefined });
   await notify({ event: 'refund.issued', email: fresh.buyer_email ? { to: fresh.buyer_email, ...m.email } : undefined, sms: { to: fresh.buyer_phone, body: m.sms } });
   const su = sellerEmail(order.seller_id);

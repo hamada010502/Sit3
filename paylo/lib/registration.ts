@@ -5,6 +5,7 @@ import { hashPassword } from './auth';
 import { audit } from './audit';
 import { notify, appUrl } from './notify';
 import type { StoreRegistrationRequest } from './types';
+import { track } from './analytics-events';
 import { isPlaceholderName, isValidNationalIdFormat, normalizeNationalId, normalizePhone } from './id-validate';
 
 export class RegistrationError extends Error {}
@@ -80,6 +81,8 @@ export async function submitRegistration(input: RegistrationInput, ipHash: strin
   }
 
   audit('system', null, email, 'store_registration_request', id, 'submitted', { storeName: input.storeName });
+  // No national ID, phone, email or name in analytics — only what describes the funnel.
+  track('registration_submit', { governorate: input.governorate, has_instagram: !!input.instagram, has_bio: !!input.bio }, { actorType: 'applicant', ipHash });
   await notify({ event: 'registration.submitted', email: { to: email, ...registrationReceived(buyerLang(), { name: input.fullName.trim(), store: input.storeName }) } });
   return db.prepare('SELECT * FROM store_registration_requests WHERE id = ?').get(id) as StoreRegistrationRequest;
 }

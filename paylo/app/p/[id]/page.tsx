@@ -1,3 +1,4 @@
+import { TrackView } from '@/components/TrackView';
 import Link from 'next/link';
 import { Shell } from '@/components/Shell';
 import { Announcement } from '@/components/Announcement';
@@ -38,6 +39,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
 
   return (
     <Shell wide>
+      <TrackView name="product_view" productId={product.id} props={{ price_at_event: product.price, type: product.type }} />
       <Announcement text={seller.announcement} />
       <div className="grid lg:grid-cols-5 gap-8">
         <div className="lg:col-span-2">
