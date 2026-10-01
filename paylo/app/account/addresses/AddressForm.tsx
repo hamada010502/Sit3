@@ -31,7 +31,7 @@ export function AddressForm({ existing, onDone }: { existing?: CustomerAddress; 
       </Field>
       <Field label={t('address')}><textarea name="address" className="input" rows={2} required defaultValue={existing?.address} /></Field>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="make_default" className="accent-cherry h-4 w-4" defaultChecked={!!existing?.is_default} />
+        <input type="checkbox" name="make_default" className="accent-brand h-4 w-4" defaultChecked={!!existing?.is_default} />
         {t('make_default_address')}
       </label>
       <div className="flex gap-3">

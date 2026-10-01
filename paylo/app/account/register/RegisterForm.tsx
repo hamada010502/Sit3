@@ -19,7 +19,7 @@ export function RegisterForm() {
       <Field label={t('password')} hint={t('password_hint')}><input name="password" type="password" className="input" required minLength={8} autoComplete="new-password" /></Field>
       <SubmitButton className="btn-primary w-full">{t('register_btn')}</SubmitButton>
       <p className="text-sm text-center text-ink-soft">
-        {t('register_already')} <Link href="/login" className="text-cherry font-semibold">{t('login_btn')}</Link>
+        {t('register_already')} <Link href="/login" className="text-brand font-semibold">{t('login_btn')}</Link>
       </p>
     </form>
   );

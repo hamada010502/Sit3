@@ -29,7 +29,7 @@ export function AddressList({ addresses }: { addresses: CustomerAddress[] }) {
           <div className="flex flex-col items-end gap-2 shrink-0">
             <button type="button" className="link text-sm" onClick={() => setEditing(a.id)}>{t('account_edit_address')}</button>
             <form action={deleteAddressAction.bind(null, a.id)}>
-              <button type="submit" className="link text-sm text-cherry">{t('account_delete_address')}</button>
+              <button type="submit" className="link text-sm text-danger">{t('account_delete_address')}</button>
             </form>
           </div>
         </div>

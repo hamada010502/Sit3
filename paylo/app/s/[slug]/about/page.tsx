@@ -18,7 +18,7 @@ export default function StoreAboutPage({ params }: { params: { slug: string } })
   return (
     <Shell>
       <Link href={`/s/${seller.slug}`} className="link text-sm">← {seller.store_name}</Link>
-      <h1 className="text-3xl font-bold mt-2 mb-6">{t('store_about')}</h1>
+      <h1 className="text-3xl font-extrabold mt-2 mb-6">{t('store_about')}</h1>
       {sections.length === 0 ? <div className="alert-info">{t('about_empty')}</div> : (
         <div className="space-y-8" data-testid="about-sections">
           {sections.map((s, i) => (

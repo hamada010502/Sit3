@@ -16,10 +16,10 @@ export function LoginForm() {
       <Field label={t('password')}><input name="password" type="password" className="input" required autoComplete="current-password" /></Field>
       <SubmitButton className="btn-primary w-full">{t('login_btn')}</SubmitButton>
       <p className="text-sm text-center text-ink-soft">
-        <Link href="/apply" className="text-cherry font-semibold">{t('nav_apply')}</Link>
+        <Link href="/apply" className="text-brand font-semibold">{t('nav_apply')}</Link>
       </p>
       <p className="text-sm text-center text-ink-soft">
-        {t('login_no_account_yet')} <Link href="/account/register" className="text-cherry font-semibold">{t('create_account_btn')}</Link>
+        {t('login_no_account_yet')} <Link href="/account/register" className="text-brand font-semibold">{t('create_account_btn')}</Link>
       </p>
     </form>
   );

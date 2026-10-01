@@ -14,7 +14,7 @@ const PATHS: Record<Icon, string> = {
 export function EmptyState({ icon, title, body, action }: { icon: Icon; title: string; body: string; action?: { href: string; label: string } }) {
   return (
     <div className="card-pad text-center py-10 px-6" data-testid="empty-state">
-      <svg viewBox="0 0 24 24" className="mx-auto h-10 w-10 text-cherry/70" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg viewBox="0 0 24 24" className="mx-auto h-10 w-10 text-brand/70" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d={PATHS[icon]} />
       </svg>
       <h2 className="mt-3 font-bold text-lg">{title}</h2>

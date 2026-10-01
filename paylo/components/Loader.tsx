@@ -37,7 +37,7 @@ function Elapsed() {
 export default function Loader({ variant = 'dots', label, showElapsed = false, className = '' }: Props) {
   const style = { '--ld-cycle': `${AI_LOADER_CYCLE_SECONDS}s` } as React.CSSProperties;
   return (
-    <div role="status" aria-live="polite" className={`inline-flex items-center gap-3 text-cherry ${className}`} style={style}>
+    <div role="status" aria-live="polite" className={`inline-flex items-center gap-3 text-brand ${className}`} style={style}>
       {variant === 'dots' && <span className="ld" aria-hidden="true"><i className="ld-dot" /><i className="ld-dot" /><i className="ld-dot" /></span>}
       {variant === 'bar' && <span className="ld-track" aria-hidden="true"><i className="ld-sweep" /></span>}
       {variant === 'grid' && (

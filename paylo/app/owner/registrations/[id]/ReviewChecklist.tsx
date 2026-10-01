@@ -13,7 +13,7 @@ export function ReviewChecklist({ id, review, closed }: { id: string; review: Re
   const [state, action] = useFormState(saveReviewAction.bind(null, id), null);
   return (
     <form action={action} className="card-pad space-y-3" data-testid="review-checklist">
-      <h2 className="font-semibold">{t('rv_title')}</h2>
+      <h2 className="font-bold">{t('rv_title')}</h2>
       <p className="text-xs text-ink-soft">{t('rv_sub')}</p>
       {state?.ok && <div className="alert-success">{t('settings_saved')}</div>}
       <fieldset disabled={closed} className="space-y-2">
@@ -23,7 +23,7 @@ export function ReviewChecklist({ id, review, closed }: { id: string; review: Re
             <span className="flex gap-3 text-sm">
               {(['yes', 'no', 'na'] as const).filter((v) => !(k === 'not_duplicate' && v === 'na')).map((v) => (
                 <label key={v} className="flex items-center gap-1 tap-inline">
-                  <input type="radio" name={k} value={v} defaultChecked={review.checks[k] === v} className="accent-cherry" />{t(`rv_${v}`)}
+                  <input type="radio" name={k} value={v} defaultChecked={review.checks[k] === v} className="accent-brand" />{t(`rv_${v}`)}
                 </label>
               ))}
             </span>

@@ -8,7 +8,7 @@ export default function SellerSettingsPage() {
   const { t } = getT();
   return (
     <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">{t('settings_title')}</h1>
+      <h1 className="text-2xl font-extrabold">{t('settings_title')}</h1>
       <NotificationSettings prefs={seller} devices={subscriptionCount(seller.id)} />
       <SettingsForm seller={seller} />
     </div>

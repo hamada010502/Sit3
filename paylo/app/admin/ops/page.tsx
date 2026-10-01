@@ -48,10 +48,10 @@ export default function AdminOpsPage() {
     `SELECT f.*, s.store_name FROM push_failures f LEFT JOIN sellers s ON s.id = f.seller_id ORDER BY f.id DESC LIMIT 15`);
   const failedMsgs = q<{ id: number; channel: string; recipient: string; event: string; status: string; created_at: string }>(
     `SELECT id, channel, recipient, event, status, created_at FROM notifications WHERE status LIKE 'failed%' ORDER BY id DESC LIMIT 15`);
-  const lvl = { ok: 'bg-success/12 text-success', warn: 'bg-amber-100 text-amber-800', error: 'bg-cherry/10 text-cherry' } as const;
+  const lvl = { ok: 'bg-success/12 text-success', warn: 'bg-amber-100 text-amber-800', error: 'bg-danger/10 text-danger' } as const;
   const Stat = ({ label, value, sub, warn, id }: { label: string; value: number; sub?: string; warn?: boolean; id: string }) => (
     <div className="stat" data-testid={id}><div className="stat-label">{label}</div>
-      <div className={`stat-value text-lg ${warn ? 'text-cherry' : ''}`}>{value}</div>{sub && <p className="mt-1 text-xs text-ink-soft">{sub}</p>}</div>);
+      <div className={`stat-value text-lg ${warn ? 'text-danger' : ''}`}>{value}</div>{sub && <p className="mt-1 text-xs text-ink-soft">{sub}</p>}</div>);
 
   const age = (iso: string | null) => (iso ? Math.floor((Date.now() - new Date(iso.replace(' ', 'T') + 'Z').getTime()) / 86400000) : 0);
   const total = awaitingTransfer.length + unfulfilled.length + stuckTransit.length + codUncollected.length
@@ -185,7 +185,7 @@ export default function AdminOpsPage() {
             <thead><tr><th>{t('order')}</th><th>{t('buyer')}</th><th>{t('total')}</th><th>{t('date')}</th><th>{t('mark_cod_collected')}</th></tr></thead>
             <tbody>{codUncollected.map((o) => (
               <tr key={o.id} data-code={o.code}>
-                <td><Link href={`/admin/orders/${o.id}`} className="tap-inline font-mono font-semibold text-cherry" dir="ltr">{o.code}</Link></td>
+                <td><Link href={`/admin/orders/${o.id}`} className="tap-inline font-mono font-semibold text-brand" dir="ltr">{o.code}</Link></td>
                 <td>{o.buyer_name}<div className="text-xs text-ink-soft">{o.governorate}</div></td>
                 <td className="whitespace-nowrap">{formatSYP(o.total, lang)}</td>
                 <td className="text-xs text-ink-soft whitespace-nowrap">{age(o.delivered_at)} {t('days_open')}</td>

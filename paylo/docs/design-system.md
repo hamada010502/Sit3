@@ -3,38 +3,50 @@
 Two brand colours, a lot of cream, and one filled element per view. Tokens live in
 `tailwind.config.ts`; component classes live in `app/globals.css`.
 
-## Colour
+## Colour — Forest & Cream
+
+Supersedes Cherry Cola / Cream Vanilla entirely. Values were sampled from the reference
+fintech landing page, then checked against WCAG.
 
 | Token | Hex | Role |
 |---|---|---|
-| `cherry` | `#9A0002` | Cherry Cola. The single accent: primary buttons, links, glyph accents |
-| `cherry-dark` | `#7A0002` | Hover |
-| `cherry-tint` | `#F4E4E2` | Rare wash behind an accented block |
-| `cream` | `#EFE6DE` | Cream Vanilla. The page itself, and the whitespace |
-| `cream-deep` | `#E3D8CE` | Quiet dividers and hover fills |
-| `paper` | `#FFFFFF` | Cards and inputs, so they lift off cream without a shadow |
-| `ink` | `#2A1A17` | Body text. A very dark warm brown, never black |
-| `ink-soft` | `#6B5A54` | Secondary text |
-| `success` / `warn` | `#2F6B4F` / `#8A6318` | Status only, never brand |
+| `brand` | `#04380E` | **Primary accent.** Forest green: filled buttons, links, logo, active states |
+| `brand-dark` | `#022707` | Hover |
+| `brand-tint` | `#E3EEDF` | Rare wash behind an accented block |
+| `accent` | `#00BD3E` | Bright green. **Decoration only**: dots, the logo chevron, icons, badges |
+| `accent-display` | `#00A235` | Bright green for **large** headline words (≥ 24px bold) |
+| `accent-deep` | `#00802A` | The readable bright-ish green when text must be green at body size |
+| `night` | `#09180C` | **Dark surface.** Card-style panels, the hero phone, any dark block |
+| `cream` | `#F8F4EC` | **Clean surface.** The page itself |
+| `cream-deep` | `#ECE6DA` | Quiet dividers, hover fills, empty image tiles |
+| `paper` | `#FFFFFF` | Cards and inputs |
+| `ink` | `#0A1B0A` | Text. Near-black with a green cast, never pure black |
+| `ink-soft` | `#5B6658` | Secondary text |
+| `danger` | `#B42318` | The one red: errors, failures, destructive actions |
+| `success` / `warn` | `#17703A` / `#8A6318` | Status only, never brand |
 
-**Contrast.** White on Cherry Cola is 8.8:1 and Cherry Cola on Cream Vanilla is 7.2:1, so
-the accent works as both a filled button and body-size text. Ink on cream is 13.5:1 and
-ink-soft is 5.3:1. Every pairing in the system clears AA without special cases, which is
-what a two-colour palette buys you.
+**Contrast (on cream unless noted).** ink 16.3:1 · brand 12.1:1 (white on brand 13.3:1) ·
+ink-soft 5.5:1 · accent-deep 4.7:1 · danger 6.0:1 · accent-display 3.1:1 (large text only) ·
+**accent 2.3:1, and white on accent 2.5:1** — so the bright green never carries body text
+or a button label. The reference uses white-on-bright-green buttons; Paylo uses
+white-on-forest instead, which reads the same at a glance and passes AA.
 
-**There is no second red.** Destructive actions reuse `cherry` as an outline
-(`.btn-danger`), so a delete never competes with the primary call to action on the same
-screen. A filled cherry button always means "the main thing to do here".
+**Danger is its own colour now.** Under Cherry Cola the accent doubled as the destructive
+colour; with a green accent that would make errors look like success, so every error,
+failure, "No" badge and delete action uses `danger`.
 
 ## Type
 
-Plus Jakarta Sans for Latin, Cairo for Arabic. Arabic glyphs fall through to Cairo
-automatically because Jakarta has none, so one stack serves both scripts.
+Figtree (Google Fonts) for Latin, Cairo for Arabic, in one stack — Arabic glyphs fall
+through to Cairo. Figtree is the closest freely served match to the reference's General
+Sans / Switzer style (rounded geometric, double-storey a); General Sans itself is on
+Fontshare, which this build cannot fetch — swap the family in `tailwind.config.ts` and the
+`<link>` in `app/layout.tsx` if you self-host it.
 
-- Display: 600 weight, `tracking-[-0.035em]`, `leading-[1.04]`. Semibold, not extrabold —
-  at this size weight reads as shouting.
-- Section heading: `.section-title`, 24px, 600
-- Body 16px, measure capped at `max-w-prose` (62ch)
+- Display (h1): **800**, `tracking-[-0.03em…-0.04em]`, `leading-[1.02]`, forest; key words in
+  `accent-display`
+- Section heading: `.section-title`, 24px, **800**; h2/h3 **700**
+- Stat values 700; body 16px regular, measure capped at `max-w-prose` (62ch)
 - Labels: 12px, 600, uppercase, `tracking-[0.08em]`
 
 ## Space
@@ -49,30 +61,15 @@ Radius 8–14px. **Shadows are for lift on hover only** — resting surfaces sep
 1px `ink/10` hairline. Cream and white are close enough in value that a border reads more
 cleanly than a shadow and keeps the page flat and quiet.
 
-## Glyphs
+## Hero imagery
 
-The product cards carry an invented symbol system, not pictures. Twelve glyphs in
-`public/hero/`, each composed from the same primitives — ring, bar, arc, dot, triangle,
-square — on a 120 box with an 8px stroke, and each carrying exactly one cherry mark.
-
-The product name next to the glyph carries the meaning; the glyph carries identity, like a
-seal. That is why they are abstract: a literal drawing of a candle competes with the word
-"candle" beside it and loses. Two rules when adding one: no glyph may resolve into a face,
-and no glyph may use a primitive the rest of the set does not.
-
-The logo is the same vocabulary — a ring holding a chevron and a dot — so the mark and the
-cards read as one system. It is vertically symmetric, so RTL needs no mirrored variant, and
-the ring lets it stand in for the "o" in headline use.
-
-| Export | Use |
-|---|---|
-| `logo-primary-light.svg`, `logo-primary-cherry.svg` | Horizontal lockup |
-| `icon-square-*.svg`, `icon-circle-*.svg` | App icon and favicon |
-| `icon-transparent.svg` | Over an existing surface |
-| `logo-mono-*.svg`, `icon-mono-*.svg` | Single colour for print and constrained contexts |
-
-Minimum icon size 24px. Clear space equals the ring's stroke width. Never recolour outside
-the palette.
+The landing hero is a phone showing a real Paylo storefront (`components/HeroShowcase.tsx`)
+with "New order" and "Transfer confirmed" notifications arriving beside it. Product tiles
+use real photographs from `public/hero/products/<key>.jpg` (also .jpeg/.webp/.png) when
+present — keys: seal (candle), wave (silk scarf), count (coffee cups), peak (honey),
+axis (perfume oil), arch (woven basket). Square, neutral background, at least 600px.
+Without a file a tile is a plain cream block with the product name: never an illustration
+standing in for a product. The old glyph system is retired.
 
 ## Motion
 

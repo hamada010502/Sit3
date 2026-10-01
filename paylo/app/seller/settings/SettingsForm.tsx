@@ -31,7 +31,7 @@ export function SettingsForm({ seller }: { seller: Seller }) {
           <select name="governorate" className="input" defaultValue={seller.governorate}>{GOVERNORATES.map((g) => <option key={g} value={g}>{g}</option>)}</select>
         </Field>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="visible" defaultChecked={!!seller.visible} className="accent-cherry h-4 w-4" />
+          <input type="checkbox" name="visible" defaultChecked={!!seller.visible} className="accent-brand h-4 w-4" />
           <span><strong>{t('store_visible')}</strong> — <span className="text-ink-soft">{t('store_visible_hint')}</span></span>
         </label>
       </fieldset>
@@ -46,7 +46,7 @@ export function SettingsForm({ seller }: { seller: Seller }) {
                 {cur && (
                   <div className="flex items-center gap-3 mb-2">
                     <img src={cur} alt="" className={k === 'logo' ? 'h-12 w-12 rounded-full object-cover' : 'h-12 w-28 rounded object-cover'} data-testid={`${k}-preview`} />
-                    <label className="flex items-center gap-1 text-xs"><input type="checkbox" name={`remove_${k}`} className="accent-cherry" />{t('remove')}</label>
+                    <label className="flex items-center gap-1 text-xs"><input type="checkbox" name={`remove_${k}`} className="accent-brand" />{t('remove')}</label>
                   </div>
                 )}
                 <input name={k} type="file" accept="image/jpeg,image/png,image/webp" className="input" />

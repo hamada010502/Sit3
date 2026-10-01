@@ -50,7 +50,7 @@ export default function TrackPage({ params, searchParams }: { params: { code: st
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
           <p className="text-xs uppercase tracking-wide text-ink-soft">{t('tracking_title')}</p>
-          <h1 className="text-3xl font-bold font-mono" dir="ltr">{order.code}</h1>
+          <h1 className="text-3xl font-extrabold font-mono" dir="ltr">{order.code}</h1>
           <p className="text-xs text-ink-soft mt-1">{t('tracking_sub')}</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -63,8 +63,8 @@ export default function TrackPage({ params, searchParams }: { params: { code: st
         <div className="card-pad mb-6">
           <ol className="grid grid-cols-4 gap-2 text-center text-xs">
             {STEPS.map((s, i) => (
-              <li key={s} className={`flex flex-col items-center gap-2 ${i <= stepIdx ? 'text-cherry font-semibold' : 'text-ink-soft/60'}`}>
-                <span className={`h-3 w-3 rounded-full ${i <= stepIdx ? 'bg-cherry' : 'bg-ink/15'}`} />
+              <li key={s} className={`flex flex-col items-center gap-2 ${i <= stepIdx ? 'text-brand font-semibold' : 'text-ink-soft/60'}`}>
+                <span className={`h-3 w-3 rounded-full ${i <= stepIdx ? 'bg-brand' : 'bg-ink/15'}`} />
                 <span>{s === 'in_transit' && isPickup ? t('st_ready_for_pickup') : t(`st_${s}` as const)}</span>
               </li>
             ))}

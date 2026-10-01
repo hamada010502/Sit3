@@ -42,7 +42,7 @@ export default function EarningsPage({ searchParams }: { searchParams: { m?: str
           <tbody>{rows.map((r) => (
             <tr key={r.id} data-code={r.code}>{EARNING_COLUMNS.map((c) => {
               const v = c.value(r);
-              const cell = c.key === 'order' ? <Link href={`/seller/orders/${r.id}`} className="tap-inline font-mono text-cherry" dir="ltr">{r.code}</Link>
+              const cell = c.key === 'order' ? <Link href={`/seller/orders/${r.id}`} className="tap-inline font-mono text-brand" dir="ltr">{r.code}</Link>
                 : c.key === 'order_state' ? <OrderStateBadge state={r.orderState} t={t} />
                 : c.key === 'fulfilment_status' ? <OrderStatusBadge status={r.orderStatus} t={t} />
                 : c.key === 'payout_status' ? <span className="badge bg-ink/8 text-ink-soft">{t(`earn_st_${r.status}` as const)}</span>

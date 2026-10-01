@@ -27,15 +27,15 @@ export function Nav() {
           <span className="hidden sm:inline-flex"><Logo size={30} /></span>
         </Link>
         <nav className="hidden lg:flex items-center gap-5 text-sm font-medium text-ink-soft overflow-x-auto">
-          {links.map(([href, label]) => <Link key={href} href={href} className="hover:text-cherry whitespace-nowrap">{label}</Link>)}
+          {links.map(([href, label]) => <Link key={href} href={href} className="hover:text-brand whitespace-nowrap">{label}</Link>)}
         </nav>
         <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
           <LangSwitch />
           {user ? (
-            <form action="/logout" method="post"><button className="tap text-sm font-semibold text-ink-soft hover:text-cherry">{t('nav_logout')}</button></form>
+            <form action="/logout" method="post"><button className="tap text-sm font-semibold text-ink-soft hover:text-brand">{t('nav_logout')}</button></form>
           ) : (
             <>
-              <Link href="/login" className="tap text-sm font-semibold text-ink-soft hover:text-cherry">{t('nav_login')}</Link>
+              <Link href="/login" className="tap text-sm font-semibold text-ink-soft hover:text-brand">{t('nav_login')}</Link>
               <Link href="/apply" className="btn-primary btn-sm">{t('nav_apply')}</Link>
             </>
           )}
@@ -43,7 +43,7 @@ export function Nav() {
       </div>
       {links.length > 0 && (
         <nav className="lg:hidden flex gap-4 px-4 text-sm font-medium text-ink-soft overflow-x-auto">
-          {links.map(([href, label]) => <Link key={href} href={href} className="tap hover:text-cherry whitespace-nowrap">{label}</Link>)}
+          {links.map(([href, label]) => <Link key={href} href={href} className="tap hover:text-brand whitespace-nowrap">{label}</Link>)}
         </nav>
       )}
     </header>

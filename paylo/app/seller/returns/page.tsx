@@ -49,7 +49,7 @@ export default function SellerReturnsPage({ searchParams }: { searchParams: { f?
             const resolved = !['open', 'investigating'].includes(d.status);
             return (
               <tr key={d.id}>
-                <td><Link href={`/seller/orders/${d.order_id}`} className="tap-inline font-mono font-semibold text-cherry" dir="ltr">{d.code}</Link>
+                <td><Link href={`/seller/orders/${d.order_id}`} className="tap-inline font-mono font-semibold text-brand" dir="ltr">{d.code}</Link>
                   <div className="mt-1"><OrderStatusBadge status={d.order_status} t={t} /></div></td>
                 <td>{d.product_title}{d.variant_label && <span className="text-ink-soft"> · {d.variant_label}</span>}<div className="text-xs text-ink-soft">{formatSYP(d.total, lang)}</div></td>
                 <td>{d.buyer_name}</td>

@@ -44,7 +44,7 @@ export default function EditProductPage({ params, searchParams }: { params: { id
           )}
           <ProductForm product={product} images={parseImages(product.images)} variants={variants} collections={sellerCollections(seller.id)} presets={sellerPresets(seller.id)} />
           <form action={deleteProductAction.bind(null, product.id)} className="mt-4 text-end">
-            <button className="text-sm font-semibold text-cherry">{t('delete')}</button>
+            <button className="text-sm font-semibold text-danger">{t('delete')}</button>
           </form>
         </>
       )}

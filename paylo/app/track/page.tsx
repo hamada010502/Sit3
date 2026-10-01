@@ -7,7 +7,7 @@ export default function TrackIndex({ searchParams }: { searchParams: { code?: st
   const { t } = getT();
   return (
     <Shell>
-      <h1 className="text-2xl font-bold mb-4">{t('track_title')}</h1>
+      <h1 className="text-2xl font-extrabold mb-4">{t('track_title')}</h1>
       <form method="get" className="card-pad flex gap-2">
         <input name="code" className="input" placeholder={t('track_placeholder')} required autoFocus />
         <button className="btn-primary shrink-0">{t('track_btn')}</button>

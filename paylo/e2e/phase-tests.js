@@ -9,7 +9,7 @@ const Database = require('better-sqlite3');
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const DB_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'paylo.db');
-const ONLY = (process.env.PHASES || '1,2,3,4').split(',');
+const ONLY = (process.env.PHASES || '1,2,3,4,5').split(',');
 let passed = 0;
 const ok = (c, m) => { if (!c) throw new Error('ASSERT FAILED: ' + m); passed++; console.log('  ✓ ' + m); };
 const step = (m) => console.log('\n' + m);
@@ -419,6 +419,22 @@ const step = (m) => console.log('\n' + m);
       await admin.goto(BASE + '/admin');
       const href = await admin.locator(`[data-testid=${id}]`).getAttribute('href');
       const r = await admin.goto(BASE + href); ok(r.status() === 200, `dashboard tile ${id} → ${href} → 200`);
+    }
+  }
+
+  if (ONLY.includes('5')) {
+    step('D1. Forest & Cream design system: homepage at 390px, both languages');
+    for (const lang of ['en', 'ar']) {
+      const c = await ctx({ viewport: { width: 390, height: 844 }, isMobile: true });
+      await c.addCookies([{ name: 'paylo_lang', value: lang, url: BASE }]);
+      const p = await c.newPage(); await p.goto(BASE + '/');
+      const m = await p.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth,
+        phone: !!document.querySelector('[data-testid=hero-showcase] .hs-phone'), glyphs: document.querySelectorAll('img[src^="/hero/"][src$=".svg"]').length,
+        bg: getComputedStyle(document.body).backgroundColor, h1: getComputedStyle(document.querySelector('h1')).fontWeight }));
+      ok(m.sw <= m.cw + 1, `${lang}: no horizontal overflow at 390px (content ${m.sw}px, viewport ${m.cw}px)`);
+      ok(m.phone && m.glyphs === 0, `${lang}: hero shows the phone storefront, no illustrated glyph cards`);
+      ok(m.bg === 'rgb(248, 244, 236)' && Number(m.h1) >= 800, `${lang}: cream background #F8F4EC and an extrabold headline`);
+      await c.close();
     }
   }
 

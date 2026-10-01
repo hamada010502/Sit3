@@ -8,7 +8,7 @@ export function HandOffForm({ orderId, pickup }: { orderId: string; pickup: bool
   const { t } = useI18n();
   const [state, action] = useFormState(handOffAction.bind(null, orderId), null);
   return (
-    <form action={action} className="card-pad border-cherry/30 bg-cherry/5" data-testid="handoff-form">
+    <form action={action} className="card-pad border-brand/30 bg-brand/5" data-testid="handoff-form">
       <h2 className="text-lg font-bold">{t('hand_off_title')}</h2>
       <p className="text-sm text-ink-soft mt-1 mb-4">{pickup ? t('hand_off_hint_out') : t('hand_off_hint_dmc')}</p>
       {state?.error && <div className="alert-error mb-3" role="alert">{state.error === 'tracking_required' ? t('tracking_required') : state.error}</div>}

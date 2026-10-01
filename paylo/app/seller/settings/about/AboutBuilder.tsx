@@ -31,7 +31,7 @@ export function AboutBuilder({ initial, max, previewHref }: { initial: AboutSect
             <div className="flex gap-1">
               <button type="button" className="btn-ghost btn-sm" onClick={() => move(i, -1)} disabled={i === 0} aria-label={t('about_move_up')}>↑</button>
               <button type="button" className="btn-ghost btn-sm" onClick={() => move(i, 1)} disabled={i === rows.length - 1} aria-label={t('about_move_down')}>↓</button>
-              <button type="button" className="btn-ghost btn-sm text-cherry" onClick={() => setRows((x) => x.filter((_, j) => j !== i))}>{t('delete')}</button>
+              <button type="button" className="btn-ghost btn-sm text-danger" onClick={() => setRows((x) => x.filter((_, j) => j !== i))}>{t('delete')}</button>
             </div>
           </div>
           <input className="input" placeholder={t('about_heading')} value={r.heading} maxLength={80} onChange={(e) => set(i, { heading: e.target.value })} aria-label={t('about_heading')} />

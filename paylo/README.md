@@ -48,7 +48,7 @@ and `UPLOAD_DIR` to durable values.
 
 | Area | Before | Now |
 |---|---|---|
-| Brand | Cream/orange palette, "Link It. Get Paid." | Cherry Cola `#9A0002` on Cream Vanilla `#EFE6DE`, "Your store. One link." |
+| Brand | Cream/orange palette, "Link It. Get Paid." | Forest `#04380E` + bright green `#00BD3E` on Cream `#F8F4EC` (Figtree / Cairo), "Your store. One link." |
 | Payment | Card via an abstracted provider | **Cash on delivery + bank transfer.** Card is built but switched off behind a phase gate |
 | Order status | One delivery status | `order_state` (Open/Closed/Cancelled/Returned) over a separate fulfilment status |
 | Products | No variants | Physical and digital, up to two option types, per-variant price and stock |

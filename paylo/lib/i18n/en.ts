@@ -671,5 +671,14 @@ export const en = {
   ad_cod_legacy: "{n} older cash-on-delivery order(s) still need the cash recorded",
   ad_order_search_ph: "Order code, phone, email or name",
   ad_audit_sensitive: "Sensitive actions",
+  hero_title_a: "Your store.",
+  hero_title_b: "One link.",
+  hs_store_name: "Damascus Spice House",
+  hs_chip_gifts: "Gifts",
+  hs_chip_home: "Home",
+  hs_buy: "Buy now · Bank transfer",
+  hs_new_order: "New order",
+  hs_paid: "Transfer confirmed",
+  hs_paid_sub: "Ready to ship",
 } as const;
 export type Dict = { [K in keyof typeof en]: string };

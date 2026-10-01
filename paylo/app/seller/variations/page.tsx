@@ -20,7 +20,7 @@ export default function VariationsPage() {
       {presets.length === 0 ? <EmptyState icon="sliders" title={t('variations_none')} body={t('empty_variations_body')} /> : presets.map((p) => (
         <div key={p.id} className="card-pad space-y-3">
           <PresetForm preset={p} />
-          <form action={deletePresetAction.bind(null, p.id)}><SubmitButton className="btn-ghost btn-sm text-cherry">{t('delete')}</SubmitButton></form>
+          <form action={deletePresetAction.bind(null, p.id)}><SubmitButton className="btn-ghost btn-sm text-danger">{t('delete')}</SubmitButton></form>
         </div>
       ))}
     </div>

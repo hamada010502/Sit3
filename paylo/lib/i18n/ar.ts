@@ -636,4 +636,13 @@ export const ar: Dict = {
   ad_cod_legacy: "{n} طلب دفع عند الاستلام قديم ما زال يحتاج تسجيل النقد",
   ad_order_search_ph: "رمز الطلب أو الهاتف أو البريد أو الاسم",
   ad_audit_sensitive: "إجراءات حساسة",
+  hero_title_a: "متجرك.",
+  hero_title_b: "رابط واحد.",
+  hs_store_name: "بيت التوابل الدمشقي",
+  hs_chip_gifts: "هدايا",
+  hs_chip_home: "المنزل",
+  hs_buy: "اشترِ الآن · حوالة بنكية",
+  hs_new_order: "طلب جديد",
+  hs_paid: "تأكّدت الحوالة",
+  hs_paid_sub: "جاهز للشحن",
 };

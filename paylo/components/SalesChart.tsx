@@ -53,7 +53,7 @@ export function SalesChart({ data, t, lang, title, sub, testId = 'sales-chart', 
                     <rect x={i * bw} y={0} width={bw} height={H} fill="transparent" />
                     {d.sales > 0 && (
                       <path d={`M${x},${H} V${top + r} Q${x},${top} ${x + r},${top} H${x + w - r} Q${x + w},${top} ${x + w},${top + r} V${H} Z`}
-                        fill="#9A0002" className="opacity-85 group-hover:opacity-100" />
+                        fill="#04380E" className="opacity-85 group-hover:opacity-100" />
                     )}
                   </g>
                 );

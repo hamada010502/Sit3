@@ -25,8 +25,8 @@ export default function AdminDashboard() {
   const recent = db.prepare('SELECT * FROM orders ORDER BY created_at DESC LIMIT 10').all() as Order[];
   const sellerNames = Object.fromEntries((db.prepare('SELECT id, store_name FROM sellers').all() as { id: string; store_name: string }[]).map((s) => [s.id, s.store_name]));
   const Tile = ({ href, label, value, alert, testid, sub }: { href: string; label: string; value: number | string; alert?: boolean; testid: string; sub?: string }) => (
-    <Link href={href} className="stat hover:border-cherry" data-testid={testid} data-value={String(value)}>
-      <div className="stat-label">{label}</div><div className={`stat-value ${alert ? 'text-cherry' : ''}`}>{value}</div>{sub && <p className="mt-1 text-xs text-ink-soft">{sub}</p>}
+    <Link href={href} className="stat hover:border-brand" data-testid={testid} data-value={String(value)}>
+      <div className="stat-label">{label}</div><div className={`stat-value ${alert ? 'text-danger' : ''}`}>{value}</div>{sub && <p className="mt-1 text-xs text-ink-soft">{sub}</p>}
     </Link>
   );
 

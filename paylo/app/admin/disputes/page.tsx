@@ -37,7 +37,7 @@ export default function AdminDisputesPage({ searchParams }: { searchParams: { al
             <div key={d.id} id={d.id} className="card-pad">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <DisputeStatusBadge status={d.status} t={t} />
-                <span className="font-semibold">{t('a_dispute_for')} <Link href={`/admin/orders/${d.order.id}`} className="tap-inline font-mono text-cherry" dir="ltr">{d.order.code}</Link></span>
+                <span className="font-semibold">{t('a_dispute_for')} <Link href={`/admin/orders/${d.order.id}`} className="tap-inline font-mono text-brand" dir="ltr">{d.order.code}</Link></span>
                 <OrderStatusBadge status={d.order.status} t={t} />
                 <span className="text-xs text-ink-soft">{d.created_at}</span>
               </div>

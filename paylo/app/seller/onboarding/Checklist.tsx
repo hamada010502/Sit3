@@ -26,7 +26,7 @@ export function OnboardingChecklist({ steps, storeUrl }: { steps: ChecklistStep[
           <h2 className="font-bold text-lg">{t('ob_title')}</h2>
           <p className="text-sm text-ink-soft mb-3">{t('ob_sub')}</p>
         </div>
-        <button type="button" className="tap text-sm text-ink-soft hover:text-cherry" data-testid="onboarding-dismiss" disabled={pending}
+        <button type="button" className="tap text-sm text-ink-soft hover:text-brand" data-testid="onboarding-dismiss" disabled={pending}
           onClick={() => start(() => dismissOnboardingAction())}>{t('ob_dismiss')}</button>
       </div>
       <ol className="space-y-2">

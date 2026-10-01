@@ -51,7 +51,7 @@ export function ProductForm({ product, images, variants = [], collections = [], 
         <Field label={t('product_type')}>
           <div className="flex gap-2">
             {(['physical', 'digital'] as const).map((v) => (
-              <label key={v} className={`flex-1 cursor-pointer rounded-lg border px-3 py-2.5 text-sm font-semibold text-center ${type === v ? 'border-cherry bg-cherry/8 text-cherry-dark' : 'border-ink/15 text-ink-soft'}`}>
+              <label key={v} className={`flex-1 cursor-pointer rounded-lg border px-3 py-2.5 text-sm font-semibold text-center ${type === v ? 'border-brand bg-danger/10 text-danger-dark' : 'border-ink/15 text-ink-soft'}`}>
                 <input type="radio" name="type" value={v} checked={type === v} onChange={() => setType(v)} className="sr-only" />
                 {t(`pt_${v}` as const)}
               </label>
@@ -109,7 +109,7 @@ export function ProductForm({ product, images, variants = [], collections = [], 
           {hasOptions && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-sm">{t('variants_title')}</h3>
+                <h3 className="font-bold text-sm">{t('variants_title')}</h3>
                 <button type="button" className="btn-secondary btn-sm"
                   onClick={() => setRows((r) => [...r, { uid: uid(), option1_value: '', option2_value: '', price: product?.price ?? 0, stock: 0, image: null }])}>
                   + {t('variant_add')}
@@ -135,7 +135,7 @@ export function ProductForm({ product, images, variants = [], collections = [], 
                         </div>
                       ) : <input type="file" name={`variant_image_${r.uid}`} accept="image/jpeg,image/png,image/webp" className="text-xs w-full" />}
                     </div>
-                    <button type="button" className="btn-ghost btn-sm text-cherry" onClick={() => setRows((r) => r.filter((_, j) => j !== i))}>{t('variant_remove')}</button>
+                    <button type="button" className="btn-ghost btn-sm text-danger" onClick={() => setRows((r) => r.filter((_, j) => j !== i))}>{t('variant_remove')}</button>
                   </div>
                 ))}
               </div>

@@ -18,8 +18,8 @@ export default function OwnerOverviewPage() {
   const q = queueCounts(), m = moneySummary(), g = growthSummary(), regs = latestRegistrations();
   const cached = readCache<OwnerOverview>(OVERVIEW_KEY);
   const Tile = ({ label, value, href, alert, testid, sub }: { label: string; value: number | string; href?: string; alert?: boolean; testid: string; sub?: string }) => {
-    const inner = (<><div className="stat-label">{label}</div><div className={`stat-value text-lg ${alert ? 'text-cherry' : ''}`}>{value}</div>{sub && <p className="mt-1 text-xs text-ink-soft">{sub}</p>}</>);
-    return href ? <Link href={href} className="stat hover:border-cherry" data-testid={testid} data-value={String(value)}>{inner}</Link>
+    const inner = (<><div className="stat-label">{label}</div><div className={`stat-value text-lg ${alert ? 'text-danger' : ''}`}>{value}</div>{sub && <p className="mt-1 text-xs text-ink-soft">{sub}</p>}</>);
+    return href ? <Link href={href} className="stat hover:border-brand" data-testid={testid} data-value={String(value)}>{inner}</Link>
       : <div className="stat" data-testid={testid} data-value={String(value)}>{inner}</div>;
   };
   const stateLabel = { open: t('os_open'), closed: t('os_closed'), cancelled: t('os_cancelled'), returned: t('os_returned') } as const;
@@ -32,7 +32,7 @@ export default function OwnerOverviewPage() {
       </div>
 
       <section data-testid="ow-queues">
-        <h2 className="font-semibold mb-3">{t('ow_queues')}</h2>
+        <h2 className="font-bold mb-3">{t('ow_queues')}</h2>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <Tile testid="q-registrations" label={t('ow_q_regs')} value={q.pendingRegistrations} href="/owner/registrations" alert={q.pendingRegistrations > 0} />
           <Tile testid="q-kyc" label={t('ops_kyc_waiting')} value={q.kycWaiting} href="/admin/ops" alert={q.kycWaiting > 0} />
@@ -45,7 +45,7 @@ export default function OwnerOverviewPage() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <section data-testid="ow-money">
-          <h2 className="font-semibold mb-3">{t('ow_money')}</h2>
+          <h2 className="font-bold mb-3">{t('ow_money')}</h2>
           <div className="grid grid-cols-2 gap-3">
             <Tile testid="m-held" label={t('ow_m_held')} value={f(m.heldForSellers)} sub={t('ow_m_held_d')} />
             <Tile testid="m-commission" label={t('ow_m_commission')} value={f(m.commissionThisMonth)} />
@@ -54,7 +54,7 @@ export default function OwnerOverviewPage() {
           </div>
         </section>
         <section data-testid="ow-growth">
-          <h2 className="font-semibold mb-3">{t('ow_growth')}</h2>
+          <h2 className="font-bold mb-3">{t('ow_growth')}</h2>
           <div className="grid grid-cols-2 gap-3">
             <Tile testid="g-today" label={t('ow_g_today')} value={g.today.n} sub={f(g.today.gmv)} />
             <Tile testid="g-7d" label={t('ow_g_7d')} value={g.d7.n} sub={f(g.d7.gmv)} />
@@ -66,7 +66,7 @@ export default function OwnerOverviewPage() {
 
       <section data-testid="ow-latest-regs">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold">{t('ow_latest_regs', { n: q.pendingRegistrations })}</h2>
+          <h2 className="font-bold">{t('ow_latest_regs', { n: q.pendingRegistrations })}</h2>
           <Link href="/owner/registrations" className="link text-sm">{t('all')} →</Link>
         </div>
         {regs.length === 0 ? <div className="alert-success">{t('ow_no_regs')}</div> : (
@@ -84,7 +84,7 @@ export default function OwnerOverviewPage() {
       <section className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold">{t('ow_stores_title')}</h2>
+            <h2 className="font-bold">{t('ow_stores_title')}</h2>
             <p className="text-xs text-ink-soft">{cached ? t('oa_as_of', { at: cached.computedAt }) : t('oa_empty_body')}</p>
           </div>
           <div className="flex gap-2">
@@ -113,12 +113,12 @@ export default function OwnerOverviewPage() {
           </div>
           {cached.data.flaggedOrders.length > 0 && (
             <div className="card overflow-x-auto">
-              <h3 className="font-semibold px-4 pt-4 pb-1 text-sm">{t('ow_flagged')}</h3>
+              <h3 className="font-bold px-4 pt-4 pb-1 text-sm">{t('ow_flagged')}</h3>
               <table className="table">
                 <thead><tr><th>{t('order')}</th><th>{t('oa_store')}</th><th>{t('total')}</th><th>{t('ow_reason')}</th><th>{t('ow_since')}</th></tr></thead>
                 <tbody>{cached.data.flaggedOrders.map((o) => (
                   <tr key={o.id + o.reason}><td className="font-mono font-semibold" dir="ltr">{o.code}</td><td>{o.store_name}</td>
-                    <td className="whitespace-nowrap">{f(o.total)}</td><td className="text-cherry">{o.reason}</td>
+                    <td className="whitespace-nowrap">{f(o.total)}</td><td className="text-danger">{o.reason}</td>
                     <td className="text-xs text-ink-soft whitespace-nowrap">{o.since ?? '—'}</td></tr>
                 ))}</tbody>
               </table>

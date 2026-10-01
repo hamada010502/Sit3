@@ -23,7 +23,7 @@ export function DeveloperPanels({ endpoints, deliveries, tokens, events }:
           <label className="label">{t('wh_events')}</label>
           <div className="flex flex-wrap gap-3 text-sm">
             {events.map((e) => (
-              <label key={e} className="flex items-center gap-1.5"><input type="checkbox" name="events" value={e} className="accent-cherry h-4 w-4" /><code dir="ltr">{e}</code></label>
+              <label key={e} className="flex items-center gap-1.5"><input type="checkbox" name="events" value={e} className="accent-brand h-4 w-4" /><code dir="ltr">{e}</code></label>
             ))}
           </div>
           <p className="mt-1 text-xs text-ink-soft">{t('wh_all_events')}</p>
@@ -37,7 +37,7 @@ export function DeveloperPanels({ endpoints, deliveries, tokens, events }:
             <div key={e.id} className="card-pad text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <code dir="ltr" className="font-semibold break-all">{e.url}</code>
-                <form action={deleteEndpointAction.bind(null, e.id)}><button className="btn-ghost btn-sm text-cherry">{t('wh_delete')}</button></form>
+                <form action={deleteEndpointAction.bind(null, e.id)}><button className="btn-ghost btn-sm text-danger">{t('wh_delete')}</button></form>
               </div>
               <p className="mt-1 text-xs text-ink-soft" dir="ltr">{e.events === '*' ? t('wh_all_events') : e.events}</p>
               <div className="mt-2 flex items-center gap-2">
@@ -59,7 +59,7 @@ export function DeveloperPanels({ endpoints, deliveries, tokens, events }:
               <tr key={d.id}>
                 <td className="text-xs whitespace-nowrap">{d.created_at}</td>
                 <td><code dir="ltr" className="text-xs">{d.event}</code></td>
-                <td data-testid={`delivery-${d.id}`}><span className={`badge ${d.status === 'delivered' ? 'bg-success/12 text-success' : d.status === 'dead' ? 'bg-ink/10 text-ink' : 'bg-cherry/8 text-cherry'}`}>{t(`wh_st_${d.status === 'delivered' || d.status === 'dead' ? d.status : 'failed'}` as 'wh_st_failed')}{d.response_code ? ` ${d.response_code}` : ''}</span>
+                <td data-testid={`delivery-${d.id}`}><span className={`badge ${d.status === 'delivered' ? 'bg-success/12 text-success' : d.status === 'dead' ? 'bg-ink/10 text-ink' : 'bg-danger/10 text-danger'}`}>{t(`wh_st_${d.status === 'delivered' || d.status === 'dead' ? d.status : 'failed'}` as 'wh_st_failed')}{d.response_code ? ` ${d.response_code}` : ''}</span>
                   <span className="text-xs text-ink-soft ms-2">{t('wh_attempts', { n: d.attempts })}</span>
                   {d.error && <div className="text-xs text-ink-soft">{d.error}</div>}
                   {d.status === 'failed' && d.next_attempt_at && <div className="text-xs text-ink-soft" dir="ltr">{t('wh_next_retry')}: {d.next_attempt_at} UTC</div>}
@@ -86,7 +86,7 @@ export function DeveloperPanels({ endpoints, deliveries, tokens, events }:
             {live.map((k) => (
               <li key={k.id} className="py-2 flex items-center justify-between gap-3">
                 <span><strong>{k.name}</strong> <code className="text-xs text-ink-soft" dir="ltr">{k.prefix}…</code></span>
-                <button formAction={revokeTokenAction.bind(null, k.id)} className="btn-ghost btn-sm text-cherry">{t('api_revoke')}</button>
+                <button formAction={revokeTokenAction.bind(null, k.id)} className="btn-ghost btn-sm text-danger">{t('api_revoke')}</button>
               </li>
             ))}
           </ul>

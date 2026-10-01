@@ -40,7 +40,7 @@ export default function SellerPayoutsPage() {
               <td className="whitespace-nowrap">{b?.refundsBorne ? `− ${f(b.refundsBorne)}` : '—'}</td>
               <td className="font-semibold whitespace-nowrap" data-testid="payout-amount">{formatSYP(p.amount, lang)}</td>
               <td className="whitespace-nowrap text-ink-soft">{f(b?.deliveryHeld)}</td>
-              <td><span className={`badge ${p.status === 'paid' ? 'bg-success/12 text-success' : p.status === 'failed' ? 'bg-cherry/8 text-cherry' : 'bg-warn/12 text-warn'}`}>
+              <td><span className={`badge ${p.status === 'paid' ? 'bg-success/12 text-success' : p.status === 'failed' ? 'bg-danger/10 text-danger' : 'bg-warn/12 text-warn'}`}>
                 {p.status === 'paid' ? t('payout_paid') : p.status === 'failed' ? t('mark_failed') : t('payout_pending')}</span></td>
               <td className="text-xs" dir="ltr">{p.reference ?? '—'}<div className="text-ink-soft">{p.paid_at ?? ''}</div></td>
             </tr>);

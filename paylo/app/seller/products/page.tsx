@@ -34,7 +34,7 @@ export default function ProductsPage() {
             return (
               <div key={p.id} className="card p-3 flex flex-col sm:flex-row sm:items-center gap-4" data-product-row={p.title}>
                 {p.status !== 'removed' && (
-                  <input type="checkbox" name="ids" value={p.id} form="bulk-form" className="accent-cherry h-4 w-4 shrink-0" aria-label={p.title} />
+                  <input type="checkbox" name="ids" value={p.id} form="bulk-form" className="accent-brand h-4 w-4 shrink-0" aria-label={p.title} />
                 )}
                 <ProductImage images={p.images} alt={p.title} className="h-20 w-20 rounded-lg shrink-0" />
                 <div className="flex-1 min-w-0">

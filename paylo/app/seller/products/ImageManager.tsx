@@ -62,7 +62,7 @@ export function ImageManager({ initial }: { initial: string[] }) {
               {i === 0 && <span className="absolute top-1 start-1 badge bg-ink text-white text-[10px]">{t('images_cover')}</span>}
               <div className="flex justify-between bg-white/90">
                 <button type="button" className="tap px-2 text-sm disabled:opacity-30" onClick={() => move(i, i - 1)} disabled={i === 0} aria-label={t('images_move_earlier')}>‹</button>
-                <button type="button" className="tap px-2 text-sm text-cherry" onClick={() => setItems((c) => c.filter((_, j) => j !== i))} aria-label={t('remove')}>×</button>
+                <button type="button" className="tap px-2 text-sm text-danger" onClick={() => setItems((c) => c.filter((_, j) => j !== i))} aria-label={t('remove')}>×</button>
                 <button type="button" className="tap px-2 text-sm disabled:opacity-30" onClick={() => move(i, i + 1)} disabled={i === items.length - 1} aria-label={t('images_move_later')}>›</button>
               </div>
             </li>
@@ -75,14 +75,14 @@ export function ImageManager({ initial }: { initial: string[] }) {
           onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setOver(true); } }}
           onDragLeave={() => setOver(false)}
           onDrop={(e) => { e.preventDefault(); setOver(false); if (e.dataTransfer.files.length) add(e.dataTransfer.files); }}
-          className={`rounded-xl border-2 border-dashed p-6 text-center text-sm cursor-pointer transition-colors ${over ? 'border-cherry bg-cherry/5' : 'border-ink/20 hover:border-ink/40'}`}>
+          className={`rounded-xl border-2 border-dashed p-6 text-center text-sm cursor-pointer transition-colors ${over ? 'border-brand bg-brand/5' : 'border-ink/20 hover:border-ink/40'}`}>
           <strong className="block">{t('images_drop')}</strong>
           <span className="text-ink-soft">{t('images_hint')}</span>
           <input ref={picker} type="file" multiple accept={TYPES.join(',')} className="hidden" data-testid="image-picker"
             onChange={(e) => { if (e.target.files) add(e.target.files); e.target.value = ''; }} />
         </div>
       )}
-      {err && <p className="text-sm text-cherry" role="alert">{err}</p>}
+      {err && <p className="text-sm text-danger" role="alert">{err}</p>}
       <p className="text-xs text-ink-soft">{t('images_reorder_hint')}</p>
     </div>
   );

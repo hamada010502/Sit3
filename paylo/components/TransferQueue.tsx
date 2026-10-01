@@ -22,9 +22,9 @@ export function TransferQueue({ t, lang, limit = 50 }: { t: TFn; lang: Lang; lim
   const f = (n: number) => formatSYP(n, lang);
   const hours = (iso: string | null) => (iso ? Math.max(0, Math.round((Date.now() - new Date(iso.replace(' ', 'T') + 'Z').getTime()) / 36e5)) : 0);
   return (
-    <section className="card overflow-x-auto border-cherry/30" data-testid="transfer-queue">
+    <section className="card overflow-x-auto border-brand/30" data-testid="transfer-queue">
       <div className="px-5 pt-5 pb-2">
-        <h2 className="font-bold text-lg">{t('tq_title')} <span className="text-cherry" data-testid="tq-count">({review.length})</span></h2>
+        <h2 className="font-bold text-lg">{t('tq_title')} <span className="text-brand" data-testid="tq-count">({review.length})</span></h2>
         <p className="text-xs text-ink-soft">{t('tq_sub')}</p>
       </div>
       {review.length === 0 ? <p className="px-5 pb-4 text-sm text-ink-soft" data-testid="tq-empty">{t('tq_empty')}</p> : (
@@ -32,7 +32,7 @@ export function TransferQueue({ t, lang, limit = 50 }: { t: TFn; lang: Lang; lim
           <thead><tr><th>{t('order')}</th><th>{t('seller')}</th><th>{t('buyer')}</th><th>{t('total')}</th><th>{t('reference')}</th><th>{t('tq_waiting')}</th><th>{t('tq_decide')}</th></tr></thead>
           <tbody>{review.map((r) => (
             <tr key={r.order_id} data-code={r.code}>
-              <td><Link href={`/admin/orders/${r.order_id}`} className="tap-inline font-mono font-semibold text-cherry" dir="ltr">{r.code}</Link>
+              <td><Link href={`/admin/orders/${r.order_id}`} className="tap-inline font-mono font-semibold text-brand" dir="ltr">{r.code}</Link>
                 {r.proof_path && <div><a href={r.proof_path} target="_blank" rel="noreferrer" className="link text-xs">{t('bt_view_proof')}</a></div>}</td>
               <td>{r.store_name}</td><td>{r.buyer_name}</td><td className="whitespace-nowrap font-semibold">{f(r.total)}</td>
               <td className="text-xs" dir="ltr">{r.reference ?? '—'}</td>
@@ -57,7 +57,7 @@ export function TransferQueue({ t, lang, limit = 50 }: { t: TFn; lang: Lang; lim
           <summary className="cursor-pointer text-sm font-semibold py-2">{t('tq_no_receipt', { n: waiting.length })}</summary>
           <ul className="text-sm divide-y divide-ink/5">{waiting.map((r) => (
             <li key={r.order_id} className="py-1.5 flex flex-wrap gap-3">
-              <Link href={`/admin/orders/${r.order_id}`} className="font-mono text-cherry" dir="ltr">{r.code}</Link>
+              <Link href={`/admin/orders/${r.order_id}`} className="font-mono text-brand" dir="ltr">{r.code}</Link>
               <span>{r.store_name}</span><span className="whitespace-nowrap">{f(r.total)}</span>
               <span className="text-xs text-ink-soft">{t('tq_hours', { n: hours(r.created_at) })}</span>
             </li>))}</ul>

@@ -11,7 +11,7 @@ export default function LoginPage() {
   return (
     <Shell>
       <div className="max-w-md mx-auto">
-        <h1 className="text-2xl font-bold mb-6">{t('login_title')}</h1>
+        <h1 className="text-2xl font-extrabold mb-6">{t('login_title')}</h1>
         <LoginForm />
       </div>
     </Shell>

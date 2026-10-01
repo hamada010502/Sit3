@@ -11,7 +11,7 @@ export default function RegisterPage() {
   return (
     <Shell>
       <div className="max-w-md mx-auto">
-        <h1 className="text-2xl font-bold mb-2">{t('register_title')}</h1>
+        <h1 className="text-2xl font-extrabold mb-2">{t('register_title')}</h1>
         <ul className="text-sm text-ink-soft space-y-1 mb-6">
           <li>• {t('register_benefit1')}</li>
           <li>• {t('register_benefit2')}</li>

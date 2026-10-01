@@ -26,7 +26,7 @@ export function NotificationSettings({ prefs, devices }: { prefs: Prefs; devices
 
   const Toggle = ({ name, label, hint, on }: { name: string; label: string; hint: string; on: number }) => (
     <label className="flex items-start gap-3 py-3 min-h-[44px] cursor-pointer">
-      <input type="checkbox" name={name} defaultChecked={!!on} className="accent-cherry h-5 w-5 mt-0.5 shrink-0" />
+      <input type="checkbox" name={name} defaultChecked={!!on} className="accent-brand h-5 w-5 mt-0.5 shrink-0" />
       <span><strong className="block text-sm">{label}</strong><span className="text-xs text-ink-soft">{hint}</span></span>
     </label>
   );

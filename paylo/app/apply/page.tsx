@@ -11,7 +11,7 @@ export default function ApplyPage() {
   return (
     <Shell>
       <div className="max-w-xl mx-auto">
-        <h1 className="text-2xl font-bold">{t('apply_title')}</h1>
+        <h1 className="text-2xl font-extrabold">{t('apply_title')}</h1>
         <p className="mt-2 mb-6 text-ink-soft text-sm">{t('apply_sub')}</p>
         <ApplyForm />
       </div>

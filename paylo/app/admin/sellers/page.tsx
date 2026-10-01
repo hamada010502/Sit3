@@ -47,7 +47,7 @@ export default function AdminSellersPage({ searchParams }: { searchParams: { sta
             <td>{s.governorate}</td><td>{s.product_count}</td><td>{s.order_count}</td>
             <td><SellerStatusBadge status={s.status} t={t} /></td>
             <td><KycBadge status={s.kyc_status} t={t} /></td>
-            <td><span className={`badge ${s.totp_enabled ? 'bg-success/12 text-success' : 'bg-cherry/8 text-cherry'}`}>{s.totp_enabled ? t('yes') : t('no')}</span></td>
+            <td><span className={`badge ${s.totp_enabled ? 'bg-success/12 text-success' : 'bg-danger/10 text-danger'}`}>{s.totp_enabled ? t('yes') : t('no')}</span></td>
             <td><Link href={`/admin/sellers/${s.id}`} className="link text-sm">{t('view')}</Link></td>
           </tr>))}</tbody>
       </table></div>

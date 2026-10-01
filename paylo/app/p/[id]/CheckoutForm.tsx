@@ -92,8 +92,8 @@ export function CheckoutForm({ productId, basePrice, stock, isDigital, variants,
     <form action={action} className="card-pad space-y-6">
       <div className="flex items-center gap-2 text-sm font-semibold">
         {([1, 2] as const).map((n) => (
-          <span key={n} className={`flex items-center gap-2 ${step === n ? 'text-cherry' : 'text-ink-soft'}`}>
-            <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${step === n ? 'bg-cherry text-white' : 'bg-ink/10'}`}>{n}</span>
+          <span key={n} className={`flex items-center gap-2 ${step === n ? 'text-brand' : 'text-ink-soft'}`}>
+            <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${step === n ? 'bg-brand text-white' : 'bg-ink/10'}`}>{n}</span>
             {t(n === 1 ? 'checkout_step1' : 'checkout_step2')}
             {n === 1 && <span className="text-ink-soft/50 mx-1">→</span>}
           </span>
@@ -165,8 +165,8 @@ export function CheckoutForm({ productId, basePrice, stock, isDigital, variants,
       <section className={`space-y-4 ${step === 2 ? '' : 'hidden'}`}>
         <div className="space-y-2">
           {methods.map((m) => (
-            <label key={m} className={`flex cursor-pointer gap-3 rounded-lg border p-3 ${method === m ? 'border-cherry bg-cherry/8' : 'border-ink/15'}`}>
-              <input type="radio" name="payment_method" value={m} checked={method === m} onChange={() => setMethod(m)} className="accent-cherry mt-0.5" />
+            <label key={m} className={`flex cursor-pointer gap-3 rounded-lg border p-3 ${method === m ? 'border-brand bg-brand/8' : 'border-ink/15'}`}>
+              <input type="radio" name="payment_method" value={m} checked={method === m} onChange={() => setMethod(m)} className="accent-brand mt-0.5" />
               <span><strong className="text-sm">{t(`pm_${m}` as const)}</strong><span className="block text-xs text-ink-soft">{t(`pm_${m}_d` as const)}</span></span>
             </label>
           ))}

@@ -63,7 +63,7 @@ export default function SellerDashboard() {
 
       {showChecklist && <OnboardingChecklist storeUrl={storeUrl} steps={steps} />}
       {openReturns > 0 && <Link href="/seller/returns" className="alert-warn mb-4 block" data-testid="returns-alert">{t('returns_open_alert', { n: openReturns })} →</Link>}
-      <section className="card-pad mb-4 border-cherry/20 bg-cherry/5 flex flex-wrap items-center justify-between gap-4" data-testid="next-payout">
+      <section className="card-pad mb-4 border-brand/20 bg-brand/5 flex flex-wrap items-center justify-between gap-4" data-testid="next-payout">
         <div>
           <div className="stat-label">{t('bal_next_payout')}</div>
           <div className="text-2xl font-extrabold mt-1">{fmtDay(transfer)}</div>
@@ -85,7 +85,7 @@ export default function SellerDashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-        <div className="stat"><div className="stat-label">{t('dash_to_fulfill')}</div><div className="stat-value text-cherry">{toFulfil}</div></div>
+        <div className="stat"><div className="stat-label">{t('dash_to_fulfill')}</div><div className="stat-value text-brand">{toFulfil}</div></div>
         <div className="stat"><div className="stat-label">{t('st_awaiting_payment')}</div><div className="stat-value">{awaitingPayment}</div></div>
         <div className="stat"><div className="stat-label">{t('orders_today')}</div><div className="stat-value">{today}</div></div>
         <div className="stat"><div className="stat-label">{t('orders_week')}</div><div className="stat-value">{week}</div></div>

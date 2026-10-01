@@ -14,7 +14,7 @@ function Bars({ rows, testId }: { rows: { label: string; value: number }[]; test
       {rows.map((r) => (
         <div key={r.label} className="flex items-center gap-2 text-xs" data-label={r.label} data-value={r.value}>
           <span className="w-10 text-ink-soft tabular-nums" dir="ltr">{r.label}</span>
-          <div className="flex-1 bg-cream-deep rounded h-3 overflow-hidden"><div className="h-full bg-cherry rounded-e" style={{ width: `${(r.value / max) * 100}%` }} /></div>
+          <div className="flex-1 bg-cream-deep rounded h-3 overflow-hidden"><div className="h-full bg-brand rounded-e" style={{ width: `${(r.value / max) * 100}%` }} /></div>
           <span className="w-10 text-end tabular-nums">{r.value}</span>
         </div>
       ))}
@@ -31,7 +31,7 @@ export default function MarketAnalyticsPage({ searchParams }: { searchParams: { 
   if (!cached || !cached.data.daily) {
     return (
       <div className="max-w-lg mx-auto text-center py-20">
-        <h1 className="text-xl font-semibold">{t('oa_empty_title')}</h1>
+        <h1 className="text-xl font-extrabold">{t('oa_empty_title')}</h1>
         <p className="mt-2 text-sm text-ink-soft">{t('oa_empty_body')}</p>
         <form action={refreshAnalyticsAction} className="mt-6"><button className="btn-primary">{t('oa_compute')}</button></form>
       </div>
@@ -78,7 +78,7 @@ export default function MarketAnalyticsPage({ searchParams }: { searchParams: { 
       <a href={exp('daily', `&days=${range}`)} className="link text-sm -mt-4 inline-block" data-testid="csv-daily">{t('oa_csv')} →</a>
 
       <section data-testid="oa-funnel">
-        <h2 className="font-semibold mb-1">{t('oa_funnel_title')}</h2>
+        <h2 className="font-bold mb-1">{t('oa_funnel_title')}</h2>
         <p className="text-xs text-ink-soft mb-3">{t('oa_funnel_sub')}</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="stat"><div className="stat-label">{t('oa_f_view')}</div><div className="stat-value text-lg" data-testid="funnel-views">{d.funnel.viewSessions}</div>
@@ -92,7 +92,7 @@ export default function MarketAnalyticsPage({ searchParams }: { searchParams: { 
 
       <section>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <h2 className="font-semibold">{t('oa_top_products')}</h2>
+          <h2 className="font-bold">{t('oa_top_products')}</h2>
           <form method="get" className="flex items-center gap-2 text-sm">
             <input type="hidden" name="range" value={range} />
             <select name="store" className="input py-1.5 text-xs w-auto" defaultValue={storeId ?? ''}>
@@ -105,7 +105,7 @@ export default function MarketAnalyticsPage({ searchParams }: { searchParams: { 
         <div className="grid md:grid-cols-2 gap-4">
           {([['oa_by_revenue', byRevenue, 'top-revenue'], ['oa_by_units', byUnits, 'top-units']] as const).map(([title, rows, testid]) => (
             <div key={testid} className="card overflow-x-auto" data-testid={testid}>
-              <h3 className="font-semibold px-4 pt-4 pb-1 text-sm">{t(title)}</h3>
+              <h3 className="font-bold px-4 pt-4 pb-1 text-sm">{t(title)}</h3>
               <table className="table">
                 <thead><tr><th>{t('product')}</th><th>{t('oa_store')}</th><th>{t('oa_units')}</th><th>{t('oa_revenue')}</th></tr></thead>
                 <tbody>{rows.length === 0 ? <tr><td colSpan={4} className="text-ink-soft text-center py-6">{t('oa_no_data')}</td></tr> :
@@ -118,7 +118,7 @@ export default function MarketAnalyticsPage({ searchParams }: { searchParams: { 
       </section>
 
       <section data-testid="oa-prices">
-        <h2 className="font-semibold mb-1">{t('oa_prices_title')}</h2>
+        <h2 className="font-bold mb-1">{t('oa_prices_title')}</h2>
         <p className="text-xs text-ink-soft mb-3">{t('oa_prices_sub')}</p>
         <div className="card overflow-x-auto">
           <table className="table text-sm">
@@ -137,7 +137,7 @@ export default function MarketAnalyticsPage({ searchParams }: { searchParams: { 
 
       <div className="grid md:grid-cols-2 gap-6">
         <section>
-          <h2 className="font-semibold mb-3">{t('oa_geo')}</h2>
+          <h2 className="font-bold mb-3">{t('oa_geo')}</h2>
           <div className="card overflow-x-auto" data-testid="oa-geo">
             <table className="table">
               <thead><tr><th>{t('governorate')}</th><th>{t('oa_orders_col')}</th><th>{t('total')}</th></tr></thead>
@@ -147,7 +147,7 @@ export default function MarketAnalyticsPage({ searchParams }: { searchParams: { 
           <a href={exp('geo')} className="link text-sm mt-2 inline-block">{t('oa_csv')} →</a>
         </section>
         <section>
-          <h2 className="font-semibold mb-3">{t('oa_pm_mix')}</h2>
+          <h2 className="font-bold mb-3">{t('oa_pm_mix')}</h2>
           <div className="card overflow-x-auto" data-testid="oa-pm">
             <table className="table">
               <thead><tr><th>{t('payment_method')}</th><th>{t('oa_orders_col')}</th><th>{t('total')}</th><th>{t('oa_share')}</th></tr></thead>
@@ -162,27 +162,27 @@ export default function MarketAnalyticsPage({ searchParams }: { searchParams: { 
 
       <div className="grid md:grid-cols-2 gap-6">
         <section>
-          <h2 className="font-semibold mb-3">{t('oa_by_hour')}</h2>
+          <h2 className="font-bold mb-3">{t('oa_by_hour')}</h2>
           <Bars testId="oa-hours" rows={d.byHour.map((h) => ({ label: `${String(h.hour).padStart(2, '0')}h`, value: h.orders }))} />
         </section>
         <section>
-          <h2 className="font-semibold mb-3">{t('oa_by_weekday')}</h2>
+          <h2 className="font-bold mb-3">{t('oa_by_weekday')}</h2>
           <Bars testId="oa-weekdays" rows={d.byWeekday.map((w) => ({ label: WEEKDAY[w.weekday], value: w.orders }))} />
         </section>
       </div>
 
       <section data-testid="oa-growth">
-        <h2 className="font-semibold mb-3">{t('oa_growth')}</h2>
+        <h2 className="font-bold mb-3">{t('oa_growth')}</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="stat"><div className="stat-label">{t('oa_sellers_live')}</div><div className="stat-value text-lg">{d.growth.approvedSellers}</div></div>
           <div className="stat"><div className="stat-label">{t('oa_new_sellers_7')}</div><div className="stat-value text-lg">{d.growth.newSellers7d}</div></div>
           <div className="stat"><div className="stat-label">{t('oa_new_sellers_30')}</div><div className="stat-value text-lg">{d.growth.newSellers30d}</div></div>
-          <Link href="/owner/registrations" className="stat hover:border-cherry"><div className="stat-label">{t('oa_pending_regs')}</div><div className="stat-value text-lg text-cherry">{d.growth.pendingRegistrations}</div></Link>
+          <Link href="/owner/registrations" className="stat hover:border-brand"><div className="stat-label">{t('oa_pending_regs')}</div><div className="stat-value text-lg text-brand">{d.growth.pendingRegistrations}</div></Link>
         </div>
       </section>
 
       <section className="card-pad" data-testid="oa-raw">
-        <h2 className="font-semibold">{t('oa_raw_title')}</h2>
+        <h2 className="font-bold">{t('oa_raw_title')}</h2>
         <p className="text-xs text-ink-soft mt-1 mb-3">{t('oa_raw_sub')}</p>
         <form method="get" action="/owner/analytics/export" className="flex flex-wrap items-center gap-2">
           <input type="hidden" name="kind" value="events" />
